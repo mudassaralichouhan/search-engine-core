@@ -27,6 +27,9 @@
     <ClInclude Include="httputility.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="main.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -38,5 +41,8 @@
     <ClCompile Include="httputility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="C:\xampp\cgi-bin\index_file.html" />
   </ItemGroup>
 </Project>

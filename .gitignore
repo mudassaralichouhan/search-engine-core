@@ -31,3 +31,8 @@
 *.out
 *.app
 /.vs
+/SearchEngineCore/main3.cpp
+/x64/*
+/Debug/*
+/SearchEngineCore/Debug/*
+/SearchEngineCore/x64/*
