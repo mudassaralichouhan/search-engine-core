@@ -129,13 +129,7 @@ int main(int argc, wchar_t* argv[], char* envp[])
 
     if (method == "POST") {
 
-
-        //cout << "Status: 200\r\n";
-        //cout << "Content-type: text/html\r\n\r\n";
-        //cout << path;
-        //return 1;
-
-      //  if (caseInsensitiveCompare(path, "/v2/email-subscribe")) {
+        if (caseInsensitiveCompare(path, "/v2/email-subscribe")) {
 
             // Retrieve POST data
             string postData = getEnvVarValue("QUERY_STRING");
@@ -153,12 +147,6 @@ int main(int argc, wchar_t* argv[], char* envp[])
                 return 1;
             }
 
-
-            //cout << "Status: 200\r\n";
-    //cout << "Content-type: text/html\r\n\r\n";
-    //cout << path;
-    //return 1;
-
             // Subscribe email to mailing list
             if (subscribeEmail(email)) {
                 cout << "Status: 200\r\n";
@@ -166,18 +154,18 @@ int main(int argc, wchar_t* argv[], char* envp[])
                 cout << "Email subscribed successfully";
             }
             else {
-                cout << "Status: 200\r\n";
+                cout << "Status: 400\r\n";
                 cout << "Content-type: text/plain\n\n";
-                cout << "Error subscribing email";
+                cout << "duplicate";
             }
-     /*   }
+        }
         else
         {
             cout << "Status: 404\r\n";
-            cout << "Content-type: text/html\r\n\r\n";
+            cout << "Content-type: text/plain\n\n";
             cout << "Invalid api address";
             return 1;
-        }*/
+        }
     }
     else {
        // Handle unsupported methods (e.g., send a 405 Method Not Allowed response)
