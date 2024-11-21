@@ -36,3 +36,4 @@
 /Debug/*
 /SearchEngineCore/Debug/*
 /SearchEngineCore/x64/*
+/SearchEngineCore/vcpkg_installed/x64-windows
