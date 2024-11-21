@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 #include "mongodb.h"
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/json.hpp>
@@ -10,20 +17,18 @@ using bsoncxx::builder::basic::make_document;
 #include <bsoncxx/builder/stream/array.hpp>
 #include <bsoncxx/builder/stream/document.hpp>
 #include <bsoncxx/builder/stream/helpers.hpp>
+#include "infrastructure.h"
 using namespace bsoncxx::v_noabi::builder::stream;
 using namespace std;
 
-    // Function to subscribe email to a mailing list (replace with your actual implementation)
-bool mongodb::subscribeEmail(const string& email)
+// Function to subscribe email to a mailing list (replace with your actual implementation)
+//template <typename bool>
+Result<bool> mongodb::subscribeEmail(const string& email)
 {
     // Logic to add the email to your mailing list
-// For example, you could write the email to a file or database
     try
     {
-
-
         mongocxx::instance instance;
-
         mongocxx::uri uri("mongodb://localhost:27017");
         mongocxx::client client(uri);
         auto database = client["search-engine"];
@@ -39,19 +44,16 @@ bool mongodb::subscribeEmail(const string& email)
         {
             auto result = collection.insert_one(make_document(kvp("email", emailChars)));
             delete strPtr;
-            return true;
+            return Result<bool>::Success(true, "registered");
         }
         else {
             delete strPtr;
-            return false;
+            return Result<bool>::Failure("duplicate");
         }
     }
-        catch (const mongocxx::exception& e) {
-        return false;
+    catch (const mongocxx::exception& e) {
+
+        return Result<bool>::Failure(e.what());
     }
-    //catch (const std::exception& e)
-    //{
-    //    std::cout << "An exception occurred: " << e.what() << "\n";
-    //    return false;
-    //}
 }
+

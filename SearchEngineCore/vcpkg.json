@@ -1,0 +1,6 @@
+{
+  "name": "searchenginecore",
+  "dependencies": [
+    "nlohmann-json"
+  ]
+}

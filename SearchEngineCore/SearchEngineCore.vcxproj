@@ -90,6 +90,9 @@
     <TargetExt>.cgi</TargetExt>
     <TargetName>index</TargetName>
   </PropertyGroup>
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PrecompiledHeader>
@@ -113,7 +116,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>C:\mongo-cxx-driver\include\mongocxx\v_noabi;C:\mongo-cxx-driver\include\bsoncxx\v_noabi;C:\mongo-c-driver\include\libbson-1.0;C:\mongo-c-driver\include\libmongoc-1.0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/Zc:__cplusplus  %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -162,6 +165,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="httputility.h" />
+    <ClInclude Include="infrastructure.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="mongodb.h" />
     <ClInclude Include="resource.h" />
@@ -170,6 +174,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="httputility.cpp" />
+    <ClCompile Include="infrastructure.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mongodb.cpp" />
     <ClCompile Include="stdafx.cpp" />
@@ -179,6 +184,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="C:\xampp\cgi-bin\index.html" />
+    <None Include="vcpkg.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

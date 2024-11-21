@@ -1,9 +1,6 @@
 
-
 #include<string>
 using namespace std;
-
-
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/json.hpp>
 #include <mongocxx/client.hpp>
@@ -17,11 +14,10 @@ using bsoncxx::builder::basic::make_document;
 #include <bsoncxx/builder/stream/helpers.hpp>
 using namespace std;
 using namespace bsoncxx::v_noabi::builder::stream;
-
+#include "infrastructure.h"
 
 class mongodb
 {
 public:
-	bool subscribeEmail(const string& email);
+	Result<bool> subscribeEmail(const string& email);
 };
-

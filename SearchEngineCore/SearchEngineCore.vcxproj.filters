@@ -30,6 +30,15 @@
     <ClInclude Include="main.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="mongodb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="infrastructure.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -41,8 +50,20 @@
     <ClCompile Include="httputility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="mongodb.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="infrastructure.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="C:\xampp\cgi-bin\index_file.html" />
+    <ResourceCompile Include="SearchEngineCore.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\xampp\cgi-bin\index.html" />
+    <None Include="vcpkg.json" />
   </ItemGroup>
 </Project>
