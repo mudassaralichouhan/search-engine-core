@@ -185,7 +185,7 @@ int main(int argc, wchar_t* argv[], char* envp[])
             if (result.success) {
                 cout << "Status: 200\r\n";
                 cout << "Content-type: text/plain\n\n";
-                cout << "Email subscribed successfully";
+                cout << result.message;
                 return 1;
             }
             else {
