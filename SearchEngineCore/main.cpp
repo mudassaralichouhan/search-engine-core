@@ -1,6 +1,10 @@
 #define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 #define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
 
+
+#include <uwebsockets/App.h>
+
+
 #include <locale>
 #include <codecvt>
 
@@ -22,6 +26,7 @@ using json = nlohmann::json;
 struct User {
     std::string email;
 };
+
 
 
 // Function to parse query string parameters
@@ -66,7 +71,7 @@ std::string getEnvVarValue(const char* envVarName) {
 char* getEnvVarValue2(const char* envVarName) {
     char* buf = nullptr;
     size_t sz = 0;
-    if (_dupenv_s(&buf, &sz, envVarName) == 0 && buf != nullptr) 
+    if (_dupenv_s(&buf, &sz, envVarName) == 0 && buf != nullptr)
         return buf;
 }
 
@@ -91,10 +96,10 @@ bool caseInsensitiveCompare(const std::string& str1, const std::string& str2) {
 char* get_body()
 {
     char* content_length = getenv("CONTENT_LENGTH");
-    if (!content_length) 
+    if (!content_length)
         return nullptr;
     int size = atoi(content_length);
-    if(size == 0)
+    if (size == 0)
         return nullptr;
     char* body = (char*)calloc(size + 1, sizeof(char));
     if (body != nullptr)
@@ -103,131 +108,163 @@ char* get_body()
     return body;
 }
 // (int argc, char* argv[], char* envp[])
-int main(int argc, wchar_t* argv[], char* envp[])
-{
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 
 
-    string method = getEnvVarValue("REQUEST_METHOD");
-    string path = getEnvVarValue("PATH_INFO");
+std::string loadFile(const std::string& path) {
+    std::ifstream file(path);
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
 
+// Add these helper functions at the top of the file with other utility functions
+std::string getMimeType(const std::string& path) {
+    const std::map<std::string, std::string> mimeTypes = {
+        {".html", "text/html"},
+        {".css", "text/css"},
+        {".js", "application/javascript"},
+        {".json", "application/json"},
+        {".png", "image/png"},
+        {".jpg", "image/jpeg"},
+        {".jpeg", "image/jpeg"},
+        {".gif", "image/gif"},
+        {".svg", "image/svg+xml"},
+        {".ico", "image/x-icon"}
+    };
 
-   
+    size_t dot_pos = path.find_last_of(".");
+    if (dot_pos != std::string::npos) {
+        std::string ext = path.substr(dot_pos);
+        auto it = mimeTypes.find(ext);
+        if (it != mimeTypes.end()) {
+            return it->second;
+        }
+    }
+    return "application/octet-stream";
+}
 
+bool loadStaticFile(const std::string& basePath, const std::string& requestPath, std::string& content, std::string& mimeType) {
+    // Remove leading slash and sanitize path
+    std::string relativePath = requestPath;
+    if (!relativePath.empty() && relativePath[0] == '/') {
+        relativePath = relativePath.substr(1);
+    }
 
+    // Construct full file path
+    std::string fullPath = basePath + "/" + relativePath;
 
-    if (method == "POST") {
+    // Basic security check to prevent directory traversal
+    if (fullPath.find("..") != std::string::npos) {
+        return false;
+    }
 
-        if (caseInsensitiveCompare(path, "/v2/email-subscribe")) {
+    std::ifstream file(fullPath, std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
 
-            // Retrieve POST data
-           // string postData = getEnvVarValue("QUERY_STRING");
-           // map<string, string> params = parseQueryString(postData);
-            // Extract email from POST data
-            //string email = params["email"];
+    // Read file content
+    content = std::string(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>()
+    );
 
-            std::string email;
-             // Parse the JSON string into a JSON object
-            try
-            {
+    // Set mime type
+    mimeType = getMimeType(fullPath);
+    
+    return true;
+}
 
+int main() {
+    // Pre-load index.html
+    std::string indexHtml = loadFile("public/index.html");
 
+    uWS::App()
+        // Serve index.html at root
+        .get("/", [indexHtml](auto* res, auto* req) {
+            res->writeHeader("Content-Type", "text/html; charset=utf-8");
+            res->end(indexHtml);
+        })
+        
+        // Handle all static files
+        .get("/*", [](auto* res, auto* req) {
+            std::string path = std::string(req->getUrl());
+            std::string content;
+            std::string mimeType;
 
-
-
-                /*      std::wstring unicode_str = converter.from_bytes(body);
-                        for (wchar_t c : unicode_str)
-                            std::cout << "code: " << std::dec << (int)c << std::endl;
-                */
-
-                auto body = get_body();
-                if (body == nullptr)
-                {
-                    std::cout << "Status: 400\r\n";
-                    std::cout << "Content-type: application/json\r\n\r\n";
-                    cout << "Invalid Data" << endl;
-                    return 1;
-                }
-                else {
-                 //   std::cout << "Status: 200\r\n";
-                  //  std::cout << "Content-type: application/json\r\n\r\n";
-
-                    json j = json::parse(body);
-                    email  = j["email"].get<std::string>();
-            /*        User user;
-                    user.email = email;
-                    cout << email;*/
-                }
-            }
-            catch (const std::exception& e)
-            {
-                std::cout << "Status: 400\r\n";
-                std::cout << "Content-type: application/json\r\n\r\n";
-                std::cout << "An exception occurred: " << e.what() << "\n";
-                return 1;
-            }
-
-
-
-            // Validate email address
-            if (!isValidEmail(email)) {
-                // Handle invalid email (e.g., send an error response)
-                cout << "Status: 400\r\n";
-                cout << "Content-type: text/html\r\n\r\n";
-                cout << "Invalid email address";
-                return 1;
-            }
-
-            // Subscribe email to mailing list
-
-            auto result = mongodb().subscribeEmail(email);
-
-            if (result.success) {
-                cout << "Status: 200\r\n";
-                cout << "Content-type: text/plain\n\n";
-                cout << result.message;
-                return 1;
+            // Try to load the file from public directory
+            if (loadStaticFile("public", path, content, mimeType)) {
+                res->writeHeader("Content-Type", mimeType);
+                res->end(content);
             }
             else {
-                cout << "Status: 400\r\n";
-                cout << "Content-type: text/plain\n\n";
-                cout << result.message;
-                return 1;
+                // File not found
+                res->writeStatus("404 Not Found");
+                res->writeHeader("Content-Type", "text/plain");
+                res->end("File not found");
             }
+        })
+
+        // Handle email subscription endpoint
+        .post("/v2/email-subscribe", [](auto* res, auto* req) {
+        // Read the POST body
+        std::string buffer;
+        res->onData([res, buffer = std::move(buffer)](std::string_view data, bool last) mutable {
+            buffer.append(data.data(), data.length());
+
+            if (last) {
+                try {
+                    // Parse JSON body
+                    json j = json::parse(buffer);
+                    std::string email = j["email"].get<std::string>();
+
+                    // Validate email
+                    if (!isValidEmail(email)) {
+                        res->writeStatus("400 Bad Request");
+                        res->writeHeader("Content-Type", "application/json");
+                        res->end("{\"error\": \"Invalid email address\"}");
+                        return;
+                    }
+
+                    // Subscribe email to mailing list
+                    auto result = mongodb().subscribeEmail(email);
+
+                    if (result.success) {
+                        res->writeStatus("200 OK");
+                        res->writeHeader("Content-Type", "application/json");
+                        res->end("{\"message\": \"" + result.message + "\"}");
+                    }
+                    else {
+                        res->writeStatus("400 Bad Request");
+                        res->writeHeader("Content-Type", "application/json");
+                        res->end("{\"error\": \"" + result.message + "\"}");
+                    }
+
+                }
+                catch (const std::exception& e) {
+                    res->writeStatus("400 Bad Request");
+                    res->writeHeader("Content-Type", "application/json");
+                    res->end("{\"error\": \"Invalid JSON data: " + std::string(e.what()) + "\"}");
+                }
+            }
+            });
+
+        // Handle upload errors
+        res->onAborted([]() {
+            std::cout << "Request was aborted" << std::endl;
+            });
+            })
+
+        .listen(3000, [](auto* listen_socket) {
+        if (listen_socket) {
+            std::cout << "Server listening on port 3000" << std::endl;
         }
-        else
-        {
-            cout << "Status: 404\r\n";
-            cout << "Content-type: text/plain\n\n";
-            cout << "Invalid api address";
-            return 1;
+        else {
+            std::cout << "Failed to listen on port 3000" << std::endl;
         }
-    }
-    else {
-        // Handle unsupported methods (e.g., send a 405 Method Not Allowed response)
-        // cout << "Content-type: text/plain\n\n";
-        // cout << "Method Not Allowed";
-
-
-        printf("Content-type:text/html; charset=utf-8\n\n"); //http header : MIME type
-        ifstream htmlFile("index.html");
-        // Check if the file is open
-        if (!htmlFile.is_open()) {
-            cerr << "Error opening file!" << endl;
-            return 1;
-        }
-
-        // Read the file content
-        string htmlContent((istreambuf_iterator<char>(htmlFile)),
-            istreambuf_iterator<char>());
-
-        htmlFile.close();
-        cout << htmlContent;
-
-    }
+            })
+        .run();
 
     return 0;
-
-
-
 }
+
