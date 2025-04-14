@@ -113,7 +113,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>D:\Projects\hatef.ir\vcpkg\installed\x64-windows\include;C:\mongo-cxx-driver\include\mongocxx\v_noabi;C:\mongo-cxx-driver\include\bsoncxx\v_noabi;C:\mongo-c-driver\include\libbson-1.0;C:\mongo-c-driver\include\libmongoc-1.0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/Zc:__cplusplus  %(AdditionalOptions)</AdditionalOptions>
@@ -170,6 +170,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="httputility.h" />
+    <ClInclude Include="include\StaticFileHandler.h" />
+    <ClInclude Include="include\utils.h" />
     <ClInclude Include="infrastructure.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="mongodb.h" />
@@ -182,6 +184,8 @@
     <ClCompile Include="infrastructure.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mongodb.cpp" />
+    <ClCompile Include="src\StaticFileHandler.cpp" />
+    <ClCompile Include="src\utils.cpp" />
     <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
   <ItemGroup>

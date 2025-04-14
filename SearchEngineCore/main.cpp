@@ -17,6 +17,10 @@
 #include <map>
 #include <fstream>
 #include "mongodb.h"
+#include <iostream>
+#include <string>
+#include "include/utils.h"
+
 using namespace std;
 
 #include <nlohmann/json.hpp>
@@ -47,11 +51,7 @@ map<string, string> parseQueryString(const string& queryString) {
     return params;
 }
 
-// Function to validate email address
-bool isValidEmail(const string& email) {
-    // Implement a more robust email validation algorithm if needed
-    return email.find('@') != string::npos;
-}
+
 
 
 std::string getEnvVarValue(const char* envVarName) {
@@ -68,29 +68,8 @@ std::string getEnvVarValue(const char* envVarName) {
     }
 }
 
-char* getEnvVarValue2(const char* envVarName) {
-    char* buf = nullptr;
-    size_t sz = 0;
-    if (_dupenv_s(&buf, &sz, envVarName) == 0 && buf != nullptr)
-        return buf;
-}
-
-bool caseInsensitiveCompare(const std::string& str1, const std::string& str2) {
-    // Convert both strings to lowercase for case-insensitive comparison
-    std::string lowerStr1 = str1;
-    std::transform(lowerStr1.begin(), lowerStr1.end(), lowerStr1.begin(), ::tolower);
-
-    std::string lowerStr2 = str2;
-    std::transform(lowerStr2.begin(), lowerStr2.end(), lowerStr2.begin(), ::tolower);
-
-    // Compare the lowercase strings
-    return lowerStr1 == lowerStr2;
-}
 
 
-
-#include <iostream>
-#include <string>
 
 
 char* get_body()
@@ -117,67 +96,13 @@ std::string loadFile(const std::string& path) {
     return buffer.str();
 }
 
-// Add these helper functions at the top of the file with other utility functions
-std::string getMimeType(const std::string& path) {
-    const std::map<std::string, std::string> mimeTypes = {
-        {".html", "text/html"},
-        {".css", "text/css"},
-        {".js", "application/javascript"},
-        {".json", "application/json"},
-        {".png", "image/png"},
-        {".jpg", "image/jpeg"},
-        {".jpeg", "image/jpeg"},
-        {".gif", "image/gif"},
-        {".svg", "image/svg+xml"},
-        {".ico", "image/x-icon"}
-    };
-
-    size_t dot_pos = path.find_last_of(".");
-    if (dot_pos != std::string::npos) {
-        std::string ext = path.substr(dot_pos);
-        auto it = mimeTypes.find(ext);
-        if (it != mimeTypes.end()) {
-            return it->second;
-        }
-    }
-    return "application/octet-stream";
-}
-
-bool loadStaticFile(const std::string& basePath, const std::string& requestPath, std::string& content, std::string& mimeType) {
-    // Remove leading slash and sanitize path
-    std::string relativePath = requestPath;
-    if (!relativePath.empty() && relativePath[0] == '/') {
-        relativePath = relativePath.substr(1);
-    }
-
-    // Construct full file path
-    std::string fullPath = basePath + "/" + relativePath;
-
-    // Basic security check to prevent directory traversal
-    if (fullPath.find("..") != std::string::npos) {
-        return false;
-    }
-
-    std::ifstream file(fullPath, std::ios::binary);
-    if (!file.is_open()) {
-        return false;
-    }
-
-    // Read file content
-    content = std::string(
-        (std::istreambuf_iterator<char>(file)),
-        std::istreambuf_iterator<char>()
-    );
-
-    // Set mime type
-    mimeType = getMimeType(fullPath);
-    
-    return true;
-}
 
 int main() {
     // Pre-load index.html
     std::string indexHtml = loadFile("public/index.html");
+
+
+   
 
     uWS::App()
         // Serve index.html at root
@@ -193,7 +118,7 @@ int main() {
             std::string mimeType;
 
             // Try to load the file from public directory
-            if (loadStaticFile("public", path, content, mimeType)) {
+            if (utils::loadStaticFile("public", path, content, mimeType)) {
                 res->writeHeader("Content-Type", mimeType);
                 res->end(content);
             }
@@ -219,7 +144,7 @@ int main() {
                     std::string email = j["email"].get<std::string>();
 
                     // Validate email
-                    if (!isValidEmail(email)) {
+                    if (!utils::isValidEmail(email)) {
                         res->writeStatus("400 Bad Request");
                         res->writeHeader("Content-Type", "application/json");
                         res->end("{\"error\": \"Invalid email address\"}");

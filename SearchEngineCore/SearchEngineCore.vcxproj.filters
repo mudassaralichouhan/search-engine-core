@@ -42,6 +42,12 @@
     <ClInclude Include="infrastructure.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\StaticFileHandler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -59,6 +65,12 @@
     <ClCompile Include="infrastructure.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\StaticFileHandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SearchEngineCore.rc">
@@ -67,8 +79,84 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />
-    <None Include="C:\xampp\cgi-bin\index.html">
-      <Filter>public</Filter>
-    </None>
+    <None Include="public\assets\css\colors\default-rtl.css" />
+    <None Include="public\assets\css\colors\default.css" />
+    <None Include="public\assets\css\style-rtl.css" />
+    <None Include="public\assets\css\style.css" />
+    <None Include="public\assets\js\main.js" />
+    <None Include="public\assets\lib\ajaxchimp\jquery.ajaxchimp.js" />
+    <None Include="public\assets\lib\bootstrap\dist\css\bootstrap-theme.css" />
+    <None Include="public\assets\lib\bootstrap\dist\css\bootstrap-theme.css.map" />
+    <None Include="public\assets\lib\bootstrap\dist\css\bootstrap-theme.min.css" />
+    <None Include="public\assets\lib\bootstrap\dist\css\bootstrap-theme.min.css.map" />
+    <None Include="public\assets\lib\bootstrap\dist\css\bootstrap.css" />
+    <None Include="public\assets\lib\bootstrap\dist\css\bootstrap.css.map" />
+    <None Include="public\assets\lib\bootstrap\dist\css\bootstrap.min.css" />
+    <None Include="public\assets\lib\bootstrap\dist\css\bootstrap.min.css.map" />
+    <None Include="public\assets\lib\bootstrap\dist\fonts\glyphicons-halflings-regular.eot" />
+    <None Include="public\assets\lib\bootstrap\dist\fonts\glyphicons-halflings-regular.svg" />
+    <None Include="public\assets\lib\bootstrap\dist\fonts\glyphicons-halflings-regular.woff" />
+    <None Include="public\assets\lib\bootstrap\dist\fonts\glyphicons-halflings-regular.woff2" />
+    <None Include="public\assets\lib\bootstrap\dist\js\bootstrap.js" />
+    <None Include="public\assets\lib\bootstrap\dist\js\bootstrap.min.js" />
+    <None Include="public\assets\lib\bootstrap\dist\js\npm.js" />
+    <None Include="public\assets\lib\jquery\dist\jquery.js" />
+    <None Include="public\assets\lib\owl.carousel\dist\assets\owl.carousel.css" />
+    <None Include="public\assets\lib\owl.carousel\dist\owl.carousel.js" />
+    <None Include="public\assets\lib\skrollr\src\skrollr.js" />
+    <None Include="public\assets\scss\colors\default.scss" />
+    <None Include="public\assets\scss\style.scss" />
+    <None Include="public\assets\scss\_config.scss" />
+    <None Include="public\index.html" />
+  </ItemGroup>
+  <ItemGroup>
+    <Media Include="public\assets\149172-795746658_small.mp4" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="public\assets\images\1.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="public\assets\images\2.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="public\assets\images\3.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="public\assets\images\4.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="public\assets\images\5.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="public\assets\images\6.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="public\assets\images\7.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="public\assets\images\header_bg.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="public\assets\images\image-background.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="public\assets\images\ken-burns-background.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="public\assets\images\slide1.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="public\assets\images\slide2.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="public\assets\images\slider-background.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="public\assets\images\video-background.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="public\assets\lib\bootstrap\dist\fonts\glyphicons-halflings-regular.ttf" />
   </ItemGroup>
 </Project>
