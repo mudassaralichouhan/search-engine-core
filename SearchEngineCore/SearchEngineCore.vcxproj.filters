@@ -19,6 +19,8 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
+    <Text Include="CMakeLists.txt" />
+    <Text Include="CMakeCache.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -27,19 +29,19 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="httputility.h">
+    <ClInclude Include="include\httputility.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="main.h">
+    <ClInclude Include="include\main.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="mongodb.h">
+    <ClInclude Include="include\mongodb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="infrastructure.h">
+    <ClInclude Include="include\infrastructure.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\utils.h">
@@ -48,27 +50,33 @@
     <ClInclude Include="include\StaticFileHandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\api.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="httputility.cpp">
+    <ClCompile Include="src\httputility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="mongodb.cpp">
+    <ClCompile Include="src\mongodb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="infrastructure.cpp">
+    <ClCompile Include="src\infrastructure.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\StaticFileHandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\api.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

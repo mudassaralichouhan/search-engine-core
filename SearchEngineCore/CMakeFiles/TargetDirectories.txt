@@ -1,0 +1,3 @@
+D:/Projects/hatef.ir/search-engine-core/SearchEngineCore/CMakeFiles/SearchEngineCore.dir
+D:/Projects/hatef.ir/search-engine-core/SearchEngineCore/CMakeFiles/edit_cache.dir
+D:/Projects/hatef.ir/search-engine-core/SearchEngineCore/CMakeFiles/rebuild_cache.dir

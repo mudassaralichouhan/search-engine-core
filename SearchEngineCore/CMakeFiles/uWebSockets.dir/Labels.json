@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore/CMakeFiles/uWebSockets"
+		},
+		{
+			"file" : "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore/CMakeFiles/uWebSockets.rule"
+		},
+		{
+			"file" : "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore/CMakeFiles/uWebSockets-complete.rule"
+		},
+		{
+			"file" : "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore/deps/src/uWebSockets-stamp/uWebSockets-build.rule"
+		},
+		{
+			"file" : "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore/deps/src/uWebSockets-stamp/uWebSockets-configure.rule"
+		},
+		{
+			"file" : "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore/deps/src/uWebSockets-stamp/uWebSockets-download.rule"
+		},
+		{
+			"file" : "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore/deps/src/uWebSockets-stamp/uWebSockets-install.rule"
+		},
+		{
+			"file" : "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore/deps/src/uWebSockets-stamp/uWebSockets-mkdir.rule"
+		},
+		{
+			"file" : "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore/deps/src/uWebSockets-stamp/uWebSockets-patch.rule"
+		},
+		{
+			"file" : "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore/deps/src/uWebSockets-stamp/uWebSockets-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"uWebSockets"
+		],
+		"name" : "uWebSockets"
+	}
+}

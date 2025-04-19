@@ -166,24 +166,28 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="CMakeCache.txt" />
+    <Text Include="CMakeLists.txt" />
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="httputility.h" />
+    <ClInclude Include="include\httputility.h" />
+    <ClInclude Include="include\api.h" />
     <ClInclude Include="include\StaticFileHandler.h" />
     <ClInclude Include="include\utils.h" />
-    <ClInclude Include="infrastructure.h" />
-    <ClInclude Include="main.h" />
-    <ClInclude Include="mongodb.h" />
+    <ClInclude Include="include\infrastructure.h" />
+    <ClInclude Include="include\main.h" />
+    <ClInclude Include="include\mongodb.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="httputility.cpp" />
-    <ClCompile Include="infrastructure.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="mongodb.cpp" />
+    <ClCompile Include="src\httputility.cpp" />
+    <ClCompile Include="src\infrastructure.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\mongodb.cpp" />
+    <ClCompile Include="src\api.cpp" />
     <ClCompile Include="src\StaticFileHandler.cpp" />
     <ClCompile Include="src\utils.cpp" />
     <ClCompile Include="stdafx.cpp" />
