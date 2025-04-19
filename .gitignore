@@ -48,6 +48,10 @@ CMakeCache.txt
 install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
+cmake_install.cmake
+build.ninja
+.ninja_deps
+.ninja_log
 
 # Visual Studio specific
 .vs/
@@ -68,6 +72,14 @@ ipch/
 *.cachefile
 *.VC.db
 *.VC.VC.opendb
+*.pdb
+*.ilk
+*.idb
+*.aps
+*.rc
+resource.h
+stdafx.*
+targetver.h
 
 # Executables and libraries
 *.exe
@@ -92,6 +104,8 @@ Win32/
 vcpkg_installed/
 vcpkg_manifest.json
 vcpkg_manifest.json.lock
+vcpkg-configuration.json
+vcpkg-manifest-install.log
 
 # IDE specific
 .idea/
@@ -118,3 +132,6 @@ Thumbs.db
 # Dependencies (if not managed by vcpkg)
 deps/
 external/
+
+# Documentation
+ReadMe.txt
