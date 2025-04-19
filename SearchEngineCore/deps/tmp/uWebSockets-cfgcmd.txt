@@ -1,1 +1,0 @@
-cmd='C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe;-DCMAKE_INSTALL_PREFIX=D:/Projects/hatef.ir/search-engine-core/SearchEngineCore/deps/install;-DCMAKE_BUILD_TYPE=Debug;-DCMAKE_CXX_STANDARD=20;-GNinja;-S;<SOURCE_DIR><SOURCE_SUBDIR>;-B;<BINARY_DIR>'

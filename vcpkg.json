@@ -4,6 +4,7 @@
   "dependencies": [
     "zlib",
     "openssl",
-    "nlohmann-json"
+    "nlohmann-json",
+    "uwebsockets"
   ]
 }

@@ -37,3 +37,84 @@
 /SearchEngineCore/Debug/*
 /SearchEngineCore/x64/*
 /SearchEngineCore/vcpkg_installed/x64-windows
+
+# Build directories
+build/
+out/
+cmake-build-*/
+CMakeFiles/
+*.cmake
+CMakeCache.txt
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+
+# Visual Studio specific
+.vs/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.suo
+*.opensdf
+*.sdf
+ipch/
+*.ipch
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+
+# Executables and libraries
+*.exe
+*.dll
+*.so
+*.dylib
+*.lib
+*.a
+*.pdb
+*.ilk
+*.idb
+*.obj
+*.o
+
+# Debug and Release directories
+Debug/
+Release/
+x64/
+Win32/
+
+# vcpkg specific
+vcpkg_installed/
+vcpkg_manifest.json
+vcpkg_manifest.json.lock
+
+# IDE specific
+.idea/
+.vscode/
+*.code-workspace
+*.user
+*.userosscache
+*.sln.docstates
+
+# System files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Dependencies (if not managed by vcpkg)
+deps/
+external/

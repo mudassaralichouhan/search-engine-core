@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore"
+    "cmake.sourceDirectory": "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore",
+    "cmake.ignoreCMakeListsMissing": true
 }

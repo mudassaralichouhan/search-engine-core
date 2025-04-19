@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(SearchEngineCore)
+project(search-engine-core)
 
 # Set vcpkg toolchain
 set(CMAKE_TOOLCHAIN_FILE "D:/Projects/hatef.ir/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
@@ -30,8 +30,8 @@ find_package(nlohmann_json CONFIG REQUIRED)
 # Find uWebSockets headers
 find_path(UWEBSOCKETS_INCLUDE_DIRS "uwebsockets/App.h"
     PATHS
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src
     /usr/local/include
     /usr/include
     ${CMAKE_CURRENT_BINARY_DIR}/deps/install/include
@@ -43,9 +43,9 @@ endif()
 
 # Include directories
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/json/single_include
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/vcpkg_installed/x64-windows/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/json/single_include
     D:/Projects/hatef.ir/vcpkg/installed/x64-windows/include
     ${MONGOCXX_DRIVER_DIR}/include/mongocxx/v_noabi
     ${MONGOCXX_DRIVER_DIR}/include/bsoncxx/v_noabi
@@ -56,9 +56,9 @@ include_directories(
 
 # Add source files
 set(SOURCES
-    src/main.cpp
-    src/api.cpp
-    src/mongodb.cpp
+    SearchEngineCore/src/main.cpp
+    SearchEngineCore/src/api.cpp
+    SearchEngineCore/src/mongodb.cpp
 )
 
 # Add executable
@@ -68,8 +68,8 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 link_directories(
     ${MONGOC_DRIVER_DIR}/lib
     ${MONGOCXX_DRIVER_DIR}/lib
-    ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows/lib
-    ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows/debug/lib
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/vcpkg_installed/x64-windows/lib
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/vcpkg_installed/x64-windows/debug/lib
 )
 
 # Create imported targets for MongoDB libraries
@@ -134,19 +134,19 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 # Add uWebSockets source files
 target_sources(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/App.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/AsyncSocket.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/HttpContext.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/HttpParser.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/HttpResponse.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/HttpRouter.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/Loop.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/PerMessageDeflate.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/WebSocket.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/WebSocketContext.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/WebSocketExtensions.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/WebSocketHandshake.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/WebSocketProtocol.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/WebSocketRouter.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets/src/WebSocketTransport.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/App.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/AsyncSocket.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/HttpContext.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/HttpParser.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/HttpResponse.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/HttpRouter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/Loop.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/PerMessageDeflate.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/WebSocket.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/WebSocketContext.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/WebSocketExtensions.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/WebSocketHandshake.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/WebSocketProtocol.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/WebSocketRouter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/WebSocketTransport.cpp
 )
