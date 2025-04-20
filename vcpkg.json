@@ -2,9 +2,10 @@
   "name": "search-engine-core",
   "version": "0.1.0",
   "dependencies": [
-    "zlib",
-    "openssl",
     "nlohmann-json",
-    "uwebsockets"
+    "openssl",
+    "uwebsockets",
+    "zlib",
+    "libuv"
   ]
 }

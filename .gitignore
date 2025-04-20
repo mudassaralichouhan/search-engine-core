@@ -31,12 +31,9 @@
 *.out
 *.app
 /.vs
-/SearchEngineCore/main3.cpp
 /x64/*
 /Debug/*
-/SearchEngineCore/Debug/*
-/SearchEngineCore/x64/*
-/SearchEngineCore/vcpkg_installed/x64-windows
+
 
 # Build directories
 build/

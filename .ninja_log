@@ -1,5 +1,0 @@
-# ninja log v6
-5	4200	7667949343026588	build.ninja	76a406c574d904cd
-32	2658	7667936546139577	CMakeFiles/SearchEngineCore.dir/src/mongodb.cpp.obj	6ed4ad56198dc908
-23	4269	7667936546049798	CMakeFiles/SearchEngineCore.dir/src/main.cpp.obj	4cd432daf9a182af
-28	4690	7667936546099659	CMakeFiles/SearchEngineCore.dir/src/api.cpp.obj	c1bd76cc281f9b48

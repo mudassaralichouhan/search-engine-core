@@ -1,5 +1,11 @@
-cmake_minimum_required(VERSION 3.10)
-project(search-engine-core)
+cmake_minimum_required(VERSION 3.12)
+project("search-engine-core" VERSION 0.1.0 LANGUAGES CXX)
+
+# Enable Hot Reload for MSVC compilers if supported
+if (POLICY CMP0141)
+    cmake_policy(SET CMP0141 NEW)
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+endif()
 
 # Set vcpkg toolchain
 set(CMAKE_TOOLCHAIN_FILE "D:/Projects/hatef.ir/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
@@ -7,6 +13,7 @@ set(CMAKE_TOOLCHAIN_FILE "D:/Projects/hatef.ir/vcpkg/scripts/buildsystems/vcpkg.
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Set architecture to x64
 set(CMAKE_VS_PLATFORM_NAME "x64")
@@ -15,62 +22,41 @@ set(CMAKE_GENERATOR_PLATFORM "x64")
 # Set runtime library to MultiThreadedDebugDLL
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebugDLL")
 
-# MongoDB library paths
+# Find required packages
+find_package(OpenSSL REQUIRED)
+find_package(ZLIB REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(libuv CONFIG REQUIRED)
+
+# Find uWebSockets
+find_path(UWS_INCLUDE_DIR
+    NAMES uWebSockets/App.h
+    PATHS
+    ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets
+    /usr/local/include
+    /usr/include
+)
+
+find_library(UWS_LIBRARY
+    NAMES uSockets
+    PATHS
+    ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows/lib
+    ${CMAKE_CURRENT_SOURCE_DIR}/deps/uWebSockets
+    /usr/local/lib
+    /usr/lib
+)
+
+if(NOT UWS_INCLUDE_DIR OR NOT UWS_LIBRARY)
+    message(FATAL_ERROR "uWebSockets not found. Please install it using vcpkg: vcpkg install uwebsockets:x64-windows")
+endif()
+
+# MongoDB paths
 set(MONGOC_DRIVER_DIR "C:/mongo-c-driver")
 set(MONGOCXX_DRIVER_DIR "C:/mongo-cxx-driver")
 
 # Set environment paths
 set(ENV{PATH} "${MONGOCXX_DRIVER_DIR}/bin;${MONGOC_DRIVER_DIR}/bin;$ENV{PATH}")
-
-# Find required packages
-find_package(OpenSSL REQUIRED)
-find_package(ZLIB REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-
-# Find uWebSockets headers
-find_path(UWEBSOCKETS_INCLUDE_DIRS "uwebsockets/App.h"
-    PATHS
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src
-    /usr/local/include
-    /usr/include
-    ${CMAKE_CURRENT_BINARY_DIR}/deps/install/include
-)
-
-if(NOT UWEBSOCKETS_INCLUDE_DIRS)
-    message(FATAL_ERROR "uWebSockets headers not found. Please install uWebSockets or set UWEBSOCKETS_INCLUDE_DIRS")
-endif()
-
-# Include directories
-include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/vcpkg_installed/x64-windows/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/json/single_include
-    D:/Projects/hatef.ir/vcpkg/installed/x64-windows/include
-    ${MONGOCXX_DRIVER_DIR}/include/mongocxx/v_noabi
-    ${MONGOCXX_DRIVER_DIR}/include/bsoncxx/v_noabi
-    ${MONGOC_DRIVER_DIR}/include/libbson-1.0
-    ${MONGOC_DRIVER_DIR}/include/libmongoc-1.0
-    ${UWEBSOCKETS_INCLUDE_DIRS}
-)
-
-# Add source files
-set(SOURCES
-    SearchEngineCore/src/main.cpp
-    SearchEngineCore/src/api.cpp
-    SearchEngineCore/src/mongodb.cpp
-)
-
-# Add executable
-add_executable(${PROJECT_NAME} ${SOURCES})
-
-# Link directories
-link_directories(
-    ${MONGOC_DRIVER_DIR}/lib
-    ${MONGOCXX_DRIVER_DIR}/lib
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/vcpkg_installed/x64-windows/lib
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/vcpkg_installed/x64-windows/debug/lib
-)
 
 # Create imported targets for MongoDB libraries
 add_library(bson-1.0 STATIC IMPORTED)
@@ -93,12 +79,46 @@ set_target_properties(mongocxx PROPERTIES
     IMPORTED_LOCATION "${MONGOCXX_DRIVER_DIR}/lib/mongocxx-v_noabi-rhi-x64-v143-md.lib"
 )
 
-# Link libraries
-target_link_libraries(${PROJECT_NAME}
-    PRIVATE
+# Add source files
+file(GLOB_RECURSE SOURCES
+    "src/*.cpp"
+)
+
+# Add header files
+file(GLOB_RECURSE HEADERS
+    "include/*.hpp"
+    "include/*.h"
+)
+
+# Add executable
+add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
+
+# Set include directories
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows/include
+    ${MONGOCXX_DRIVER_DIR}/include/mongocxx/v_noabi
+    ${MONGOCXX_DRIVER_DIR}/include/bsoncxx/v_noabi
+    ${MONGOC_DRIVER_DIR}/include/libbson-1.0
+    ${MONGOC_DRIVER_DIR}/include/libmongoc-1.0
+    ${UWS_INCLUDE_DIR}
+)
+
+# Link directories
+target_link_directories(${PROJECT_NAME} PRIVATE
+    ${MONGOC_DRIVER_DIR}/lib
+    ${MONGOCXX_DRIVER_DIR}/lib
+    ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows/lib
+    ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/x64-windows/debug/lib
+)
+
+# Link libraries - Note the order is important here
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    $<IF:$<TARGET_EXISTS:libuv::uv_a>,libuv::uv_a,libuv::uv>  # libuv must come before uWebSockets
+    ${UWS_LIBRARY}    # uWebSockets depends on libuv
     OpenSSL::SSL
     OpenSSL::Crypto
-    ZLIB::ZLIB
+    ${ZLIB_LIBRARIES}
     nlohmann_json::nlohmann_json
     bson-1.0
     mongoc-1.0
@@ -132,21 +152,16 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     VS_DEBUGGER_ENVIRONMENT "PATH=${MONGOCXX_DRIVER_DIR}/bin;${MONGOC_DRIVER_DIR}/bin;$(LocalDebuggerEnvironment)"
 )
 
-# Add uWebSockets source files
-target_sources(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/App.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/AsyncSocket.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/HttpContext.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/HttpParser.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/HttpResponse.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/HttpRouter.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/Loop.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/PerMessageDeflate.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/WebSocket.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/WebSocketContext.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/WebSocketExtensions.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/WebSocketHandshake.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/WebSocketProtocol.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/WebSocketRouter.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/SearchEngineCore/deps/uWebSockets/src/WebSocketTransport.cpp
+# Install rules
+install(TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
 )
+
+# Add tests if enabled
+option(BUILD_TESTS "Build tests" OFF)
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
