@@ -132,3 +132,78 @@ external/
 
 # Documentation
 ReadMe.txt
+
+# Additional patterns
+# Build artifacts
+*.manifest
+*.exp
+*.ilk
+*.idb
+*.pch
+*.pdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*.log
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# Coverage
+*.gcda
+*.gcno
+*.gcov
+
+# Package Files
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info
+dist/
+build/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# CMake
+CMakeSettings.json
+CMakeUserPresets.json
+CMakePresets.json
+
+# Project specific
+SearchEngineCore/
+out/
+build/
+.vs/
+x64/
+Debug/
+Release/
+Win32/
+# Build directories
+build/*
+out/*
+cmake-build-*/
+CMakeFiles/*

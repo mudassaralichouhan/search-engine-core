@@ -1,4 +1,3 @@
-
 #include<stdlib.h>
 #include<fstream>
 #include <string>
@@ -6,7 +5,7 @@
 
 using namespace std;
 
-static class HttpUtility
+class HttpUtility
 {
 
     // Function to parse query string parameters

@@ -80,15 +80,8 @@ set_target_properties(mongocxx PROPERTIES
 )
 
 # Add source files
-file(GLOB_RECURSE SOURCES
-    "src/*.cpp"
-)
-
-# Add header files
-file(GLOB_RECURSE HEADERS
-    "include/*.hpp"
-    "include/*.h"
-)
+file(GLOB_RECURSE SOURCES "src/*.cpp")
+file(GLOB_RECURSE HEADERS "include/*.h" "include/*.hpp")
 
 # Add executable
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
@@ -118,7 +111,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${UWS_LIBRARY}    # uWebSockets depends on libuv
     OpenSSL::SSL
     OpenSSL::Crypto
-    ${ZLIB_LIBRARIES}
+    ZLIB::ZLIB
     nlohmann_json::nlohmann_json
     bson-1.0
     mongoc-1.0

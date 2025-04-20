@@ -1,4 +1,12 @@
 {
     "cmake.sourceDirectory": "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore",
-    "cmake.ignoreCMakeListsMissing": true
+    "cmake.ignoreCMakeListsMissing": true,
+    "cSpell.words": [
+        "libuv",
+        "MONGOC",
+        "MONGOCXX",
+        "MSVC",
+        "nlohmann",
+        "vcpkg"
+    ]
 }
