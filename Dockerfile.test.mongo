@@ -1,0 +1,103 @@
+# Use the MongoDB drivers base image we created
+FROM mongodb-drivers:latest
+
+# Install additional build dependencies and MongoDB server
+RUN apt-get update && apt-get install -y \
+    g++ \
+    make \
+    gnupg \
+    wget \
+    && wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | apt-key add - \
+    && echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-6.0.list \
+    && apt-get update \
+    && apt-get install -y mongodb-org \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create MongoDB data directory
+RUN mkdir -p /data/db
+
+# Create a test application directory
+WORKDIR /app
+
+# Create a simple test application
+COPY <<EOF /app/test_mongodb.cpp
+#include <iostream>
+#include <mongocxx/client.hpp>
+#include <mongocxx/instance.hpp>
+#include <bsoncxx/json.hpp>
+
+int main() {
+    try {
+        // Create a MongoDB instance
+        mongocxx::instance instance{};
+        
+        // Create a client
+        mongocxx::client client{mongocxx::uri{"mongodb://localhost:27017"}};
+        
+        // Get the database
+        auto db = client["testdb"];
+        
+        // Get the collection
+        auto collection = db["testcollection"];
+        
+        // Create a document
+        auto doc = bsoncxx::builder::basic::make_document(
+            bsoncxx::builder::basic::kvp("name", "test"),
+            bsoncxx::builder::basic::kvp("value", 123)
+        );
+        
+        // Insert the document
+        auto result = collection.insert_one(doc.view());
+        
+        std::cout << "Successfully connected to MongoDB!" << std::endl;
+        std::cout << "Inserted document with ID: " << result->inserted_id().get_oid().value.to_string() << std::endl;
+        
+        return 0;
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
+}
+EOF
+
+# Create CMakeLists.txt
+COPY <<EOF /app/CMakeLists.txt
+cmake_minimum_required(VERSION 3.10)
+project(mongodb_test)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(libmongocxx REQUIRED)
+find_package(libbsoncxx REQUIRED)
+
+add_executable(mongodb_test test_mongodb.cpp)
+target_link_libraries(mongodb_test PRIVATE libmongocxx::mongocxx_shared libbsoncxx::bsoncxx_shared)
+EOF
+
+# Build the test application
+RUN mkdir build && cd build \
+    && cmake .. \
+    && make
+
+# Create a startup script
+COPY <<EOF /app/start.sh
+#!/bin/bash
+
+# Start MongoDB in the background
+mongod --fork --logpath /var/log/mongodb.log
+
+# Wait for MongoDB to start
+sleep 5
+
+# Run the test application
+./build/mongodb_test
+
+# Keep the container running
+tail -f /var/log/mongodb.log
+EOF
+
+RUN chmod +x /app/start.sh
+
+# Set the entry point to run the startup script
+CMD ["/app/start.sh"] 

@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  search-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: search-engine
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+    depends_on:
+      - mongodb
+    networks:
+      - search-network
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - search-network
+
+  mongodb-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test.mongo
+    depends_on:
+      - mongodb
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+
+networks:
+  search-network:
+    driver: bridge
+
+volumes:
+  mongodb_data: 

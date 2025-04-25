@@ -39,7 +39,8 @@
 build/
 out/
 cmake-build-*/
-CMakeFiles/
+*/CMakeFiles/*
+build/CMakeFiles/*
 *.cmake
 CMakeCache.txt
 install_manifest.txt
@@ -202,8 +203,7 @@ x64/
 Debug/
 Release/
 Win32/
-# Build directories
-build/*
-out/*
-cmake-build-*/
-CMakeFiles/*
+
+# Docker
+.docker/
+docker-compose.override.yml
