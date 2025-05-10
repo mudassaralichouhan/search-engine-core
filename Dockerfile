@@ -1,41 +1,15 @@
 # Use Ubuntu 22.04 as base image
-FROM ubuntu:22.04
+FROM mongodb-server:latest
 
-# Avoid interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install required packages
-RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    lsb-release \
-    && wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | apt-key add - \
-    && echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-6.0.list \
-    && apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
-    git \
-    pkg-config \
-    libssl-dev \
-    zlib1g-dev \
-    libuv1-dev \
-    nlohmann-json3-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install MongoDB C++ Driver
-RUN apt-get update && apt-get install -y \
-    libmongoc-dev \
-    libbson-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create working directory
+# Set working directory
 WORKDIR /app
 
-# Copy source code
+# Copy your source code into the container
 COPY . /app/
 
-# Create build directory and build the project
-RUN mkdir -p build && \
+# Clean up any previous build artifacts and build the project
+RUN rm -rf build && \
+    mkdir build && \
     cd build && \
     cmake .. \
         -DCMAKE_BUILD_TYPE=Release \
@@ -44,8 +18,8 @@ RUN mkdir -p build && \
         -DCMAKE_CXX_EXTENSIONS=OFF && \
     cmake --build . --config Release -- -j$(nproc)
 
-# Expose port (adjust this based on your application's port)
+# Expose your app port (change if needed)
 EXPOSE 8080
 
-# Set the entrypoint to run the application
+# Set the entrypoint to run your app
 ENTRYPOINT ["/app/build/Release/search-engine-core"] 

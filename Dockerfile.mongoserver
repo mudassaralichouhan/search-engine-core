@@ -1,5 +1,5 @@
 # Use the MongoDB drivers base image we created
-FROM mongodb-drivers:latest
+FROM --platform=linux/amd64 mongodb-drivers:latest
 
 # Install additional build dependencies and MongoDB server
 RUN apt-get update && apt-get install -y \
@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     make \
     gnupg \
     wget \
+    pkg-config \
     && wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | apt-key add - \
     && echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-6.0.list \
     && apt-get update \
@@ -68,17 +69,51 @@ project(mongodb_test)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(libmongocxx REQUIRED)
-find_package(libbsoncxx REQUIRED)
+# Add MongoDB specific paths
+include_directories(/usr/local/include/mongocxx/v_noabi /usr/local/include/bsoncxx/v_noabi)
+list(APPEND CMAKE_PREFIX_PATH "/usr/local/lib/cmake/mongocxx-4.0.0")
+list(APPEND CMAKE_PREFIX_PATH "/usr/local/lib/cmake/bsoncxx-4.0.0")
+
+find_package(mongocxx REQUIRED CONFIG)
+find_package(bsoncxx REQUIRED CONFIG)
+
+# find_package(libmongocxx REQUIRED CONFIG)
+# find_package(libbsoncxx REQUIRED CONFIG)
+
+# Add include directories for MongoDB C++ driver
+include_directories(/usr/local/include/mongocxx/v_noabi)
+include_directories(/usr/local/include/bsoncxx/v_noabi)
 
 add_executable(mongodb_test test_mongodb.cpp)
-target_link_libraries(mongodb_test PRIVATE libmongocxx::mongocxx_shared libbsoncxx::bsoncxx_shared)
+# target_link_libraries(mongodb_test PRIVATE mongocxx::mongocxx bsoncxx::bsoncxx)
+
+
+# target_link_libraries(mongodb_test
+#     PRIVATE
+#         libmongocxx::mongocxx_shared
+#         libbsoncxx::bsoncxx_shared
+# )
+
+# target_link_libraries(mongodb_test
+#     PRIVATE
+#         mongocxx::mongocxx_shared
+#         bsoncxx::bsoncxx_shared
+# )
+target_link_libraries(mongodb_test
+    PRIVATE
+        /usr/local/lib/libmongocxx.so
+        /usr/local/lib/libbsoncxx.so
+        pthread
+        ssl
+        crypto
+)
+
 EOF
 
 # Build the test application
-RUN mkdir build && cd build \
-    && cmake .. \
-    && make
+RUN mkdir build && cd build && \
+    cmake -DCMAKE_PREFIX_PATH="/usr/local/lib/cmake/mongocxx-4.0.0;/usr/local/lib/cmake/bsoncxx-4.0.0" .. && \
+    make
 
 # Create a startup script
 COPY <<EOF /app/start.sh
