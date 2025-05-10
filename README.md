@@ -1,3 +1,2 @@
 # search-engine-core
-# هسته موتور جستجو
-توانمندسازی توسعه‌دهندگان برای شکل‌دهی آینده جستجو. بیایید با هم اینترنت را مرتبط‌تر و قابل دسترسی‌تر کنیم. به پروژه جامعه محور ما کمک کنید.
+We are empowering developers to help shape an open, trustworthy, and human-centered future for internet search. This is a community-driven movement focused on improving access, protecting privacy, and strengthening global participation in the digital space. Join us in making the internet more transparent, inclusive, and free for everyone.
