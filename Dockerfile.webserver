@@ -1,0 +1,75 @@
+# Build stage
+FROM local-ubuntu-image as builder
+
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    libssl-dev \
+    zlib1g-dev \
+    libuv1-dev \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone uWebSockets repository
+WORKDIR /deps
+RUN git clone --recurse-submodules https://github.com/uNetworking/uWebSockets.git
+
+# Build uWebSockets
+WORKDIR /deps/uWebSockets
+RUN make -j$(nproc)
+
+# Copy project files
+WORKDIR /app
+COPY main.cpp .
+COPY CMakeLists.txt .
+
+# Copy uWebSockets to the location expected by CMakeLists.txt
+RUN cp -r /deps/uWebSockets ./uWebSockets
+
+RUN echo "uWebSockets path: /app/uWebSockets"
+
+# Debug: List contents to verify structure
+RUN ls -l /app && ls -l /app/uWebSockets && ls -l /app/uWebSockets/src
+
+# Build the project using direct g++ compilation
+RUN g++ -std=c++20 -O2 main.cpp \
+    -I/app/uWebSockets/src \
+    -I/app/uWebSockets/uSockets/src \
+    -I/app/uWebSockets/deps \
+    /app/uWebSockets/uSockets/*.o \
+    -L/app/uWebSockets \
+    -lpthread -lssl -lcrypto -lz -o server
+
+# Copy uWebSockets and uSockets headers to expected locations
+# RUN mkdir -p include/uWebSockets && \
+#     cp -r /deps/uWebSockets/src/* include/uWebSockets/ && \
+#     mkdir -p include/uSockets && \
+#     cp -r /deps/uWebSockets/uSockets/src/* include/uSockets/
+
+# # Build the project using the provided Makefile
+# RUN make
+
+# Runtime stage
+FROM local-ubuntu-image
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libssl3 \
+    zlib1g \
+    libuv1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the built binary from the builder stage
+COPY --from=builder /app/server ./server
+
+# Default command
+CMD ["./server"] 

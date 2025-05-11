@@ -32,19 +32,48 @@ apt-get install -y \
     build-essential \
     cmake \
     git \
-    pkg-config
-
-# Install required libraries
-echo "Installing required libraries..."
-apt-get install -y \
+    pkg-config \
+    wget \
+    curl \
     libssl-dev \
     zlib1g-dev \
-    libmongoc-dev \
-    libbson-dev \
-    libmongocxx-dev \
-    libbsoncxx-dev \
     libuv1-dev \
     nlohmann-json3-dev
+
+# Install MongoDB C++ driver from source
+echo "Installing MongoDB C++ driver..."
+cd /tmp
+
+wget https://github.com/mongodb/mongo-c-driver/releases/download/1.30.3/mongo-c-driver-1.30.3.tar.gz \
+    && tar xzf mongo-c-driver-1.30.3.tar.gz \
+    && cd mongo-c-driver-1.30.3 \
+    && mkdir cmake-build \
+    && cd cmake-build \
+    && cmake -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF .. \
+    && cmake --build . \
+    && cmake --build . --target install \
+    && cd ../.. \
+    && rm -rf mongo-c-driver-1.30.3.tar.gz mongo-c-driver-1.30.3
+
+# Download and install MongoDB C++ Driver
+wget https://github.com/mongodb/mongo-cxx-driver/releases/download/r4.0.0/mongo-cxx-driver-r4.0.0.tar.gz \
+    && tar xzf mongo-cxx-driver-r4.0.0.tar.gz \
+    && cd mongo-cxx-driver-r4.0.0 \
+    && mkdir cmake-build \
+    && cd cmake-build \
+    && cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DCMAKE_PREFIX_PATH=/usr/local \
+        -DBSONCXX_POLY_USE_BOOST=0 \
+        -DCMAKE_CXX_STANDARD=20 \
+    && cmake --build . \
+    && cmake --build . --target install \
+    && cd ../.. \
+    && rm -rf mongo-cxx-driver-r4.0.0.tar.gz mongo-cxx-driver-r4.0.0
+
+# Return to original directory
+cd /root/search-engine-core
 
 # Create build directory
 echo "Creating build directory..."
