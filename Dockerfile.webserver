@@ -30,6 +30,7 @@ WORKDIR /app
 COPY main.cpp .
 COPY CMakeLists.txt .
 
+
 # Copy uWebSockets to the location expected by CMakeLists.txt
 RUN cp -r /deps/uWebSockets ./uWebSockets
 
