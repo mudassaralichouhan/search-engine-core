@@ -1,25 +1,50 @@
-# Use Ubuntu 22.04 as base image
-FROM mongodb-server:latest
+# Build stage
+FROM mongodb-server:latest as builder
 
-# Set working directory
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install additional build dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone and build uWebSockets
+WORKDIR /deps
+RUN git clone --recurse-submodules https://github.com/uNetworking/uWebSockets.git
+WORKDIR /deps/uWebSockets
+RUN make -j$(nproc)
+
+# Set up project build
 WORKDIR /app
-
-# Copy your source code into the container
 COPY . /app/
 
-# Clean up any previous build artifacts and build the project
-RUN rm -rf build && \
-    mkdir build && \
-    cd build && \
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_CXX_STANDARD=20 \
-        -DCMAKE_CXX_STANDARD_REQUIRED=ON \
-        -DCMAKE_CXX_EXTENSIONS=OFF && \
-    cmake --build . --config Release -- -j$(nproc)
+# Copy uWebSockets to the project
+RUN cp -r /deps/uWebSockets ./uWebSockets
 
-# Expose your app port (change if needed)
+# Build the project using direct g++ compilation
+RUN g++ -std=c++20 -O2 src/*.cpp \
+    -I/app/include \
+    -I/app/public \
+    -I/app/uWebSockets/src \
+    -I/app/uWebSockets/uSockets/src \
+    -I/app/uWebSockets/deps \
+    /app/uWebSockets/uSockets/*.o \
+    -L/app/uWebSockets \
+    -lpthread -lssl -lcrypto -lz -o server
+
+# Runtime stage
+FROM mongodb-server:latest
+
+WORKDIR /app
+
+# Copy the built binary from the builder stage
+COPY --from=builder /app/server ./server
+
+# Expose your app port
 EXPOSE 8080
 
-# Set the entrypoint to run your app
-ENTRYPOINT ["/app/build/Release/search-engine-core"] 
+# Set the entrypoint
+ENTRYPOINT ["./server"] 
