@@ -42,7 +42,6 @@ map<string, string> parseQueryString(const string& queryString) {
         string key = queryString.substr(0, pos);
         string value = queryString.substr(pos + 1, queryString.find('=', pos) - pos - 1);
         params[key] = value;
-        // queryString = queryString.substr(pos + 1);
     }
     if (!queryString.empty()) {
         string key = queryString.substr(0, queryString.find('='));
@@ -56,17 +55,8 @@ map<string, string> parseQueryString(const string& queryString) {
 
 
 std::string getEnvVarValue(const char* envVarName) {
-    char* buf = nullptr;
-    size_t sz = 0;
-
-    if (_dupenv_s(&buf, &sz, envVarName) == 0 && buf != nullptr) {
-        std::string value(buf);
-        free(buf);
-        return value;
-    }
-    else {
-        return "";
-    }
+    const char* value = std::getenv(envVarName);
+    return value ? std::string(value) : "";
 }
 
 
@@ -82,9 +72,13 @@ char* get_body()
     if (size == 0)
         return nullptr;
     char* body = (char*)calloc(size + 1, sizeof(char));
-    if (body != nullptr)
-        std::fread(body, size, 1, stdin);
-    else return nullptr;
+    if (body != nullptr) {
+        size_t read = std::fread(body, size, 1, stdin);
+        if (read != 1) {
+            free(body);
+            return nullptr;
+        }
+    }
     return body;
 }
 // (int argc, char* argv[], char* envp[])

@@ -13,6 +13,7 @@
     ],
     "files.associations": {
         "*.yaml": "ssm-yaml",
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "codecvt": "cpp"
     }
 }

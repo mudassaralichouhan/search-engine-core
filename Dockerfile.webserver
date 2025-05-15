@@ -25,6 +25,23 @@ RUN git clone --recurse-submodules https://github.com/uNetworking/uWebSockets.gi
 WORKDIR /deps/uWebSockets
 RUN make -j$(nproc)
 
+
+
+# Install uWebSockets headers to system include path
+RUN mkdir -p /usr/local/include/uwebsockets && \
+    cp -r src/* /usr/local/include/uwebsockets/ && \
+    mkdir -p /usr/local/include/usockets && \
+    cp -r uSockets/src/* /usr/local/include/usockets/ && \
+    ln -s /usr/local/include/usockets/libusockets.h /usr/local/include/libusockets.h
+
+# Debug: Find libusockets.h
+RUN echo "Searching for libusockets.h:" && \
+    find /usr/local/include -name "libusockets.h" && \
+    echo "Contents of /usr/local/include/usockets:" && \
+    ls -la /usr/local/include/usockets/ && \
+    echo "Contents of /usr/local/include:" && \
+    ls -la /usr/local/include/
+
 # Copy project files
 WORKDIR /app
 COPY main.cpp .
@@ -34,25 +51,17 @@ COPY CMakeLists.txt .
 # Copy uWebSockets to the location expected by CMakeLists.txt
 RUN cp -r /deps/uWebSockets ./uWebSockets
 
-RUN echo "uWebSockets path: /app/uWebSockets"
+#RUN echo "uWebSockets path: /app/uWebSockets"
 
 # Debug: List contents to verify structure
-RUN ls -l /app && ls -l /app/uWebSockets && ls -l /app/uWebSockets/src
+#RUN ls -l /app && ls -l /app/uWebSockets && ls -l /app/uWebSockets/src
 
 # Build the project using direct g++ compilation
 RUN g++ -std=c++20 -O2 main.cpp \
-    -I/app/uWebSockets/src \
-    -I/app/uWebSockets/uSockets/src \
-    -I/app/uWebSockets/deps \
-    /app/uWebSockets/uSockets/*.o \
-    -L/app/uWebSockets \
+    /deps/uWebSockets/uSockets/*.o \
+    -L/deps/uWebSockets \
     -lpthread -lssl -lcrypto -lz -o server
 
-# Copy uWebSockets and uSockets headers to expected locations
-# RUN mkdir -p include/uWebSockets && \
-#     cp -r /deps/uWebSockets/src/* include/uWebSockets/ && \
-#     mkdir -p include/uSockets && \
-#     cp -r /deps/uWebSockets/uSockets/src/* include/uSockets/
 
 # # Build the project using the provided Makefile
 # RUN make

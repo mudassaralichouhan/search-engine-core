@@ -77,28 +77,14 @@ list(APPEND CMAKE_PREFIX_PATH "/usr/local/lib/cmake/bsoncxx-4.0.0")
 find_package(mongocxx REQUIRED CONFIG)
 find_package(bsoncxx REQUIRED CONFIG)
 
-# find_package(libmongocxx REQUIRED CONFIG)
-# find_package(libbsoncxx REQUIRED CONFIG)
-
 # Add include directories for MongoDB C++ driver
 include_directories(/usr/local/include/mongocxx/v_noabi)
 include_directories(/usr/local/include/bsoncxx/v_noabi)
 
 add_executable(mongodb_test test_mongodb.cpp)
-# target_link_libraries(mongodb_test PRIVATE mongocxx::mongocxx bsoncxx::bsoncxx)
 
 
-# target_link_libraries(mongodb_test
-#     PRIVATE
-#         libmongocxx::mongocxx_shared
-#         libbsoncxx::bsoncxx_shared
-# )
 
-# target_link_libraries(mongodb_test
-#     PRIVATE
-#         mongocxx::mongocxx_shared
-#         bsoncxx::bsoncxx_shared
-# )
 target_link_libraries(mongodb_test
     PRIVATE
         /usr/local/lib/libmongocxx.so
