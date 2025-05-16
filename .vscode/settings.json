@@ -4,11 +4,15 @@
     "cSpell.words": [
         "DBSONCXX",
         "DCMAKE",
+        "libbsoncxx",
+        "libmongocxx",
         "libuv",
         "MONGOC",
         "MONGOCXX",
         "MSVC",
         "nlohmann",
+        "noabi",
+        "pthread",
         "vcpkg"
     ],
     "files.associations": {

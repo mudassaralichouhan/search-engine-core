@@ -25,6 +25,11 @@ WORKDIR /deps/uWebSockets
 RUN make -j$(nproc)
 
 
+RUN apt-get install -y \
+    cmake \
+    build-essential;
+
+
 RUN echo "Searching for MongoDB driver files:" && \
     echo "MongoDB C++ driver headers:" && \
     find /usr/local/include -name "mongocxx" -o -name "bsoncxx" && \
@@ -42,22 +47,20 @@ RUN mkdir -p /usr/local/include/uwebsockets && \
 
 # Set up project build
 WORKDIR /app
-COPY . /app/
+COPY src/ /app/src/
+COPY public/ /app/public/
+COPY CMakeLists.txt /app/
+COPY include/ /app/include/
 
 # Copy uWebSockets to the project
 RUN cp -r /deps/uWebSockets ./uWebSockets
 
-# Build the project using direct g++ compilation
-RUN g++ -std=c++20 -O2 src/*.cpp \
-    -I/app/include \
-    -I/app/public \
-    -I/usr/local/include/mongocxx/v_noabi \
-    -I/usr/local/include/bsoncxx/v_noabi \
-    /app/uWebSockets/uSockets/*.o \
-    -L/app/uWebSockets \
-    -L/usr/local/lib \
-    -lmongocxx -lbsoncxx \
-    -lpthread -lssl -lcrypto -lz -o server
+# Build using CMake
+RUN rm -rf build && \
+    mkdir build && \
+    cd build && \
+    cmake -DCMAKE_PREFIX_PATH="/usr/local/lib/cmake/mongocxx-4.0.0;/usr/local/lib/cmake/bsoncxx-4.0.0" .. && \
+    make -j$(nproc)
 
 # Runtime stage
 FROM mongodb-server:latest
@@ -65,7 +68,7 @@ FROM mongodb-server:latest
 WORKDIR /app
 
 # Copy the built binary from the builder stage
-COPY --from=builder /app/server ./server
+COPY --from=builder /app/build/server ./server
 
 # Expose your app port
 EXPOSE 8080
