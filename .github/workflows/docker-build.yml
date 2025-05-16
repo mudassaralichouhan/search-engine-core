@@ -1,0 +1,60 @@
+name: Docker Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ./Dockerfile
+        tags: search-engine:latest
+        load: true
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Test Docker image
+      run: |
+        # Start the container
+        docker run -d -p 3000:3000 --name test-container search-engine:latest
+        
+        # Wait for MongoDB to start
+        sleep 10
+        
+        # Check if MongoDB is running
+        docker exec test-container mongosh --eval "db.runCommand({ ping: 1 })" || exit 1
+        
+        # Check if the server is responding
+        curl -f http://localhost:3000 || exit 1
+        
+        # Clean up
+        docker stop test-container
+        docker rm test-container
+
+    - name: Save Docker image
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: docker/save-action@v1
+      with:
+        images: search-engine:latest
+        path: search-engine.tar
+
+    - name: Upload Docker image
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v3
+      with:
+        name: docker-image
+        path: search-engine.tar
+        retention-days: 5 
