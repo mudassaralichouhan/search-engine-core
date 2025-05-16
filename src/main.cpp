@@ -19,6 +19,9 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <sstream>
+#include <chrono>
+#include <iomanip>
 #include "../include/utils.h"
 #include "../include/api.h"
 
@@ -91,6 +94,42 @@ std::string loadFile(const std::string& path) {
     return buffer.str();
 }
 
+// Helper function to get current timestamp
+std::string getCurrentTimestamp() {
+    auto now = std::chrono::system_clock::now();
+    auto now_time_t = std::chrono::system_clock::to_time_t(now);
+    auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now.time_since_epoch()) % 1000;
+    
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&now_time_t), "%Y-%m-%d %H:%M:%S");
+    ss << '.' << std::setfill('0') << std::setw(3) << now_ms.count();
+    return ss.str();
+}
+
+// Request tracing middleware
+void traceRequest(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
+    std::string_view method = req->getMethod();
+    std::string_view path = req->getUrl();
+    std::string_view query = req->getQuery();
+    
+    std::cout << "[" << getCurrentTimestamp() << "] "
+              << method << " " << path;
+    
+    if (!query.empty()) {
+        std::cout << "?" << query;
+    }
+    
+    // Log headers
+    std::cout << "\nHeaders:";
+    // Note: uWebSockets doesn't provide direct header iteration
+    // We can log specific headers we're interested in
+    std::cout << "\n  User-Agent: " << req->getHeader("user-agent");
+    std::cout << "\n  Accept: " << req->getHeader("accept");
+    std::cout << "\n  Content-Type: " << req->getHeader("content-type");
+    
+    std::cout << "\n" << std::endl;
+}
 
 int main() {
     // Pre-load index.html
@@ -102,17 +141,20 @@ int main() {
     uWS::App()
         // Serve index.html at root
         .get("/", [indexHtml](auto* res, auto* req) {
+            traceRequest(res, req);
             api::handleRoot(res, req, indexHtml);
         })
         
         // Handle all static files
         .get("/*", [](auto* res, auto* req) {
+            traceRequest(res, req);
             std::string path = std::string(req->getUrl());
             api::handleStaticFile(res, req, path);
         })
 
         // Handle email subscription endpoint
         .post("/v2/email-subscribe", [](auto* res, auto* req) {
+            traceRequest(res, req);
             api::handleEmailSubscribe(res, req);
         })
 

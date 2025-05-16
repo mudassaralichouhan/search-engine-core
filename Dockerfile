@@ -62,16 +62,36 @@ RUN rm -rf build && \
     cmake -DCMAKE_PREFIX_PATH="/usr/local/lib/cmake/mongocxx-4.0.0;/usr/local/lib/cmake/bsoncxx-4.0.0" .. && \
     make -j$(nproc)
 
+# Copy the startup script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 # Runtime stage
 FROM mongodb-server:latest
 
+# Install MongoDB shell for health checks
+RUN apt-get update && apt-get install -y mongodb-mongosh && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /data/db && \
+    mkdir -p /var/log && \
+    chown -R mongodb:mongodb /data/db && \
+    chown -R mongodb:mongodb /var/log
 
 # Copy the built binary from the builder stage
 COPY --from=builder /app/build/server ./server
 
-# Expose your app port
-EXPOSE 8080
+# Copy the startup script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
-# Set the entrypoint
-ENTRYPOINT ["./server"] 
+# Expose your app port
+EXPOSE 3000
+
+# Set the entrypoint to the startup script
+ENTRYPOINT ["/app/start.sh"]
+
+# Start MongoDB
+#CMD ["mongod", "--fork", "--logpath", "/var/log/mongodb.log"]
