@@ -1,0 +1,30 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  docker-build:
+    uses: ./.github/workflows/docker-build.yml
+    with:
+      docker_image: search-engine
+      docker_tag: ${{ github.sha }}
+
+  notify:
+    name: Notify
+    needs: [docker-build]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Notify Slack
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      if: always() 

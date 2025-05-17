@@ -1,13 +1,18 @@
 name: Docker Build and Test
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_call:
+    inputs:
+      docker_image:
+        required: true
+        type: string
+      docker_tag:
+        required: true
+        type: string
 
 jobs:
-  build-and-test:
+  build:
+    name: Build and Test
     runs-on: ubuntu-latest
     
     steps:
@@ -21,15 +26,15 @@ jobs:
       with:
         context: .
         file: ./Dockerfile
-        tags: search-engine:latest
+        tags: ${{ inputs.docker_image }}:${{ inputs.docker_tag }}
         load: true
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-    - name: Test Docker image
+    - name: Run container tests
       run: |
         # Start the container
-        docker run -d -p 3000:3000 --name test-container search-engine:latest
+        docker run -d -p 3000:3000 --name test-container ${{ inputs.docker_image }}:${{ inputs.docker_tag }}
         
         # Wait for MongoDB to start
         sleep 10
@@ -46,10 +51,8 @@ jobs:
 
     - name: Save Docker image
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: docker/save-action@v1
-      with:
-        images: search-engine:latest
-        path: search-engine.tar
+      run: |
+        docker save ${{ inputs.docker_image }}:${{ inputs.docker_tag }} > search-engine.tar
 
     - name: Upload Docker image
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
