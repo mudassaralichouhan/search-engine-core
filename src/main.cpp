@@ -2,9 +2,8 @@
 #define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 
-
+#include <filesystem>
 #include <uwebsockets/App.h>
-
 
 #include <locale>
 #include <codecvt>
@@ -88,10 +87,27 @@ char* get_body()
 
 
 std::string loadFile(const std::string& path) {
+    std::cout << "Attempting to load file: " << path << std::endl;
+    
+    // Check if file exists
     std::ifstream file(path);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file: " << path << std::endl;
+        std::cerr << "Current working directory: " << std::filesystem::current_path().string() << std::endl;
+        return "";
+    }
+    
     std::stringstream buffer;
     buffer << file.rdbuf();
-    return buffer.str();
+    std::string content = buffer.str();
+    
+    if (content.empty()) {
+        std::cerr << "Warning: File is empty: " << path << std::endl;
+    } else {
+        std::cout << "Successfully loaded file: " << path << " (size: " << content.length() << " bytes)" << std::endl;
+    }
+    
+    return content;
 }
 
 // Helper function to get current timestamp
@@ -135,8 +151,10 @@ int main() {
     // Pre-load index.html
     std::string indexHtml = loadFile("public/index.html");
 
-
-   
+    // Get port from environment variable or use default
+    const char* port_env = std::getenv("PORT");
+    int port = port_env ? std::stoi(port_env) : 3000;
+    std::cout << "Using port: " << port << std::endl;
 
     uWS::App()
         // Serve index.html at root
@@ -153,17 +171,17 @@ int main() {
         })
 
         // Handle email subscription endpoint
-        .post("/v2/email-subscribe", [](auto* res, auto* req) {
+        .post("/api/v2/email-subscribe", [](auto* res, auto* req) {
             traceRequest(res, req);
             api::handleEmailSubscribe(res, req);
         })
 
-        .listen(3000, [](auto* listen_socket) {
+        .listen(port, [port](auto* listen_socket) {
             if (listen_socket) {
-                std::cout << "Server listening on port 3000" << std::endl;
+                std::cout << "Server listening on port " << port << std::endl;
             }
             else {
-                std::cout << "Failed to listen on port 3000" << std::endl;
+                std::cout << "Failed to listen on port " << port << std::endl;
             }
         })
         .run();

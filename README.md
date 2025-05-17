@@ -85,6 +85,41 @@ docker build -t mongodb-server -f Dockerfile.mongodb-server .
 docker build -t search-engine -f Dockerfile .
 ```
 
+4. Run the Application:
+```bash
+# Run with default port (3000)
+docker run -p 3000:3000 search-engine
+
+# Run with custom port
+docker run -p 8080:8080 -e PORT=8080 search-engine
+```
+
+## Configuration
+
+### Environment Variables
+
+The application can be configured using the following environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| PORT | The port number the server will listen on | 3000 |
+
+Example of setting environment variables:
+```bash
+# Using docker run
+docker run -p 8080:8080 -e PORT=8080 search-engine
+
+# Using docker-compose
+version: '3'
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+```
+
 ## Recent Improvements
 
 1. **Build Optimization**

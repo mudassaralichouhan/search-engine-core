@@ -76,6 +76,9 @@ FROM ${BASE_IMAGE} AS runner
 # Install MongoDB shell for health checks
 RUN apt-get update && apt-get install -y mongodb-mongosh && rm -rf /var/lib/apt/lists/*
 
+# Set default port
+ENV PORT=3000
+
 WORKDIR /app
 
 # Create necessary directories with proper permissions
@@ -87,12 +90,15 @@ RUN mkdir -p /data/db && \
 # Copy the built binary from the builder stage
 COPY --from=builder /app/build/server ./server
 
+# Copy public folder from builder stage
+COPY --from=builder /app/public ./public
+
 # Copy the startup script
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
-# Expose your app port
-EXPOSE 3000
+# Expose the port
+EXPOSE ${PORT}
 
 # Set the entrypoint to the startup script
 ENTRYPOINT ["/app/start.sh"]
