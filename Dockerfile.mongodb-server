@@ -1,5 +1,10 @@
 # Use the MongoDB drivers base image we created
-FROM ghcr.io/hatef-ir/mongodb-drivers:latest
+ARG BASE_IMAGE=mongodb-drivers
+FROM ${BASE_IMAGE} as builder
+
+#FROM ghcr.io/hatef-ir/mongodb-server:latest as builder
+
+#FROM ghcr.io/hatef-ir/mongodb-drivers:latest
 
 # Install additional build dependencies and MongoDB server
 RUN apt-get update && apt-get install -y \

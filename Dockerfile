@@ -1,5 +1,8 @@
 # Build stage
-FROM ghcr.io/hatef-ir/mongodb-server:latest as builder
+ARG BASE_IMAGE=mongodb-server
+FROM ${BASE_IMAGE} as builder
+
+#FROM ghcr.io/hatef-ir/mongodb-server:latest as builder
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -67,7 +70,7 @@ COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Runtime stage
-FROM ghcr.io/hatef-ir/mongodb-server:latest
+FROM ${BASE_IMAGE} as runner
 
 # Install MongoDB shell for health checks
 RUN apt-get update && apt-get install -y mongodb-mongosh && rm -rf /var/lib/apt/lists/*
