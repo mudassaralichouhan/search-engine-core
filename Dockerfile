@@ -1,5 +1,5 @@
 # Build stage
-FROM mongodb-server:latest as builder
+FROM ghcr.io/$GITHUB_REPOSITORY/mongodb-server:latest as builder
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -67,7 +67,7 @@ COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Runtime stage
-FROM mongodb-server:latest
+FROM ghcr.io/$GITHUB_REPOSITORY/mongodb-server:latest
 
 # Install MongoDB shell for health checks
 RUN apt-get update && apt-get install -y mongodb-mongosh && rm -rf /var/lib/apt/lists/*

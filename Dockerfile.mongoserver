@@ -1,5 +1,5 @@
 # Use the MongoDB drivers base image we created
-FROM mongodb-drivers:latest
+FROM ghcr.io/$GITHUB_REPOSITORY/mongodb-drivers:latest
 
 # Install additional build dependencies and MongoDB server
 RUN apt-get update && apt-get install -y \
