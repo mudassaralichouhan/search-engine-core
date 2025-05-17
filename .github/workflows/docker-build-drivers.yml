@@ -1,0 +1,37 @@
+name: Build MongoDB Drivers
+
+on:
+  workflow_call:
+    inputs:
+      docker_image:
+        required: true
+        type: string
+      docker_tag:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+  actions: write
+
+jobs:
+  build-drivers:
+    name: Build MongoDB Drivers
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build MongoDB Drivers Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.mongodb
+        tags: ${{ inputs.docker_image }}:${{ inputs.docker_tag }}
+        load: true
+        cache-from: type=gha
+        cache-to: type=gha,mode=max 

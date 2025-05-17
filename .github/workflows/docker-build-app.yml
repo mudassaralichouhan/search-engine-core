@@ -1,0 +1,68 @@
+name: Build Application
+
+on:
+  workflow_call:
+    inputs:
+      docker_image:
+        required: true
+        type: string
+      docker_tag:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+  actions: write
+
+jobs:
+  build-app:
+    name: Build Application
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Final Application Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        tags: ${{ inputs.docker_image }}:${{ inputs.docker_tag }}
+        load: true
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Run container tests
+      run: |
+        # Start the container
+        docker run -d -p 3000:3000 --name test-container ${{ inputs.docker_image }}:${{ inputs.docker_tag }}
+        
+        # Wait for MongoDB to start
+        sleep 10
+        
+        # Check if MongoDB is running
+        docker exec test-container mongosh --eval "db.runCommand({ ping: 1 })" || exit 1
+        
+        # Check if the server is responding
+        curl -f http://localhost:3000 || exit 1
+        
+        # Clean up
+        docker stop test-container
+        docker rm test-container
+
+    - name: Save Docker image
+      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+      run: |
+        docker save ${{ inputs.docker_image }}:${{ inputs.docker_tag }} > search-engine.tar
+
+    - name: Upload Docker image
+      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+      uses: actions/upload-artifact@v4
+      with:
+        name: docker-image
+        path: search-engine.tar
+        retention-days: 5 
