@@ -4,10 +4,10 @@ on:
   workflow_call:
     inputs:
       docker_image:
-        required: true
+        required: false
         type: string
       docker_tag:
-        required: true
+        required: false
         type: string
 
 permissions:
