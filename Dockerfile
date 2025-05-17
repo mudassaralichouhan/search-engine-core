@@ -1,6 +1,6 @@
 # Build stage
 ARG BASE_IMAGE=mongodb-server
-FROM ${BASE_IMAGE} as builder
+FROM ${BASE_IMAGE} AS builder
 
 #FROM ghcr.io/hatef-ir/mongodb-server:latest as builder
 
@@ -68,9 +68,10 @@ RUN rm -rf build && \
 # Copy the startup script
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
+RUN echo "BASE_IMAGE: " ${BASE_IMAGE}
 
 # Runtime stage
-FROM ${BASE_IMAGE} as runner
+FROM ${BASE_IMAGE} AS runner
 
 # Install MongoDB shell for health checks
 RUN apt-get update && apt-get install -y mongodb-mongosh && rm -rf /var/lib/apt/lists/*

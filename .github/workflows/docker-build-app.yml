@@ -64,15 +64,3 @@ jobs:
         docker stop test-container
         docker rm test-container
 
-    - name: Save Docker image
-      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-      run: |
-        docker save ${{ inputs.docker_image }}:${{ inputs.docker_tag }} > search-engine.tar
-
-    - name: Upload Docker image
-      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-      uses: actions/upload-artifact@v4
-      with:
-        name: docker-image
-        path: search-engine.tar
-        retention-days: 5 
