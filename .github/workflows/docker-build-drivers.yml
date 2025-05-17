@@ -36,9 +36,10 @@ jobs:
     - name: Try to load image from cache
       id: load-cache
       run: |
-        docker pull ${{ inputs.docker_image }}:${{ inputs.docker_tag }} || echo "::set-output name=loaded::false"
-        if [ $? -eq 0 ]; then
-          echo "::set-output name=loaded::true"
+        if docker pull ${{ inputs.docker_image }}:${{ inputs.docker_tag }}; then
+          echo "loaded=true" >> $GITHUB_OUTPUT
+        else
+          echo "loaded=false" >> $GITHUB_OUTPUT
         fi
 
     - name: Build MongoDB Drivers Image
