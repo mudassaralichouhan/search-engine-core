@@ -33,6 +33,6 @@ jobs:
     needs: build-server
     uses: ./.github/workflows/docker-build-app.yml
     with:
-      docker_image: ${{ inputs.docker_image }}
-      docker_tag: ${{ inputs.docker_tag }}
+      docker_image: ghcr.io/${{ github.repository }}
+      docker_tag: latest
 

@@ -18,9 +18,7 @@ permissions:
 jobs:
   docker-build:
     uses: ./.github/workflows/docker-build.yml
-    with:
-      docker_image: search-engine
-      docker_tag: ${{ github.sha }}
+
 
   notify:
     name: Notify

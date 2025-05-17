@@ -9,6 +9,7 @@
         "libuv",
         "MONGOC",
         "MONGOCXX",
+        "mongosh",
         "MSVC",
         "nlohmann",
         "noabi",
