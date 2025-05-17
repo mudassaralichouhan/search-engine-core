@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /deps
 RUN git clone --recurse-submodules https://github.com/uNetworking/uWebSockets.git
 WORKDIR /deps/uWebSockets
-RUN make -j$(nproc)
+RUN make -j$(nproc) WITH_EXAMPLES=0
 
 
 RUN apt-get install -y \
