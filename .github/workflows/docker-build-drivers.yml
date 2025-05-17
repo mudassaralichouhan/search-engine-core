@@ -38,6 +38,7 @@ jobs:
       with:
         context: .
         file: ./Dockerfile.mongodb
+        push: true
         tags: ${{ inputs.docker_image }}:${{ inputs.docker_tag }}
         load: true
         cache-from: type=gha
