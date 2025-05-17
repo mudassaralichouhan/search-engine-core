@@ -1,5 +1,5 @@
 # Use the MongoDB drivers base image we created
-FROM --platform=linux/amd64 mongodb-drivers:latest
+FROM mongodb-drivers:latest
 
 # Install additional build dependencies and MongoDB server
 RUN apt-get update && apt-get install -y \
