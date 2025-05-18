@@ -16,15 +16,14 @@ mkdir build
 cd build
 
 echo Running CMake with Visual Studio 2022 generator...
-cmake .. -G "Visual Studio 17 2022" -A x64 ^
+cmake .. -G "Visual Studio 17 2022" -A x64  ^
     -DCMAKE_BUILD_TYPE=Debug ^
-    -DCMAKE_CXX_STANDARD=20 ^
-    -DCMAKE_CXX_STANDARD_REQUIRED=ON ^
-    -DCMAKE_CXX_EXTENSIONS=OFF ^
-    -DCMAKE_TOOLCHAIN_FILE="D:/Projects/hatef.ir/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    -DCMAKE_TOOLCHAIN_FILE="D:/Projects/hatef.ir/vcpkg/scripts/buildsystems/vcpkg.cmake" 
+    
+@REM -DCMAKE_CXX_COMPILER="C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.38.33130/bin/Hostx64/x64/cl.exe"
 
 echo Building project...
-cmake --build . --config Debug
+cmake --build . --config Debug --target SearchEngineCore
 
 echo Done!
 if %ERRORLEVEL% EQU 0 (

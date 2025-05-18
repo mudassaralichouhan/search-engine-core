@@ -52,7 +52,7 @@ RUN mkdir -p /usr/local/include/uwebsockets && \
 WORKDIR /app
 COPY src/ /app/src/
 COPY public/ /app/public/
-COPY CMakeLists.txt /app/
+COPY /cmake/linux/CMakeLists.txt /app/
 COPY include/ /app/include/
 
 # Copy uWebSockets to the project
