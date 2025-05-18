@@ -27,7 +27,8 @@ find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(libuv CONFIG REQUIRED)
-find_package(curl CONFIG REQUIRED)
+find_package(CURL CONFIG REQUIRED)
+find_package(unofficial-gumbo CONFIG REQUIRED)
 
 # Find uWebSockets
 find_path(UWS_INCLUDE_DIR
@@ -96,6 +97,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${MONGOC_DRIVER_DIR}/include/libbson-1.0
     ${MONGOC_DRIVER_DIR}/include/libmongoc-1.0
     ${UWS_INCLUDE_DIR}
+    ${CURL_INCLUDE_DIRS}
 )
 
 # Link directories
@@ -114,6 +116,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     OpenSSL::Crypto
     ZLIB::ZLIB
     nlohmann_json::nlohmann_json
+    CURL::libcurl
+    unofficial::gumbo::gumbo  # Add Gumbo parser
     bson-1.0
     mongoc-1.0
     bsoncxx

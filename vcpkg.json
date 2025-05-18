@@ -6,6 +6,10 @@
     "openssl",
     "uwebsockets",
     "zlib",
-    "libuv"
+    "libuv",
+    "curl",
+    "gumbo"
   ]
 }
+
+

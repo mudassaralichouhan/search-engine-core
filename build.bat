@@ -1,4 +1,13 @@
 @echo off
+echo Installing required dependencies...
+
+REM Set vcpkg path
+set VCPKG_ROOT=D:\Projects\hatef.ir\vcpkg
+
+@REM REM Install curl using vcpkg
+@REM echo Installing curl ...
+@REM "%VCPKG_ROOT%\vcpkg" install curl
+
 echo Cleaning previous build files...
 
 if exist build rmdir /s /q build
@@ -21,7 +30,7 @@ cmake .. -G "Visual Studio 17 2022" -A x64 ^
     -DCMAKE_CXX_STANDARD=20 ^
     -DCMAKE_CXX_STANDARD_REQUIRED=ON ^
     -DCMAKE_CXX_EXTENSIONS=OFF ^
-    -DCMAKE_TOOLCHAIN_FILE="D:/Projects/hatef.ir/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    -DCMAKE_TOOLCHAIN_FILE="%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake"
 
 echo Building project...
 cmake --build . --config Debug

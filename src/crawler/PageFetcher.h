@@ -56,7 +56,7 @@ private:
     std::chrono::milliseconds timeout;
     bool followRedirects;
     size_t maxRedirects;
-    std::function<void(size_t, size_t)> progressCallback;
+    std::function<void(size_t, size_t)> userProgressCallback;
     std::vector<std::pair<std::string, std::string>> customHeaders;
     std::string proxy;
     bool verifySSL;

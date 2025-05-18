@@ -33,10 +33,10 @@ public:
     // Get the last visit time for a domain
     std::chrono::system_clock::time_point getLastVisitTime(const std::string& domain) const;
 
-private:
     // Extract domain from URL
     std::string extractDomain(const std::string& url) const;
     
+private:
     // Normalize URL
     std::string normalizeURL(const std::string& url) const;
 

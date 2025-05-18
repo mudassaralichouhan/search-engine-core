@@ -82,10 +82,10 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseData);
     
     // Set progress callback if configured
-    if (progressCallback) {
+    if (userProgressCallback) {
         curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
         curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progressCallback);
-        curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &progressCallback);
+        curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &userProgressCallback);
     }
     
     // Perform the request
@@ -126,7 +126,7 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
 }
 
 void PageFetcher::setProgressCallback(std::function<void(size_t, size_t)> callback) {
-    progressCallback = std::move(callback);
+    userProgressCallback = std::move(callback);
 }
 
 void PageFetcher::setCustomHeaders(const std::vector<std::pair<std::string, std::string>>& headers) {
