@@ -9,14 +9,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(CURL REQUIRED)
 find_package(Threads REQUIRED)
 
-# Add Gumbo parser
-include(FetchContent)
-FetchContent_Declare(
-    gumbo
-    GIT_REPOSITORY https://github.com/google/gumbo-parser.git
-    GIT_TAG v0.10.1
-)
-FetchContent_MakeAvailable(gumbo)
+# Add Gumbo parser - MOVED TO ROOT CMAKE
+# include(FetchContent)
+# FetchContent_Declare(
+#     gumbo
+#     GIT_REPOSITORY https://github.com/google/gumbo-parser.git
+#     GIT_TAG v0.10.1
+# )
+# FetchContent_MakeAvailable(gumbo)
 
 # Add source files
 set(CRAWLER_SOURCES
@@ -46,14 +46,14 @@ target_include_directories(crawler
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CURL_INCLUDE_DIRS}
-        ${gumbo_SOURCE_DIR}/src
+        # unofficial-gumbo should provide its own include dirs via the target
 )
 
 # Link libraries
 target_link_libraries(crawler
     PUBLIC
         ${CURL_LIBRARIES}
-        gumbo
+        unofficial::gumbo::gumbo # Link against vcpkg's Gumbo target
         Threads::Threads
 )
 

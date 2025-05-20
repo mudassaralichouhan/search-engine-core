@@ -32,6 +32,9 @@ public:
     // Extract meta description from HTML
     std::optional<std::string> extractMetaDescription(const std::string& html);
 
+    // Helper function to check if a URL is valid
+    bool isValidUrl(const std::string& url);
+
 private:
     // Helper function to extract text from a GumboNode
     void extractTextFromNode(const GumboNode* node, std::string& text);
@@ -44,7 +47,4 @@ private:
     
     // Helper function to normalize URL
     std::string normalizeUrl(const std::string& url, const std::string& baseUrl);
-    
-    // Helper function to check if a URL is valid
-    bool isValidUrl(const std::string& url);
 }; 

@@ -3,6 +3,7 @@
     "cmake.ignoreCMakeListsMissing": true,
     "cSpell.words": [
         "DBSONCXX",
+        "DBUILD",
         "DCMAKE",
         "libbsoncxx",
         "libmongocxx",

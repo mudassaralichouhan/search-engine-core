@@ -60,6 +60,9 @@ set(MONGOCXX_DRIVER_DIR "C:/mongo-cxx-driver")
 # Set environment paths
 set(ENV{PATH} "${MONGOCXX_DRIVER_DIR}/bin;${MONGOC_DRIVER_DIR}/bin;$ENV{PATH}")
 
+# Add the crawler library subdirectory
+add_subdirectory(src/crawler)
+
 # Create imported targets for MongoDB libraries
 add_library(bson-1.0 STATIC IMPORTED)
 set_target_properties(bson-1.0 PROPERTIES
@@ -81,12 +84,17 @@ set_target_properties(mongocxx PROPERTIES
     IMPORTED_LOCATION "${MONGOCXX_DRIVER_DIR}/lib/mongocxx-v_noabi-rhi-x64-v143-md.lib"
 )
 
-# Add source files
-file(GLOB_RECURSE SOURCES "src/*.cpp")
+# Add source files for the main executable (excluding crawler sources)
+file(GLOB_RECURSE MAIN_SOURCES "src/*.cpp" "src/main.cpp") # Assuming main.cpp is your entry point
+# Remove crawler sources from MAIN_SOURCES if they were picked up by GLOB_RECURSE
+# This step might need adjustment based on your exact source layout for the main executable
+# For now, we assume main.cpp is the primary source for the executable,
+# and other specific sources if any, are not in src/crawler.
+
 file(GLOB_RECURSE HEADERS "include/*.h" "include/*.hpp")
 
 # Add executable
-add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
+add_executable(${PROJECT_NAME} ${MAIN_SOURCES} ${HEADERS})
 
 # Set include directories
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -110,14 +118,14 @@ target_link_directories(${PROJECT_NAME} PRIVATE
 
 # Link libraries - Note the order is important here
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    $<IF:$<TARGET_EXISTS:libuv::uv_a>,libuv::uv_a,libuv::uv>  # libuv must come before uWebSockets
-    ${UWS_LIBRARY}    # uWebSockets depends on libuv
+    crawler 
+    $<IF:$<TARGET_EXISTS:libuv::uv_a>,libuv::uv_a,libuv::uv>  
+    ${UWS_LIBRARY}    
     OpenSSL::SSL
     OpenSSL::Crypto
     ZLIB::ZLIB
     nlohmann_json::nlohmann_json
     CURL::libcurl
-    unofficial::gumbo::gumbo  # Add Gumbo parser
     bson-1.0
     mongoc-1.0
     bsoncxx
@@ -161,5 +169,7 @@ install(TARGETS ${PROJECT_NAME}
 option(BUILD_TESTS "Build tests" OFF)
 if(BUILD_TESTS)
     enable_testing()
+    # Ensure src/crawler (which defines the 'crawler' target) is added before tests
+    # add_subdirectory(src/crawler) # This is now added earlier
     add_subdirectory(tests)
 endif()
