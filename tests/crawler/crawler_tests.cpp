@@ -63,8 +63,8 @@ TEST_CASE("Seed URLs", "[Crawler]") {
     Crawler crawler(config);
     
     SECTION("Processes multiple seed URLs") {
-        crawler.addSeedURL("https://example.com");
-        crawler.addSeedURL("https://example.org");
+        crawler.addSeedURL("https://reqres.in");
+        crawler.addSeedURL("https://httpbin.org");
         
         std::thread crawlerThread([&crawler]() {
             crawler.start();

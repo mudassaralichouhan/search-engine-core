@@ -39,6 +39,8 @@ cmake --build . --config Debug
 echo Done!
 if %ERRORLEVEL% EQU 0 (
     echo Build completed successfully!
+    echo Running tests...
+    ctest --test-dir build -V
 ) else (
     echo Build failed with error code %ERRORLEVEL%
 )
