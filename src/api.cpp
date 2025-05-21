@@ -1,6 +1,7 @@
 #include "../include/api.h"
 #include "../include/utils.h"
 #include "../include/mongodb.h"
+#include "../include/Logger.h"
 #include <fstream>
 #include <sstream>
 #include <map>
@@ -34,6 +35,7 @@ namespace api {
                     std::string email = j["email"].get<std::string>();
 
                     if (!utils::isValidEmail(email)) {
+                        LOG_WARNING("Invalid email address: " + email);
                         res->writeStatus("400 Bad Request");
                         res->writeHeader("Content-Type", "application/json");
                         res->end("{\"error\": \"Invalid email address\"}");
@@ -43,17 +45,20 @@ namespace api {
                     auto result = mongodb().subscribeEmail(email);
 
                     if (result.success) {
+                        LOG_INFO("Email subscription success: " + email);
                         res->writeStatus("200 OK");
                         res->writeHeader("Content-Type", "application/json");
                         res->end("{\"message\": \"" + result.message + "\"}");
                     }
                     else {
+                        LOG_WARNING("Email subscription failed: " + email + " - " + result.message);
                         res->writeStatus("400 Bad Request");
                         res->writeHeader("Content-Type", "application/json");
                         res->end("{\"error\": \"" + result.message + "\"}");
                     }
                 }
                 catch (const std::exception& e) {
+                    LOG_ERROR("Invalid JSON data: " + std::string(e.what()));
                     res->writeStatus("400 Bad Request");
                     res->writeHeader("Content-Type", "application/json");
                     res->end("{\"error\": \"Invalid JSON data: " + std::string(e.what()) + "\"}");
@@ -62,7 +67,7 @@ namespace api {
         });
 
         res->onAborted([]() {
-            std::cout << "Request was aborted" << std::endl;
+            LOG_WARNING("Request was aborted");
         });
     }
 
@@ -71,10 +76,12 @@ namespace api {
         std::string mimeType;
 
         if (utils::loadStaticFile("public", path, content, mimeType)) {
+            LOG_DEBUG("Serving static file: " + path + " (" + mimeType + ")");
             res->writeHeader("Content-Type", mimeType);
             res->end(content);
         }
         else {
+            LOG_WARNING("Static file not found: " + path);
             res->writeStatus("404 Not Found");
             res->writeHeader("Content-Type", "text/plain");
             res->end("File not found");
@@ -82,6 +89,7 @@ namespace api {
     }
 
     void handleRoot(uWS::HttpResponse<false>* res, uWS::HttpRequest* req, const std::string& indexHtml) {
+        LOG_DEBUG("Serving index.html");
         res->writeHeader("Content-Type", "text/html; charset=utf-8");
         res->end(indexHtml);
     }

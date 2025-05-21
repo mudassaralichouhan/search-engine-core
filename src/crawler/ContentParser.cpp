@@ -3,61 +3,86 @@
 #include <regex>
 #include <sstream>
 #include <cctype>
+#include <iostream>
+#include "../../include/Logger.h"
 
-ContentParser::ContentParser() {}
-ContentParser::~ContentParser() {}
+ContentParser::ContentParser() {
+    LOG_DEBUG("ContentParser constructor called");
+}
+
+ContentParser::~ContentParser() {
+    LOG_DEBUG("ContentParser destructor called");
+}
 
 ParsedContent ContentParser::parse(const std::string& html, const std::string& baseUrl) {
+    LOG_INFO("ContentParser::parse called for URL: " + baseUrl + " with HTML length: " + std::to_string(html.length()) + " bytes");
     ParsedContent result;
     
     // Parse HTML using Gumbo
     GumboOutput* output = gumbo_parse(html.c_str());
     
     if (output) {
+        LOG_DEBUG("HTML parsed successfully with Gumbo");
+        
         // Extract title
         result.title = extractTitle(html).value_or("");
+        LOG_DEBUG("Extracted title: " + result.title);
         
         // Extract meta description
         result.metaDescription = extractMetaDescription(html).value_or("");
+        LOG_DEBUG("Extracted meta description: " + result.metaDescription);
         
         // Extract text content
         result.textContent = extractText(html);
+        LOG_DEBUG("Extracted text content of length: " + std::to_string(result.textContent.length()) + " bytes");
         
         // Extract links
         result.links = extractLinks(html, baseUrl);
+        LOG_INFO("Extracted " + std::to_string(result.links.size()) + " links");
         
         // Clean up Gumbo output
         gumbo_destroy_output(&kGumboDefaultOptions, output);
+    } else {
+        LOG_ERROR("Failed to parse HTML with Gumbo");
     }
     
     return result;
 }
 
 std::string ContentParser::extractText(const std::string& html) {
+    LOG_DEBUG("ContentParser::extractText called with HTML length: " + std::to_string(html.length()) + " bytes");
     std::string text;
     GumboOutput* output = gumbo_parse(html.c_str());
     
     if (output) {
         extractTextFromNode(output->root, text);
         gumbo_destroy_output(&kGumboDefaultOptions, output);
+        LOG_DEBUG("Extracted text of length: " + std::to_string(text.length()) + " bytes");
+    } else {
+        LOG_ERROR("Failed to parse HTML for text extraction");
     }
     
     return text;
 }
 
 std::vector<std::string> ContentParser::extractLinks(const std::string& html, const std::string& baseUrl) {
+    LOG_DEBUG("ContentParser::extractLinks called for URL: " + baseUrl + " with HTML length: " + std::to_string(html.length()) + " bytes");
     std::vector<std::string> links;
     GumboOutput* output = gumbo_parse(html.c_str());
     
     if (output) {
         extractLinksFromNode(output->root, baseUrl, links);
         gumbo_destroy_output(&kGumboDefaultOptions, output);
+        LOG_INFO("Extracted " + std::to_string(links.size()) + " links from page");
+    } else {
+        LOG_ERROR("Failed to parse HTML for link extraction");
     }
     
     return links;
 }
 
 std::optional<std::string> ContentParser::extractTitle(const std::string& html) {
+    LOG_DEBUG("ContentParser::extractTitle called with HTML length: " + std::to_string(html.length()) + " bytes");
     GumboOutput* output = gumbo_parse(html.c_str());
     std::optional<std::string> title;
     
@@ -83,6 +108,7 @@ std::optional<std::string> ContentParser::extractTitle(const std::string& html) 
                         GumboNode* titleText = static_cast<GumboNode*>(child->v.element.children.data[0]);
                         if (titleText->type == GUMBO_NODE_TEXT) {
                             title = titleText->v.text.text;
+                            LOG_DEBUG("Found title: " + title.value());
                         }
                     }
                     break;
@@ -91,18 +117,33 @@ std::optional<std::string> ContentParser::extractTitle(const std::string& html) 
         }
         
         gumbo_destroy_output(&kGumboDefaultOptions, output);
+    } else {
+        LOG_ERROR("Failed to parse HTML for title extraction");
+    }
+    
+    if (!title) {
+        LOG_DEBUG("No title found in HTML");
     }
     
     return title;
 }
 
 std::optional<std::string> ContentParser::extractMetaDescription(const std::string& html) {
+    LOG_DEBUG("ContentParser::extractMetaDescription called with HTML length: " + std::to_string(html.length()) + " bytes");
     GumboOutput* output = gumbo_parse(html.c_str());
     std::optional<std::string> description;
     
     if (output) {
         description = findMetaTag(output->root, "description");
         gumbo_destroy_output(&kGumboDefaultOptions, output);
+        
+        if (description) {
+            LOG_DEBUG("Found meta description: " + description.value());
+        } else {
+            LOG_DEBUG("No meta description found in HTML");
+        }
+    } else {
+        LOG_ERROR("Failed to parse HTML for meta description extraction");
     }
     
     return description;

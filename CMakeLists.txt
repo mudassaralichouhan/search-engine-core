@@ -30,6 +30,9 @@ find_package(libuv CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(unofficial-gumbo CONFIG REQUIRED)
 
+# Add include directory to include path for all targets
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 # Find uWebSockets
 find_path(UWS_INCLUDE_DIR
     NAMES uWebSockets/App.h
@@ -63,6 +66,9 @@ set(ENV{PATH} "${MONGOCXX_DRIVER_DIR}/bin;${MONGOC_DRIVER_DIR}/bin;$ENV{PATH}")
 # Add the crawler library subdirectory
 add_subdirectory(src/crawler)
 
+# Add the common library subdirectory
+add_subdirectory(src/common)
+
 # Create imported targets for MongoDB libraries
 add_library(bson-1.0 STATIC IMPORTED)
 set_target_properties(bson-1.0 PROPERTIES
@@ -86,10 +92,13 @@ set_target_properties(mongocxx PROPERTIES
 
 # Add source files for the main executable (excluding crawler sources)
 file(GLOB_RECURSE MAIN_SOURCES "src/*.cpp" "src/main.cpp") # Assuming main.cpp is your entry point
-# Remove crawler sources from MAIN_SOURCES if they were picked up by GLOB_RECURSE
-# This step might need adjustment based on your exact source layout for the main executable
-# For now, we assume main.cpp is the primary source for the executable,
-# and other specific sources if any, are not in src/crawler.
+
+# Add Logger implementation
+list(APPEND MAIN_SOURCES "src/common/Logger.cpp")
+
+# Remove crawler sources and test sources from MAIN_SOURCES if they were picked up by GLOB_RECURSE
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*crawler/.*\\.cpp$")
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*test.*\\.cpp$")
 
 file(GLOB_RECURSE HEADERS "include/*.h" "include/*.hpp")
 

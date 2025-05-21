@@ -23,6 +23,7 @@
 #include <iomanip>
 #include "../include/utils.h"
 #include "../include/api.h"
+#include "../include/Logger.h"
 
 using namespace std;
 
@@ -87,13 +88,13 @@ char* get_body()
 
 
 std::string loadFile(const std::string& path) {
-    std::cout << "Attempting to load file: " << path << std::endl;
+    LOG_DEBUG("Attempting to load file: " + path);
     
     // Check if file exists
     std::ifstream file(path);
     if (!file.is_open()) {
-        std::cerr << "Error: Could not open file: " << path << std::endl;
-        std::cerr << "Current working directory: " << std::filesystem::current_path().string() << std::endl;
+        LOG_ERROR("Error: Could not open file: " + path);
+        LOG_ERROR("Current working directory: " + std::filesystem::current_path().string());
         return "";
     }
     
@@ -102,9 +103,9 @@ std::string loadFile(const std::string& path) {
     std::string content = buffer.str();
     
     if (content.empty()) {
-        std::cerr << "Warning: File is empty: " << path << std::endl;
+        LOG_WARNING("Warning: File is empty: " + path);
     } else {
-        std::cout << "Successfully loaded file: " << path << " (size: " << content.length() << " bytes)" << std::endl;
+        LOG_INFO("Successfully loaded file: " + path + " (size: " + std::to_string(content.length()) + " bytes)");
     }
     
     return content;
@@ -129,32 +130,34 @@ void traceRequest(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
     std::string_view path = req->getUrl();
     std::string_view query = req->getQuery();
     
-    std::cout << "[" << getCurrentTimestamp() << "] "
-              << method << " " << path;
+    std::string logMessage = "[" + getCurrentTimestamp() + "] " + std::string(method) + " " + std::string(path);
     
     if (!query.empty()) {
-        std::cout << "?" << query;
+        logMessage += "?" + std::string(query);
     }
     
     // Log headers
-    std::cout << "\nHeaders:";
+    logMessage += "\nHeaders:";
     // Note: uWebSockets doesn't provide direct header iteration
     // We can log specific headers we're interested in
-    std::cout << "\n  User-Agent: " << req->getHeader("user-agent");
-    std::cout << "\n  Accept: " << req->getHeader("accept");
-    std::cout << "\n  Content-Type: " << req->getHeader("content-type");
+    logMessage += "\n  User-Agent: " + std::string(req->getHeader("user-agent"));
+    logMessage += "\n  Accept: " + std::string(req->getHeader("accept"));
+    logMessage += "\n  Content-Type: " + std::string(req->getHeader("content-type"));
     
-    std::cout << "\n" << std::endl;
+    LOG_INFO(logMessage);
 }
 
 int main() {
+    // Initialize logger
+    Logger::getInstance().init(LogLevel::INFO, true, "server.log");
+    
     // Pre-load index.html
     std::string indexHtml = loadFile("public/index.html");
 
     // Get port from environment variable or use default
     const char* port_env = std::getenv("PORT");
     int port = port_env ? std::stoi(port_env) : 3000;
-    std::cout << "Using port: " << port << std::endl;
+    LOG_INFO("Using port: " + std::to_string(port));
 
     uWS::App()
         // Serve index.html at root
@@ -178,10 +181,10 @@ int main() {
 
         .listen(port, [port](auto* listen_socket) {
             if (listen_socket) {
-                std::cout << "Server listening on port " << port << std::endl;
+                LOG_INFO("Server listening on port " + std::to_string(port));
             }
             else {
-                std::cout << "Failed to listen on port " << port << std::endl;
+                LOG_ERROR("Failed to listen on port " + std::to_string(port));
             }
         })
         .run();

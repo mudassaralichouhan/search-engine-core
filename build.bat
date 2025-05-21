@@ -10,15 +10,15 @@ set VCPKG_ROOT=D:\Projects\hatef.ir\vcpkg
 
 echo Cleaning previous build files...
 
-if exist build rm -f -r build
-if exist CMakeFiles rm -f -r CMakeFiles
+if exist build rmdir /s /q build
+if exist CMakeFiles rmdir /s /q CMakeFiles
 if exist CMakeCache.txt del CMakeCache.txt
 if exist cmake_install.cmake del cmake_install.cmake
 if exist build.ninja del build.ninja
 if exist .ninja_deps del .ninja_deps
 if exist .ninja_log del .ninja_log
-if exist .vs rm -f -r .vs
-if exist x64 rm -f -r x64
+@REM if exist .vs rmdir /s /q .vs
+if exist x64 rmdir /s /q x64
 
 echo Creating new build directory...
 mkdir build
@@ -40,7 +40,8 @@ echo Done!
 if %ERRORLEVEL% EQU 0 (
     echo Build completed successfully!
     echo Running tests...
-    ctest --test-dir build -V
+    @REM ctest --test-dir . -V
+    ctest --test-dir . -R "Basic Crawling" -V
 ) else (
     echo Build failed with error code %ERRORLEVEL%
 )

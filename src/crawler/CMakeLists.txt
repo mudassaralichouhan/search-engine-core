@@ -25,6 +25,7 @@ set(CRAWLER_SOURCES
     RobotsTxtParser.cpp
     PageFetcher.cpp
     ContentParser.cpp
+    ../common/Logger.cpp
 )
 
 # Add header files
@@ -36,6 +37,7 @@ set(CRAWLER_HEADERS
     ContentParser.h
     models/CrawlResult.h
     models/CrawlConfig.h
+    ../../include/Logger.h
 )
 
 # Create crawler library
