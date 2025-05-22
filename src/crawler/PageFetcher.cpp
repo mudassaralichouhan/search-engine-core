@@ -80,10 +80,9 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
     LOG_TRACE("Setting user agent: " + userAgent);
     curl_easy_setopt(localCurl, CURLOPT_USERAGENT, userAgent.c_str());
     
-    // Set timeout - for testing, ensure timeout is not too long
-    long originalTimeout = static_cast<long>(timeout.count());
-    long timeoutMs = (originalTimeout > 5000L) ? 5000L : originalTimeout; // Cap at 5 seconds for testing
-    LOG_DEBUG("Setting timeout: " + std::to_string(timeoutMs) + "ms (original: " + std::to_string(originalTimeout) + "ms)");
+    // Set timeout
+    long timeoutMs = static_cast<long>(timeout.count());
+    LOG_DEBUG("Setting timeout: " + std::to_string(timeoutMs) + "ms");
     curl_easy_setopt(localCurl, CURLOPT_TIMEOUT_MS, timeoutMs);
     
     // Set redirect options

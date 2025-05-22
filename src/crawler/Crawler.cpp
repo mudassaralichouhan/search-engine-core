@@ -48,6 +48,15 @@ void Crawler::start() {
 void Crawler::stop() {
     LOG_INFO("Stopping crawler");
     isRunning = false;
+    
+    // Give a small delay to ensure all results are collected
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    
+    // Log the final results count
+    {
+        std::lock_guard<std::mutex> lock(resultsMutex);
+        LOG_INFO("Final results count: " + std::to_string(results.size()));
+    }
 }
 
 void Crawler::addSeedURL(const std::string& url) {
@@ -73,18 +82,24 @@ void Crawler::crawlLoop() {
             break;
         }
         
+        // Check if URL is already visited
+        if (urlFrontier->isVisited(url)) {
+            LOG_DEBUG("URL already visited, skipping: " + url);
+            continue;
+        }
+        
         // Process the URL
         CrawlResult result = processURL(url);
         
-        // Mark URL as visited
-        urlFrontier->markVisited(url);
-        
-        // Store the result
+        // Store the result first
         {
             std::lock_guard<std::mutex> lock(resultsMutex);
             results.push_back(result);
-            LOG_DEBUG("Added result for URL: " + url + ", total results: " + std::to_string(results.size()));
+            LOG_INFO("Added result for URL: " + url + ", total results: " + std::to_string(results.size()));
         }
+        
+        // Then mark URL as visited
+        urlFrontier->markVisited(url);
         
         // Check if we've reached the maximum number of pages
         if (results.size() >= config.maxPages) {
@@ -92,6 +107,9 @@ void Crawler::crawlLoop() {
             isRunning = false;
             break;
         }
+        
+        // Add a small delay between requests to ensure results are stored
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     LOG_DEBUG("Exiting crawl loop");
 }
@@ -130,6 +148,7 @@ CrawlResult Crawler::processURL(const std::string& url) {
     if (!fetchResult.success) {
         result.success = false;
         result.errorMessage = fetchResult.errorMessage;
+        result.statusCode = fetchResult.statusCode;
         LOG_ERROR("Failed to fetch page: " + url + " Error: " + fetchResult.errorMessage);
         return result;
     }
@@ -146,6 +165,7 @@ CrawlResult Crawler::processURL(const std::string& url) {
     
     LOG_INFO("Page fetched successfully: " + url + " Status: " + std::to_string(fetchResult.statusCode));
     
+    result.success = true;
     result.statusCode = fetchResult.statusCode;
     result.contentType = fetchResult.contentType;
     result.contentSize = fetchResult.content.size();
@@ -172,7 +192,6 @@ CrawlResult Crawler::processURL(const std::string& url) {
         LOG_DEBUG("Content is not HTML, skipping parsing. Content-Type: " + fetchResult.contentType);
     }
     
-    result.success = true;
     LOG_INFO("URL processed successfully: " + url);
     return result;
 }

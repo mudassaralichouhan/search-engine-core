@@ -18,15 +18,42 @@ void URLFrontier::addURL(const std::string& url) {
     std::string normalizedURL = normalizeURL(url);
     std::string domain = extractDomain(normalizedURL);
     
+    // Check both visited URLs and queue for duplicates
+    {
     std::lock_guard<std::mutex> visitedLock(visitedMutex);
     if (visitedURLs.find(normalizedURL) != visitedURLs.end()) {
-        LOG_DEBUG("URL already visited, skipping: " + normalizedURL);
+            LOG_DEBUG("URL already visited, skipping: " + normalizedURL);
         return;
+        }
     }
     
+    {
     std::lock_guard<std::mutex> queueLock(queueMutex);
+        // Check if URL is already in queue
+        std::queue<std::string> tempQueue;
+        bool found = false;
+        while (!urlQueue.empty()) {
+            std::string current = urlQueue.front();
+            urlQueue.pop();
+            if (current == normalizedURL) {
+                found = true;
+            }
+            tempQueue.push(current);
+        }
+        // Restore queue
+        while (!tempQueue.empty()) {
+            urlQueue.push(tempQueue.front());
+            tempQueue.pop();
+        }
+        
+        if (found) {
+            LOG_DEBUG("URL already in queue, skipping: " + normalizedURL);
+            return;
+        }
+        
     urlQueue.push(normalizedURL);
-    LOG_DEBUG("Added URL to queue: " + normalizedURL + ", queue size: " + std::to_string(urlQueue.size()));
+        LOG_DEBUG("Added URL to queue: " + normalizedURL + ", queue size: " + std::to_string(urlQueue.size()));
+    }
 }
 
 std::string URLFrontier::getNextURL() {

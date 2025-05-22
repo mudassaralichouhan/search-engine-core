@@ -2,6 +2,7 @@
     "cmake.sourceDirectory": "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore",
     "cmake.ignoreCMakeListsMissing": true,
     "cSpell.words": [
+        "ctest",
         "DBSONCXX",
         "DBUILD",
         "DCMAKE",

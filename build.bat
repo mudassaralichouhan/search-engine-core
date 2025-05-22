@@ -41,7 +41,9 @@ if %ERRORLEVEL% EQU 0 (
     echo Build completed successfully!
     echo Running tests...
     @REM ctest --test-dir . -V
-    ctest --test-dir . -R "Basic Crawling" -V
+    
+    ctest --test-dir . 
+    @REM -R "Seed URLs" -V
 ) else (
     echo Build failed with error code %ERRORLEVEL%
 )

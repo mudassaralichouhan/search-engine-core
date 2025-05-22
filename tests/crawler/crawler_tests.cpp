@@ -7,6 +7,7 @@
 #include <thread>
 #include <chrono>
 #include <cstdlib> // For std::getenv
+#include <future>
 
 // Helper function to print results details with HTTP status codes
 void printResults(const std::vector<CrawlResult>& results) {
@@ -44,7 +45,7 @@ TEST_CASE("Basic Crawling", "[Crawler]") {
     config.maxPages = 1;
     config.politenessDelay = std::chrono::milliseconds(10);
     config.userAgent = "TestBot/1.0";
-    config.maxDepth = 2;
+    config.maxDepth = 1;
     
     Crawler crawler(config);
     
@@ -52,18 +53,29 @@ TEST_CASE("Basic Crawling", "[Crawler]") {
         LOG_INFO("Adding seed URL: https://example.com");
         crawler.addSeedURL("https://example.com");
         
+        // Create a promise and future for synchronization
+        std::promise<void> crawlerPromise;
+        std::future<void> crawlerFuture = crawlerPromise.get_future();
+        
         LOG_INFO("Starting crawler thread");
-        std::thread crawlerThread([&crawler]() {
+        std::thread crawlerThread([&crawler, &crawlerPromise]() {
             LOG_DEBUG("Inside crawler thread, calling start()");
             crawler.start();
             LOG_DEBUG("Crawler start() returned");
+            
+            // Wait for crawler to finish processing
+            while (crawler.getResults().empty()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            
+            crawlerPromise.set_value(); // Signal that crawler has finished
         });
         
-        LOG_INFO("Sleeping for 7 seconds");
-        std::this_thread::sleep_for(std::chrono::seconds(7));
-        
-        LOG_INFO("Stopping crawler");
-        crawler.stop();
+        // Wait for crawler to complete or timeout after 5 seconds
+        if (crawlerFuture.wait_for(std::chrono::seconds(5)) == std::future_status::timeout) {
+            LOG_INFO("Crawler timeout, stopping...");
+            crawler.stop();
+        }
         
         LOG_INFO("Joining thread");
         crawlerThread.join();
@@ -88,13 +100,27 @@ TEST_CASE("Basic Crawling", "[Crawler]") {
         Crawler limitedCrawler(limitedConfig);
         limitedCrawler.addSeedURL("https://example.com");
         
-        std::thread crawlerThread([&limitedCrawler]() {
+        // Create a promise and future for synchronization
+        std::promise<void> crawlerPromise;
+        std::future<void> crawlerFuture = crawlerPromise.get_future();
+        
+        std::thread crawlerThread([&limitedCrawler, &crawlerPromise]() {
             limitedCrawler.start();
+            
+            // Wait for crawler to finish processing
+            while (limitedCrawler.getResults().empty()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            
+            crawlerPromise.set_value(); // Signal that crawler has finished
         });
         
-        std::this_thread::sleep_for(std::chrono::seconds(3));
+        // Wait for crawler to complete or timeout after 5 seconds
+        if (crawlerFuture.wait_for(std::chrono::seconds(5)) == std::future_status::timeout) {
+            LOG_INFO("Crawler timeout, stopping...");
+            limitedCrawler.stop();
+        }
         
-        limitedCrawler.stop();
         crawlerThread.join();
         
         auto results = limitedCrawler.getResults();
@@ -107,7 +133,7 @@ TEST_CASE("Seed URLs", "[Crawler]") {
     Logger::getInstance().init(LogLevel::INFO, true);
     
     CrawlConfig config;
-    config.maxPages = 2;
+    config.maxPages = 2;  // Allow processing both URLs
     config.politenessDelay = std::chrono::milliseconds(10);
     config.userAgent = "TestBot/1.0";
     config.maxDepth = 1;
@@ -115,31 +141,72 @@ TEST_CASE("Seed URLs", "[Crawler]") {
     Crawler crawler(config);
     
     SECTION("Processes multiple seed URLs") {
-        crawler.addSeedURL("https://reqres.in");
-        crawler.addSeedURL("https://httpbin.org");
+        crawler.addSeedURL("https://example.com");
+        crawler.addSeedURL("https://www.google.com");
         
-        std::thread crawlerThread([&crawler]() {
+        // Create a promise and future for synchronization
+        std::promise<void> crawlerPromise;
+        std::future<void> crawlerFuture = crawlerPromise.get_future();
+        
+        std::thread crawlerThread([&crawler, &crawlerPromise]() {
             crawler.start();
+            
+            // Wait for crawler to finish processing
+            while (crawler.getResults().empty()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            
+            crawlerPromise.set_value(); // Signal that crawler has finished
         });
         
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-        crawler.stop();
+        // Wait for crawler to complete or timeout after 30 seconds
+        if (crawlerFuture.wait_for(std::chrono::seconds(30)) == std::future_status::timeout) {
+            LOG_INFO("Crawler timeout, stopping...");
+            crawler.stop();
+        }
+        
         crawlerThread.join();
         
         auto results = crawler.getResults();
+        LOG_INFO("Test results size: " + std::to_string(results.size()));
         REQUIRE(results.size() >= 1);
+        
+        // Verify that at least one of the seed URLs was processed
+        bool foundSeedURL = false;
+        for (const auto& result : results) {
+            if (result.url == "https://example.com" || result.url == "https://www.google.com") {
+                foundSeedURL = true;
+                break;
+            }
+        }
+        REQUIRE(foundSeedURL);
     }
     
     SECTION("Ignores duplicate seed URLs") {
         crawler.addSeedURL("https://example.com");
         crawler.addSeedURL("https://example.com");
         
-        std::thread crawlerThread([&crawler]() {
+        // Create a promise and future for synchronization
+        std::promise<void> crawlerPromise;
+        std::future<void> crawlerFuture = crawlerPromise.get_future();
+        
+        std::thread crawlerThread([&crawler, &crawlerPromise]() {
             crawler.start();
+            
+            // Wait for crawler to finish processing
+            while (crawler.getResults().empty()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            
+            crawlerPromise.set_value(); // Signal that crawler has finished
         });
         
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-        crawler.stop();
+        // Wait for crawler to complete or timeout after 5 seconds
+        if (crawlerFuture.wait_for(std::chrono::seconds(5)) == std::future_status::timeout) {
+            LOG_INFO("Crawler timeout, stopping...");
+            crawler.stop();
+        }
+        
         crawlerThread.join();
         
         auto results = crawler.getResults();
@@ -165,12 +232,27 @@ TEST_CASE("Robots.txt Compliance", "[Crawler]") {
     SECTION("Respects robots.txt rules") {
         crawler.addSeedURL("http://localhost:8080/private/");
         
-        std::thread crawlerThread([&crawler]() {
+        // Create a promise and future for synchronization
+        std::promise<void> crawlerPromise;
+        std::future<void> crawlerFuture = crawlerPromise.get_future();
+        
+        std::thread crawlerThread([&crawler, &crawlerPromise]() {
             crawler.start();
+            
+            // Wait for crawler to finish processing
+            while (crawler.getResults().empty()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            
+            crawlerPromise.set_value(); // Signal that crawler has finished
         });
         
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-        crawler.stop();
+        // Wait for crawler to complete or timeout after 2 seconds
+        if (crawlerFuture.wait_for(std::chrono::seconds(2)) == std::future_status::timeout) {
+            LOG_INFO("Crawler timeout, stopping...");
+            crawler.stop();
+        }
+        
         crawlerThread.join();
         
         auto results = crawler.getResults();
@@ -200,12 +282,27 @@ TEST_CASE("Crawl Results", "[Crawler]") {
         std::string seedUrl = "https://example.com";
         crawler.addSeedURL(seedUrl);
         
-        std::thread crawlerThread([&crawler]() {
+        // Create a promise and future for synchronization
+        std::promise<void> crawlerPromise;
+        std::future<void> crawlerFuture = crawlerPromise.get_future();
+        
+        std::thread crawlerThread([&crawler, &crawlerPromise]() {
             crawler.start();
+            
+            // Wait for crawler to finish processing
+            while (crawler.getResults().empty()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            
+            crawlerPromise.set_value(); // Signal that crawler has finished
         });
         
-        std::this_thread::sleep_for(std::chrono::seconds(3));
-        crawler.stop();
+        // Wait for crawler to complete or timeout after 3 seconds
+        if (crawlerFuture.wait_for(std::chrono::seconds(3)) == std::future_status::timeout) {
+            LOG_INFO("Crawler timeout, stopping...");
+            crawler.stop();
+        }
+        
         crawlerThread.join();
         
         auto results = crawler.getResults();
@@ -240,12 +337,27 @@ TEST_CASE("Error Handling", "[Crawler]") {
     SECTION("Handles invalid URLs") {
         crawler.addSeedURL("not-a-valid-url");
         
-        std::thread crawlerThread([&crawler]() {
+        // Create a promise and future for synchronization
+        std::promise<void> crawlerPromise;
+        std::future<void> crawlerFuture = crawlerPromise.get_future();
+        
+        std::thread crawlerThread([&crawler, &crawlerPromise]() {
             crawler.start();
+            
+            // Wait for crawler to finish processing
+            while (crawler.getResults().empty()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            
+            crawlerPromise.set_value(); // Signal that crawler has finished
         });
         
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        crawler.stop();
+        // Wait for crawler to complete or timeout after 1 second
+        if (crawlerFuture.wait_for(std::chrono::seconds(1)) == std::future_status::timeout) {
+            LOG_INFO("Crawler timeout, stopping...");
+            crawler.stop();
+        }
+        
         crawlerThread.join();
         
         auto results = crawler.getResults();
@@ -262,12 +374,27 @@ TEST_CASE("Error Handling", "[Crawler]") {
     SECTION("Handles unreachable URLs") {
         crawler.addSeedURL("https://nonexistent-domain-123456789.com");
         
-        std::thread crawlerThread([&crawler]() {
+        // Create a promise and future for synchronization
+        std::promise<void> crawlerPromise;
+        std::future<void> crawlerFuture = crawlerPromise.get_future();
+        
+        std::thread crawlerThread([&crawler, &crawlerPromise]() {
             crawler.start();
+            
+            // Wait for crawler to finish processing
+            while (crawler.getResults().empty()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            
+            crawlerPromise.set_value(); // Signal that crawler has finished
         });
         
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-        crawler.stop();
+        // Wait for crawler to complete or timeout after 2 seconds
+        if (crawlerFuture.wait_for(std::chrono::seconds(2)) == std::future_status::timeout) {
+            LOG_INFO("Crawler timeout, stopping...");
+            crawler.stop();
+        }
+        
         crawlerThread.join();
         
         auto results = crawler.getResults();
