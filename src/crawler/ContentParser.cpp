@@ -243,7 +243,8 @@ std::string ContentParser::normalizeUrl(const std::string& url, const std::strin
 
 bool ContentParser::isValidUrl(const std::string& url) {
     static const std::regex urlRegex(
-        R"(^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$)"
+        R"(^(https?:\/\/)[^\s\/:?#]+(\.[^\s\/:?#]+)*(?::\d+)?(\/[^\s?#]*)?(\?[^\s#]*)?(#[^\s]*)?$)",
+        std::regex::ECMAScript | std::regex::icase
     );
     return std::regex_match(url, urlRegex);
 } 

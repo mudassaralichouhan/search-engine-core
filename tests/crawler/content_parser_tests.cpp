@@ -88,6 +88,9 @@ TEST_CASE("ContentParser validates URLs correctly", "[ContentParser]") {
         REQUIRE(parser.isValidUrl("https://example.com"));
         REQUIRE(parser.isValidUrl("http://sub.example.com/path"));
         REQUIRE(parser.isValidUrl("https://example.com:8080/path?query=value"));
+        REQUIRE(parser.isValidUrl("https://fa.wikipedia.org/wiki/%D8%A7%DB%8C%D8%B1%D8%A7%D9%86"));
+        REQUIRE(parser.isValidUrl("https://fa.wikipedia.org/wiki/ایران"));
+        REQUIRE(parser.isValidUrl("https://fa.فرش.ایران/wiki/ایران"));
     }
     
     SECTION("Rejects invalid URLs") {

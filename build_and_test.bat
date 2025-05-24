@@ -16,14 +16,17 @@ if not exist CMakeCache.txt (
 :: Build the tests
 echo Building tests...
 cmake --build . --config Debug --target crawler_tests
+@REM cmake --build . --config Debug --target content_parser_tests
 
-:: Run the tests
-echo Running tests...
-@REM ctest -C Debug -V -R "Seed URLs"
-@REM ctest -C Debug -V -R "Basic Crawling"
-@REM ctest -C Debug -V -R "Seed URLs"
-
-ctest -C Debug 
+:: Run tests based on parameter
+if "%~1"=="" (
+    echo Running all tests...
+    ctest -C Debug
+) else (
+    set LOG_LEVEL=TRACE
+    echo Running test: %~1
+    ctest -C Debug -V -R "%~1"
+)
 
 :: Return to original directory
 cd ..

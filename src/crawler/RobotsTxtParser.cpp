@@ -29,6 +29,15 @@ void RobotsTxtParser::parseRobotsTxt(const std::string& domain, const std::strin
             continue;
         }
         
+        // Trim whitespace from beginning and end
+        line.erase(0, line.find_first_not_of(" \t\r\n"));
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+        
+        // Skip empty lines after trimming
+        if (line.empty()) {
+            continue;
+        }
+        
         // Convert to lowercase for case-insensitive matching
         std::transform(line.begin(), line.end(), line.begin(), ::tolower);
         
@@ -38,7 +47,7 @@ void RobotsTxtParser::parseRobotsTxt(const std::string& domain, const std::strin
             // Trim whitespace
             currentUserAgent.erase(0, currentUserAgent.find_first_not_of(" \t"));
             currentUserAgent.erase(currentUserAgent.find_last_not_of(" \t") + 1);
-            LOG_DEBUG("Parsed User-Agent: " + currentUserAgent);
+            LOG_INFO("Parsed User-Agent: " + currentUserAgent);
             continue;
         }
         
@@ -50,6 +59,19 @@ void RobotsTxtParser::parseRobotsTxt(const std::string& domain, const std::strin
     }
     
     LOG_INFO("Finished parsing robots.txt for domain: " + domain);
+}
+
+// Helper to extract the path from a URL
+static std::string extractPath(const std::string& url) {
+    size_t protocol_end = url.find("://");
+    if (protocol_end == std::string::npos) return "/";
+    size_t path_start = url.find('/', protocol_end + 3);
+    if (path_start == std::string::npos) return "/";
+    size_t query_start = url.find('?', path_start);
+    if (query_start == std::string::npos)
+        return url.substr(path_start);
+    else
+        return url.substr(path_start, query_start - path_start);
 }
 
 bool RobotsTxtParser::isAllowed(const std::string& url, const std::string& userAgent) const {
@@ -68,7 +90,7 @@ bool RobotsTxtParser::isAllowed(const std::string& url, const std::string& userA
     std::string domain = (domainEnd == std::string::npos) ? 
         url.substr(domainStart) : url.substr(domainStart, domainEnd - domainStart);
     
-    LOG_TRACE("Extracted domain: " + domain + " from URL: " + url);
+    LOG_DEBUG("Extracted domain: " + domain + " from URL: " + url);
     
     auto it = domainRules.find(domain);
     if (it == domainRules.end()) {
@@ -77,37 +99,55 @@ bool RobotsTxtParser::isAllowed(const std::string& url, const std::string& userA
     }
     
     const DomainRules& rules = it->second;
+    std::string path = extractPath(url);
+    LOG_DEBUG("Extracted path: " + path + " from URL: " + url);
+    
+    // Convert userAgent to lowercase for case-insensitive matching
+    std::string lowerUserAgent = userAgent;
+    std::transform(lowerUserAgent.begin(), lowerUserAgent.end(), lowerUserAgent.begin(), ::tolower);
     
     // Check specific user agent rules first
-    auto userAgentIt = rules.userAgentRules.find(userAgent);
+    auto userAgentIt = rules.userAgentRules.find(lowerUserAgent);
     if (userAgentIt != rules.userAgentRules.end()) {
         const RobotsRule& rule = userAgentIt->second;
+        LOG_DEBUG("Found specific user-agent rules for: " + lowerUserAgent + 
+                 ", disallow patterns: " + std::to_string(rule.disallowPatterns.size()) +
+                 ", allow patterns: " + std::to_string(rule.allowPatterns.size()));
         
         // Check allow patterns first
-        if (matchesPattern(url, rule.allowPatterns)) {
+        if (matchesPattern(path, rule.allowPatterns)) {
             LOG_DEBUG("URL explicitly allowed by specific user-agent rule: " + url);
             return true;
         }
         
         // Then check disallow patterns
-        if (matchesPattern(url, rule.disallowPatterns)) {
-            LOG_INFO("URL explicitly disallowed by specific user-agent rule: " + url);
+        if (matchesPattern(path, rule.disallowPatterns)) {
+            LOG_DEBUG("URL explicitly disallowed by specific user-agent rule: " + url);
             return false;
         }
+        
+        // If specific user-agent rules exist but no pattern matches, allow by default
+        // (Do NOT fall back to default rules)
+        LOG_DEBUG("No pattern matched in specific user-agent rules, allowing by default: " + url);
+        return true;
+    } else {
+        LOG_DEBUG("No specific user-agent rules found for: " + lowerUserAgent);
     }
     
-    // Check default rules
+    // Check default rules only if no specific user-agent rules exist
     const RobotsRule& defaultRule = rules.defaultRules;
+    LOG_DEBUG("Checking default rules, disallow patterns: " + std::to_string(defaultRule.disallowPatterns.size()) +
+             ", allow patterns: " + std::to_string(defaultRule.allowPatterns.size()));
     
     // Check allow patterns first
-    if (matchesPattern(url, defaultRule.allowPatterns)) {
+    if (matchesPattern(path, defaultRule.allowPatterns)) {
         LOG_DEBUG("URL explicitly allowed by default rule: " + url);
         return true;
     }
     
     // Then check disallow patterns
-    if (matchesPattern(url, defaultRule.disallowPatterns)) {
-        LOG_INFO("URL explicitly disallowed by default rule: " + url);
+    if (matchesPattern(path, defaultRule.disallowPatterns)) {
+        LOG_DEBUG("URL explicitly disallowed by default rule: " + url);
         return false;
     }
     
@@ -161,11 +201,9 @@ void RobotsTxtParser::parseLine(const std::string& line, RobotsRule& rule) {
         pattern.erase(pattern.find_last_not_of(" \t") + 1);
         
         if (!pattern.empty()) {
-            // Convert glob pattern to regex
-            std::string regexPattern = std::regex_replace(pattern, 
-                std::regex("\\*"), ".*");
-            regexPattern = std::regex_replace(regexPattern, 
-                std::regex("\\?"), ".");
+            // Convert glob pattern to regex with prefix matching
+            std::string regexPattern = "^" + std::regex_replace(pattern, std::regex("\\*"), ".*");
+            regexPattern = std::regex_replace(regexPattern, std::regex("\\?"), ".");
             rule.disallowPatterns.push_back(std::regex(regexPattern));
             LOG_DEBUG("Added disallow pattern: " + pattern + " as regex: " + regexPattern);
         } else {
@@ -179,11 +217,9 @@ void RobotsTxtParser::parseLine(const std::string& line, RobotsRule& rule) {
         pattern.erase(pattern.find_last_not_of(" \t") + 1);
         
         if (!pattern.empty()) {
-            // Convert glob pattern to regex
-            std::string regexPattern = std::regex_replace(pattern, 
-                std::regex("\\*"), ".*");
-            regexPattern = std::regex_replace(regexPattern, 
-                std::regex("\\?"), ".");
+            // Convert glob pattern to regex with prefix matching
+            std::string regexPattern = "^" + std::regex_replace(pattern, std::regex("\\*"), ".*");
+            regexPattern = std::regex_replace(regexPattern, std::regex("\\?"), ".");
             rule.allowPatterns.push_back(std::regex(regexPattern));
             LOG_DEBUG("Added allow pattern: " + pattern + " as regex: " + regexPattern);
         } else {
@@ -198,8 +234,7 @@ void RobotsTxtParser::parseLine(const std::string& line, RobotsRule& rule) {
         
         try {
             float delay = std::stof(delayStr);
-            rule.crawlDelay = std::chrono::milliseconds(
-                static_cast<int>(delay * 1000));
+            rule.crawlDelay = std::chrono::milliseconds(static_cast<int>(delay * 1000));
             LOG_INFO("Set crawl delay to: " + std::to_string(rule.crawlDelay.count()) + "ms");
         }
         catch (...) {

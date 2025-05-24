@@ -365,10 +365,12 @@ TEST_CASE("Error Handling", "[Crawler]") {
         for(const auto& res : results) {
             if(res.url == "not-a-valid-url" && !res.success) {
                 found_failed_url = true;
+                REQUIRE(res.errorMessage.has_value());
+                REQUIRE_FALSE(res.errorMessage.value().empty());
                 break;
             }
         }
-        REQUIRE(results.empty());
+        REQUIRE(found_failed_url);
     }
     
     SECTION("Handles unreachable URLs") {
