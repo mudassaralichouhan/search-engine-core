@@ -26,6 +26,21 @@ include_directories(
 # Add source files
 file(GLOB SOURCES "src/*.cpp")
 
+# Add source files for the main executable (excluding crawler sources)
+file(GLOB_RECURSE MAIN_SOURCES "src/*.cpp" "src/main.cpp") # Assuming main.cpp is your entry point
+
+# Add Logger implementation
+list(APPEND MAIN_SOURCES "src/common/Logger.cpp")
+
+# Remove crawler sources and test sources from MAIN_SOURCES if they were picked up by GLOB_RECURSE
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*crawler/.*\\.cpp$")
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*test.*\\.cpp$")
+
+file(GLOB_RECURSE HEADERS "include/*.h" "include/*.hpp")
+
+# Add executable
+add_executable(${PROJECT_NAME} ${MAIN_SOURCES} ${HEADERS})
+
 # Create executable
 add_executable(server ${SOURCES})
 

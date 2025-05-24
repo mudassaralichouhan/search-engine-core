@@ -91,7 +91,7 @@ cmake .. \
     -DCMAKE_CXX_STANDARD=20 \
     -DCMAKE_CXX_STANDARD_REQUIRED=ON \
     -DCMAKE_CXX_EXTENSIONS=OFF \
-    -DCMAKE_TOOLCHAIN_FILE=../CMakeLists-linux.txt
+    -DCMAKE_TOOLCHAIN_FILE=../CMakeLists.txt
 
 # Build the project
 echo "Building project..."
