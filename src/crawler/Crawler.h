@@ -6,6 +6,7 @@
 #include <queue>
 #include <unordered_set>
 #include <mutex>
+#include <atomic>
 #include "models/CrawlResult.h"
 #include "models/CrawlConfig.h"
 

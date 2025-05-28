@@ -1,11 +1,14 @@
 # Dockerfile — build & verify Google Gumbo Parser
-FROM debian:bookworm AS gumbo-build
+FROM ubuntu:22.04 AS gumbo-build
 
 # ---- install dependencies ----
 RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    add-apt-repository universe && \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
         git build-essential ca-certificates \
-        autoconf automake libtool pkg-config \
+        autotools-dev autoconf automake libtool-bin pkg-config \
         cmake libgtest-dev
 
 # ---- build system libgtest (for make check) ----

@@ -12,7 +12,9 @@ list(APPEND CMAKE_PREFIX_PATH "/usr/local/lib/cmake/bsoncxx-4.0.0")
 # Find required packages
 find_package(mongocxx REQUIRED CONFIG)
 find_package(bsoncxx REQUIRED CONFIG)
-# find_package(CURL REQUIRED)
+find_package(CURL REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GUMBO REQUIRED gumbo)
 # find_package(Threads REQUIRED)
 
 # Add include directories
@@ -21,6 +23,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/public
     ${CMAKE_SOURCE_DIR}/uWebSockets/src
     ${CMAKE_SOURCE_DIR}/uWebSockets/uSockets/src
+    ${GUMBO_INCLUDE_DIRS}
 )
 
 # Add source files recursively to include subdirectories like src/common/
@@ -43,6 +46,9 @@ target_link_libraries(server
         ssl
         crypto
         z
+        ${CURL_LIBRARIES}
+        CURL::libcurl
+        ${GUMBO_LIBRARIES}
 )
 
 # Link uWebSockets object files

@@ -48,15 +48,29 @@ RUN mkdir -p /usr/local/include/uwebsockets && \
     cp -r uSockets/src/* /usr/local/include/usockets/ && \
     ln -s /usr/local/include/usockets/libusockets.h /usr/local/include/libusockets.h
 
+# Build system libgtest (required for Gumbo make check)
+
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    add-apt-repository universe && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        git build-essential ca-certificates \
+        autotools-dev autoconf automake libtool-bin pkg-config \
+        cmake libgtest-dev
+
+
+    
+WORKDIR /usr/src/gtest
+RUN cmake . && make
+
 # Install Gumbo Parser
-RUN apt-get install -y gumbo-parser
+WORKDIR /src
+RUN git clone --depth 1 https://github.com/google/gumbo-parser.git
 
-# WORKDIR /src
-# RUN git clone --depth 1 https://github.com/google/gumbo-parser.git
-
-# # ---- build gumbo ----
-# WORKDIR /src/gumbo-parser
-# RUN ./autogen.sh && ./configure && make && make check && make install && ldconfig
+# ---- build gumbo ----
+WORKDIR /src/gumbo-parser
+RUN ./autogen.sh && ./configure && make && make check && make install && ldconfig
 
 # Set up project build
 WORKDIR /app
@@ -67,6 +81,8 @@ COPY include/ /app/include/
 
 # Copy uWebSockets to the project
 RUN cp -r /deps/uWebSockets ./uWebSockets
+
+RUN apt install -y libcurl4-openssl-dev
 
 # Build using CMake
 RUN rm -rf build && \
@@ -99,6 +115,14 @@ RUN mkdir -p /data/db && \
 
 # Copy the built binary from the builder stage
 COPY --from=builder /app/build/server ./server
+
+# Copy Gumbo library files from builder stage
+COPY --from=builder /usr/local/lib/libgumbo.so* /usr/local/lib/
+COPY --from=builder /usr/local/include/gumbo.h /usr/local/include/
+COPY --from=builder /usr/local/include/tag_enum.h /usr/local/include/
+
+# Update library cache
+RUN ldconfig
 
 # Copy public folder from builder stage
 COPY --from=builder /app/public ./public
