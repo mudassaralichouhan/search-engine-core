@@ -1,0 +1,29 @@
+# Dockerfile — build & verify Google Gumbo Parser
+FROM debian:bookworm AS gumbo-build
+
+# ---- install dependencies ----
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        git build-essential ca-certificates \
+        autoconf automake libtool pkg-config \
+        cmake libgtest-dev
+
+# ---- build system libgtest (for make check) ----
+WORKDIR /usr/src/gtest
+RUN cmake . && make
+
+# ---- fetch gumbo ----
+WORKDIR /src
+RUN git clone --depth 1 https://github.com/google/gumbo-parser.git
+
+# ---- build gumbo ----
+WORKDIR /src/gumbo-parser
+RUN ./autogen.sh && ./configure && make && make check && make install && ldconfig
+
+# ---- verify gumbo installed system-wide ----
+WORKDIR /src/test
+RUN echo '#include <gumbo.h>' > test.c \
+ && echo 'int main() { return 0; }' >> test.c \
+ && gcc test.c -lgumbo -o test \
+ && ./test \
+ && echo "✅ Gumbo installation verified!"

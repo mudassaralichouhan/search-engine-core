@@ -48,6 +48,16 @@ RUN mkdir -p /usr/local/include/uwebsockets && \
     cp -r uSockets/src/* /usr/local/include/usockets/ && \
     ln -s /usr/local/include/usockets/libusockets.h /usr/local/include/libusockets.h
 
+# Install Gumbo Parser
+RUN apt-get install -y gumbo-parser
+
+# WORKDIR /src
+# RUN git clone --depth 1 https://github.com/google/gumbo-parser.git
+
+# # ---- build gumbo ----
+# WORKDIR /src/gumbo-parser
+# RUN ./autogen.sh && ./configure && make && make check && make install && ldconfig
+
 # Set up project build
 WORKDIR /app
 COPY src/ /app/src/
