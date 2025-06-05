@@ -1,0 +1,63 @@
+{
+  "mongodb": {
+    "connection_string": "mongodb://localhost:27017",
+    "database_name": "test-search-engine",
+    "test_timeout_seconds": 30,
+    "cleanup_after_tests": true,
+    "create_indexes": true
+  },
+  "redis": {
+    "connection_string": "tcp://127.0.0.1:6379",
+    "index_name": "test_search_index",
+    "key_prefix": "test_doc:",
+    "test_timeout_seconds": 30,
+    "cleanup_after_tests": true,
+    "max_memory": "256mb"
+  },
+  "content_storage": {
+    "test_timeout_seconds": 60,
+    "batch_size": 10,
+    "enable_search_tests": true,
+    "enable_batch_tests": true,
+    "stress_test_iterations": 100
+  },
+  "test_execution": {
+    "parallel_tests": true,
+    "stop_on_first_failure": false,
+    "verbose_output": false,
+    "generate_coverage": false,
+    "output_format": "detailed",
+    "log_level": "INFO"
+  },
+  "environment": {
+    "required_services": {
+      "mongodb": {
+        "port": 27017,
+        "optional": false,
+        "startup_command": "net start mongodb"
+      },
+      "redis": {
+        "port": 6379,
+        "optional": true,
+        "startup_command": "redis-server"
+      }
+    },
+    "skip_service_check": false,
+    "wait_for_services": true,
+    "service_check_timeout_seconds": 10
+  },
+  "reporting": {
+    "generate_xml_report": true,
+    "generate_html_report": false,
+    "save_logs": true,
+    "log_directory": "test_logs",
+    "timestamp_logs": true
+  },
+  "build_settings": {
+    "configuration": "Debug",
+    "platform": "x64",
+    "parallel_build": true,
+    "rebuild_on_clean": true,
+    "vcpkg_triplet": "x64-windows"
+  }
+} 

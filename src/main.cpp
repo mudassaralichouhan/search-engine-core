@@ -87,13 +87,24 @@ char* get_body()
 // (int argc, char* argv[], char* envp[])
 
 
+// #include <filesystem>
+// #include <fstream>
+// #include <sstream>
+// #include <string>
+
 std::string loadFile(const std::string& path) {
     LOG_DEBUG("Attempting to load file: " + path);
     
-    // Check if file exists
+    // Check if file exists and user has permission to access it
+    if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path)) {
+        LOG_ERROR("Error: File does not exist or is not a regular file: " + path);
+        return "";
+    }
+    
     std::ifstream file(path);
     if (!file.is_open()) {
         LOG_ERROR("Error: Could not open file: " + path);
+
         LOG_ERROR("Current working directory: " + std::filesystem::current_path().string());
         return "";
     }

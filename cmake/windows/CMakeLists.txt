@@ -27,6 +27,11 @@ find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(libuv CONFIG REQUIRED)
+find_package(CURL CONFIG REQUIRED)
+find_package(unofficial-gumbo CONFIG REQUIRED)
+
+# Add include directory to include path for all targets
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Find uWebSockets
 find_path(UWS_INCLUDE_DIR
@@ -58,33 +63,66 @@ set(MONGOCXX_DRIVER_DIR "C:/mongo-cxx-driver")
 # Set environment paths
 set(ENV{PATH} "${MONGOCXX_DRIVER_DIR}/bin;${MONGOC_DRIVER_DIR}/bin;$ENV{PATH}")
 
-# Create imported targets for MongoDB libraries
+# Add the crawler library subdirectory
+add_subdirectory(src/crawler)
+
+# Add the storage library subdirectory
+add_subdirectory(src/storage)
+
+# Add the common library subdirectory
+add_subdirectory(src/common)
+
+# Set CMake policy to handle imported targets properly
+cmake_policy(SET CMP0111 NEW)
+
+# Create imported targets for MongoDB libraries with all configurations
 add_library(bson-1.0 STATIC IMPORTED)
 set_target_properties(bson-1.0 PROPERTIES
-    IMPORTED_LOCATION "${MONGOC_DRIVER_DIR}/lib/bson-1.0.lib"
+    IMPORTED_LOCATION_DEBUG "${MONGOC_DRIVER_DIR}/lib/bson-1.0.lib"
+    IMPORTED_LOCATION_RELEASE "${MONGOC_DRIVER_DIR}/lib/bson-1.0.lib"
+    IMPORTED_LOCATION_RELWITHDEBINFO "${MONGOC_DRIVER_DIR}/lib/bson-1.0.lib"
+    IMPORTED_LOCATION_MINSIZEREL "${MONGOC_DRIVER_DIR}/lib/bson-1.0.lib"
 )
 
 add_library(mongoc-1.0 STATIC IMPORTED)
 set_target_properties(mongoc-1.0 PROPERTIES
-    IMPORTED_LOCATION "${MONGOC_DRIVER_DIR}/lib/mongoc-1.0.lib"
+    IMPORTED_LOCATION_DEBUG "${MONGOC_DRIVER_DIR}/lib/mongoc-1.0.lib"
+    IMPORTED_LOCATION_RELEASE "${MONGOC_DRIVER_DIR}/lib/mongoc-1.0.lib"
+    IMPORTED_LOCATION_RELWITHDEBINFO "${MONGOC_DRIVER_DIR}/lib/mongoc-1.0.lib"
+    IMPORTED_LOCATION_MINSIZEREL "${MONGOC_DRIVER_DIR}/lib/mongoc-1.0.lib"
 )
 
 add_library(bsoncxx STATIC IMPORTED)
 set_target_properties(bsoncxx PROPERTIES
-    IMPORTED_LOCATION "${MONGOCXX_DRIVER_DIR}/lib/bsoncxx-v_noabi-rhi-x64-v143-md.lib"
+    IMPORTED_LOCATION_DEBUG "${MONGOCXX_DRIVER_DIR}/lib/bsoncxx-v_noabi-rhi-x64-v143-md.lib"
+    IMPORTED_LOCATION_RELEASE "${MONGOCXX_DRIVER_DIR}/lib/bsoncxx-v_noabi-rhi-x64-v143-md.lib"
+    IMPORTED_LOCATION_RELWITHDEBINFO "${MONGOCXX_DRIVER_DIR}/lib/bsoncxx-v_noabi-rhi-x64-v143-md.lib"
+    IMPORTED_LOCATION_MINSIZEREL "${MONGOCXX_DRIVER_DIR}/lib/bsoncxx-v_noabi-rhi-x64-v143-md.lib"
 )
 
 add_library(mongocxx STATIC IMPORTED)
 set_target_properties(mongocxx PROPERTIES
-    IMPORTED_LOCATION "${MONGOCXX_DRIVER_DIR}/lib/mongocxx-v_noabi-rhi-x64-v143-md.lib"
+    IMPORTED_LOCATION_DEBUG "${MONGOCXX_DRIVER_DIR}/lib/mongocxx-v_noabi-rhi-x64-v143-md.lib"
+    IMPORTED_LOCATION_RELEASE "${MONGOCXX_DRIVER_DIR}/lib/mongocxx-v_noabi-rhi-x64-v143-md.lib"
+    IMPORTED_LOCATION_RELWITHDEBINFO "${MONGOCXX_DRIVER_DIR}/lib/mongocxx-v_noabi-rhi-x64-v143-md.lib"
+    IMPORTED_LOCATION_MINSIZEREL "${MONGOCXX_DRIVER_DIR}/lib/mongocxx-v_noabi-rhi-x64-v143-md.lib"
 )
 
-# Add source files
-file(GLOB_RECURSE SOURCES "src/*.cpp")
+# Add source files for the main executable (excluding crawler and storage sources)
+file(GLOB_RECURSE MAIN_SOURCES "src/*.cpp" "src/main.cpp")
+
+# Add Logger implementation
+list(APPEND MAIN_SOURCES "src/common/Logger.cpp")
+
+# Remove crawler sources, storage sources, and test sources from MAIN_SOURCES
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*crawler/.*\\.cpp$")
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*storage/.*\\.cpp$")
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*test.*\\.cpp$")
+
 file(GLOB_RECURSE HEADERS "include/*.h" "include/*.hpp")
 
 # Add executable
-add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
+add_executable(${PROJECT_NAME} ${MAIN_SOURCES} ${HEADERS})
 
 # Set include directories
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -95,6 +133,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${MONGOC_DRIVER_DIR}/include/libbson-1.0
     ${MONGOC_DRIVER_DIR}/include/libmongoc-1.0
     ${UWS_INCLUDE_DIR}
+    ${CURL_INCLUDE_DIRS}
 )
 
 # Link directories
@@ -107,12 +146,15 @@ target_link_directories(${PROJECT_NAME} PRIVATE
 
 # Link libraries - Note the order is important here
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    $<IF:$<TARGET_EXISTS:libuv::uv_a>,libuv::uv_a,libuv::uv>  # libuv must come before uWebSockets
-    ${UWS_LIBRARY}    # uWebSockets depends on libuv
+    crawler 
+    storage    # Add storage library
+    $<IF:$<TARGET_EXISTS:libuv::uv_a>,libuv::uv_a,libuv::uv>  
+    ${UWS_LIBRARY}    
     OpenSSL::SSL
     OpenSSL::Crypto
     ZLIB::ZLIB
     nlohmann_json::nlohmann_json
+    CURL::libcurl
     bson-1.0
     mongoc-1.0
     bsoncxx
@@ -156,5 +198,7 @@ install(TARGETS ${PROJECT_NAME}
 option(BUILD_TESTS "Build tests" OFF)
 if(BUILD_TESTS)
     enable_testing()
+    # Ensure src/crawler (which defines the 'crawler' target) is added before tests
+    # add_subdirectory(src/crawler) # This is now added earlier
     add_subdirectory(tests)
 endif()
