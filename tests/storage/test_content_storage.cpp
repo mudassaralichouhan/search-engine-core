@@ -29,16 +29,16 @@ namespace {
 
 TEST_CASE("Content Storage - Initialization and Connection", "[content][storage]") {
     SECTION("Constructor with default parameters") {
-        REQUIRE_NOTHROW(ContentStorage storage);
+        REQUIRE_NOTHROW(ContentStorage{});
     }
     
     SECTION("Constructor with custom parameters") {
-        REQUIRE_NOTHROW(ContentStorage storage(
+        REQUIRE_NOTHROW(ContentStorage{
             "mongodb://localhost:27017",
             "test-search-engine",
             "tcp://127.0.0.1:6379",
             "test_content_index"
-        ));
+        });
     }
     
     SECTION("Test connections") {
@@ -50,11 +50,11 @@ TEST_CASE("Content Storage - Initialization and Connection", "[content][storage]
         );
         
         auto result = storage.testConnections();
-        if (result.isSuccess()) {
-            REQUIRE(result.getValue() == true);
-            REQUIRE(result.getMessage() == "All connections are healthy");
+        if (result.success) {
+            REQUIRE(result.value == true);
+            REQUIRE(result.message == "All connections are healthy");
         } else {
-            WARN("Storage connections not available: " + result.getErrorMessage());
+            WARN("Storage connections not available: " + result.message);
             return;
         }
     }
@@ -70,7 +70,7 @@ TEST_CASE("Content Storage - Crawl Result Processing", "[content][storage][crawl
     
     // Skip tests if connections are not available
     auto connectionTest = storage.testConnections();
-    if (!connectionTest.isSuccess()) {
+    if (!connectionTest.success) {
         WARN("Skipping content storage tests - connections not available");
         return;
     }
@@ -80,16 +80,16 @@ TEST_CASE("Content Storage - Crawl Result Processing", "[content][storage][crawl
         
         // Store the crawl result
         auto storeResult = storage.storeCrawlResult(testResult);
-        REQUIRE(storeResult.isSuccess());
-        REQUIRE(!storeResult.getValue().empty());
+        REQUIRE(storeResult.success);
+        REQUIRE(!storeResult.value.empty());
         
-        std::string profileId = storeResult.getValue();
+        std::string profileId = storeResult.value;
         
         // Retrieve the site profile
         auto profileResult = storage.getSiteProfile("https://test-content.com");
-        REQUIRE(profileResult.isSuccess());
+        REQUIRE(profileResult.success);
         
-        SiteProfile profile = profileResult.getValue();
+        SiteProfile profile = profileResult.value;
         REQUIRE(profile.url == testResult.url);
         REQUIRE(profile.title == testResult.title.value_or(""));
         REQUIRE(profile.description == testResult.metaDescription);
@@ -101,9 +101,9 @@ TEST_CASE("Content Storage - Crawl Result Processing", "[content][storage][crawl
         // Test search functionality
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
         auto searchResult = storage.searchSimple("test content", 10);
-        REQUIRE(searchResult.isSuccess());
+        REQUIRE(searchResult.success);
         
-        auto response = searchResult.getValue();
+        auto response = searchResult.value;
         bool found = false;
         for (const auto& result : response.results) {
             if (result.url == "https://test-content.com") {
@@ -122,7 +122,7 @@ TEST_CASE("Content Storage - Crawl Result Processing", "[content][storage][crawl
         
         // Store initial result
         auto storeResult = storage.storeCrawlResult(initialResult);
-        REQUIRE(storeResult.isSuccess());
+        REQUIRE(storeResult.success);
         
         // Create updated result
         CrawlResult updatedResult = initialResult;
@@ -132,13 +132,13 @@ TEST_CASE("Content Storage - Crawl Result Processing", "[content][storage][crawl
         
         // Update the result
         auto updateResult = storage.updateCrawlResult(updatedResult);
-        REQUIRE(updateResult.isSuccess());
+        REQUIRE(updateResult.success);
         
         // Verify the update
         auto profileResult = storage.getSiteProfile("https://test-update-content.com");
-        REQUIRE(profileResult.isSuccess());
+        REQUIRE(profileResult.success);
         
-        SiteProfile profile = profileResult.getValue();
+        SiteProfile profile = profileResult.value;
         REQUIRE(profile.title == "Updated Test Page");
         REQUIRE(profile.crawlMetadata.crawlCount == 2); // Should be incremented
         
@@ -156,13 +156,13 @@ TEST_CASE("Content Storage - Crawl Result Processing", "[content][storage][crawl
         
         // Store the failed result
         auto storeResult = storage.storeCrawlResult(failedResult);
-        REQUIRE(storeResult.isSuccess());
+        REQUIRE(storeResult.success);
         
         // Verify the profile
         auto profileResult = storage.getSiteProfile("https://test-failed.com");
-        REQUIRE(profileResult.isSuccess());
+        REQUIRE(profileResult.success);
         
-        SiteProfile profile = profileResult.getValue();
+        SiteProfile profile = profileResult.value;
         REQUIRE(profile.crawlMetadata.lastCrawlStatus == CrawlStatus::FAILED);
         REQUIRE(profile.crawlMetadata.lastErrorMessage == "Page not found");
         REQUIRE(profile.crawlMetadata.httpStatusCode == 404);
@@ -183,7 +183,7 @@ TEST_CASE("Content Storage - Batch Operations", "[content][storage][batch]") {
     
     // Skip tests if connections are not available
     auto connectionTest = storage.testConnections();
-    if (!connectionTest.isSuccess()) {
+    if (!connectionTest.success) {
         WARN("Skipping content storage tests - connections not available");
         return;
     }
@@ -199,25 +199,25 @@ TEST_CASE("Content Storage - Batch Operations", "[content][storage][batch]") {
         
         // Store all results
         auto batchResult = storage.storeCrawlResults(crawlResults);
-        REQUIRE(batchResult.isSuccess());
+        REQUIRE(batchResult.success);
         
-        auto ids = batchResult.getValue();
+        auto ids = batchResult.value;
         REQUIRE(ids.size() == 3);
         
         // Verify all were stored
         for (int i = 0; i < 3; ++i) {
             auto profileResult = storage.getSiteProfile("https://batch" + std::to_string(i) + ".com");
-            REQUIRE(profileResult.isSuccess());
+            REQUIRE(profileResult.success);
             
-            SiteProfile profile = profileResult.getValue();
+            SiteProfile profile = profileResult.value;
             REQUIRE(profile.title == "Batch Test Page " + std::to_string(i));
         }
         
         // Test search across all documents
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
         auto searchResult = storage.searchSimple("batch test", 10);
-        REQUIRE(searchResult.isSuccess());
-        REQUIRE(searchResult.getValue().results.size() >= 3);
+        REQUIRE(searchResult.success);
+        REQUIRE(searchResult.value.results.size() >= 3);
         
         // Clean up
         for (int i = 0; i < 3; ++i) {
@@ -236,7 +236,7 @@ TEST_CASE("Content Storage - Domain Operations", "[content][storage][domain]") {
     
     // Skip tests if connections are not available
     auto connectionTest = storage.testConnections();
-    if (!connectionTest.isSuccess()) {
+    if (!connectionTest.success) {
         WARN("Skipping content storage tests - connections not available");
         return;
     }
@@ -253,22 +253,22 @@ TEST_CASE("Content Storage - Domain Operations", "[content][storage][domain]") {
         // Store all results
         for (const auto& result : domainResults) {
             auto storeResult = storage.storeCrawlResult(result);
-            REQUIRE(storeResult.isSuccess());
+            REQUIRE(storeResult.success);
         }
         
         // Get profiles by domain
         auto domainProfilesResult = storage.getSiteProfilesByDomain("testdomain.com");
-        REQUIRE(domainProfilesResult.isSuccess());
-        REQUIRE(domainProfilesResult.getValue().size() >= 3);
+        REQUIRE(domainProfilesResult.success);
+        REQUIRE(domainProfilesResult.value.size() >= 3);
         
         // Clean up domain data
         auto deleteResult = storage.deleteDomainData("testdomain.com");
-        REQUIRE(deleteResult.isSuccess());
+        REQUIRE(deleteResult.success);
         
         // Verify deletion
         auto verifyResult = storage.getSiteProfilesByDomain("testdomain.com");
-        REQUIRE(verifyResult.isSuccess());
-        REQUIRE(verifyResult.getValue().empty());
+        REQUIRE(verifyResult.success);
+        REQUIRE(verifyResult.value.empty());
     }
 }
 
@@ -282,7 +282,7 @@ TEST_CASE("Content Storage - Search Operations", "[content][storage][search]") {
     
     // Skip tests if connections are not available
     auto connectionTest = storage.testConnections();
-    if (!connectionTest.isSuccess()) {
+    if (!connectionTest.success) {
         WARN("Skipping content storage tests - connections not available");
         return;
     }
@@ -306,8 +306,8 @@ TEST_CASE("Content Storage - Search Operations", "[content][storage][search]") {
         
         // Test simple search
         auto simpleResult = storage.searchSimple("technology", 10);
-        REQUIRE(simpleResult.isSuccess());
-        REQUIRE(simpleResult.getValue().results.size() >= 1);
+        REQUIRE(simpleResult.success);
+        REQUIRE(simpleResult.value.results.size() >= 1);
         
         // Test advanced search with query object
         SearchQuery query;
@@ -316,8 +316,8 @@ TEST_CASE("Content Storage - Search Operations", "[content][storage][search]") {
         query.highlight = true;
         
         auto advancedResult = storage.search(query);
-        REQUIRE(advancedResult.isSuccess());
-        REQUIRE(advancedResult.getValue().results.size() >= 1);
+        REQUIRE(advancedResult.success);
+        REQUIRE(advancedResult.value.results.size() >= 1);
         
         // Clean up
         storage.deleteSiteData("https://tech-search.com");
@@ -355,16 +355,16 @@ TEST_CASE("Content Storage - Statistics and Monitoring", "[content][storage][sta
     
     // Skip tests if connections are not available
     auto connectionTest = storage.testConnections();
-    if (!connectionTest.isSuccess()) {
+    if (!connectionTest.success) {
         WARN("Skipping content storage tests - connections not available");
         return;
     }
     
     SECTION("Get storage statistics") {
         auto statsResult = storage.getStorageStats();
-        REQUIRE(statsResult.isSuccess());
+        REQUIRE(statsResult.success);
         
-        auto stats = statsResult.getValue();
+        auto stats = statsResult.value;
         REQUIRE(!stats.empty());
         
         // Should have MongoDB stats
@@ -376,17 +376,17 @@ TEST_CASE("Content Storage - Statistics and Monitoring", "[content][storage][sta
     
     SECTION("Get total site count") {
         auto initialCount = storage.getTotalSiteCount();
-        REQUIRE(initialCount.isSuccess());
+        REQUIRE(initialCount.success);
         
         // Add a test site
         CrawlResult testResult = createTestCrawlResult("https://count-test.com");
         auto storeResult = storage.storeCrawlResult(testResult);
-        REQUIRE(storeResult.isSuccess());
+        REQUIRE(storeResult.success);
         
         // Check count increased
         auto newCount = storage.getTotalSiteCount();
-        REQUIRE(newCount.isSuccess());
-        REQUIRE(newCount.getValue() == initialCount.getValue() + 1);
+        REQUIRE(newCount.success);
+        REQUIRE(newCount.value == initialCount.value + 1);
         
         // Clean up
         storage.deleteSiteData("https://count-test.com");
@@ -407,10 +407,10 @@ TEST_CASE("Content Storage - Statistics and Monitoring", "[content][storage][sta
         auto successProfiles = storage.getSiteProfilesByCrawlStatus(CrawlStatus::SUCCESS);
         auto failedProfiles = storage.getSiteProfilesByCrawlStatus(CrawlStatus::FAILED);
         
-        REQUIRE(successProfiles.isSuccess());
-        REQUIRE(failedProfiles.isSuccess());
-        REQUIRE(successProfiles.getValue().size() >= 1);
-        REQUIRE(failedProfiles.getValue().size() >= 1);
+        REQUIRE(successProfiles.success);
+        REQUIRE(failedProfiles.success);
+        REQUIRE(successProfiles.value.size() >= 1);
+        REQUIRE(failedProfiles.value.size() >= 1);
         
         // Clean up
         storage.deleteSiteData("https://success-status.com");
@@ -428,14 +428,14 @@ TEST_CASE("Content Storage - Index Management", "[content][storage][index]") {
     
     // Skip tests if connections are not available
     auto connectionTest = storage.testConnections();
-    if (!connectionTest.isSuccess()) {
+    if (!connectionTest.success) {
         WARN("Skipping content storage tests - connections not available");
         return;
     }
     
     SECTION("Initialize indexes") {
         auto initResult = storage.initializeIndexes();
-        REQUIRE(initResult.isSuccess());
+        REQUIRE(initResult.success);
     }
     
     SECTION("Test direct storage access") {
@@ -450,11 +450,11 @@ TEST_CASE("Content Storage - Index Management", "[content][storage][index]") {
         auto mongoTest = mongoStorage->testConnection();
         auto redisTest = redisStorage->testConnection();
         
-        if (mongoTest.isSuccess()) {
-            REQUIRE(mongoTest.getValue() == true);
+        if (mongoTest.success) {
+            REQUIRE(mongoTest.value == true);
         }
-        if (redisTest.isSuccess()) {
-            REQUIRE(redisTest.getValue() == true);
+        if (redisTest.success) {
+            REQUIRE(redisTest.value == true);
         }
     }
 }
@@ -469,24 +469,24 @@ TEST_CASE("Content Storage - Error Handling", "[content][storage][errors]") {
     
     // Skip tests if connections are not available
     auto connectionTest = storage.testConnections();
-    if (!connectionTest.isSuccess()) {
+    if (!connectionTest.success) {
         WARN("Skipping content storage tests - connections not available");
         return;
     }
     
     SECTION("Delete non-existent site data") {
         auto deleteResult = storage.deleteSiteData("https://non-existent-site.com");
-        REQUIRE(!deleteResult.isSuccess());
+        REQUIRE(!deleteResult.success);
     }
     
     SECTION("Get non-existent site profile") {
         auto profileResult = storage.getSiteProfile("https://non-existent-profile.com");
-        REQUIRE(!profileResult.isSuccess());
+        REQUIRE(!profileResult.success);
     }
     
     SECTION("Get profiles for non-existent domain") {
         auto domainResult = storage.getSiteProfilesByDomain("non-existent-domain.com");
-        REQUIRE(domainResult.isSuccess());
-        REQUIRE(domainResult.getValue().empty());
+        REQUIRE(domainResult.success);
+        REQUIRE(domainResult.value.empty());
     }
 } 

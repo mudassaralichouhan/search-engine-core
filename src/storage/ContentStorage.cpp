@@ -327,7 +327,7 @@ Result<bool> ContentStorage::reindexAll() {
 }
 
 Result<bool> ContentStorage::dropIndexes() {
-    return redisStorage_->dropIndexes();
+    return redisStorage_->dropIndex();
 }
 #endif
 

@@ -306,27 +306,33 @@ Result<SearchResponse> RedisSearchStorage::search(const SearchQuery& query) {
         response.queryTime = duration.count();
         response.indexName = indexName_;
         
-        // Parse reply
-        if (reply.is_array()) {
-            auto results = reply.as_array();
-            if (!results.empty()) {
+        // Parse reply - access raw redis reply
+        if (reply && reply->type == REDIS_REPLY_ARRAY) {
+            auto replyArray = reply.get();
+            if (replyArray->elements > 0) {
                 // First element is total count
-                response.totalResults = results[0].as_integer();
+                if (replyArray->element[0]->type == REDIS_REPLY_INTEGER) {
+                    response.totalResults = replyArray->element[0]->integer;
+                }
                 
                 // Remaining elements are documents (groups of key + fields)
-                for (size_t i = 1; i < results.size(); i += 2) {
-                    if (i + 1 >= results.size()) break;
+                for (size_t i = 1; i < replyArray->elements; i += 2) {
+                    if (i + 1 >= replyArray->elements) break;
                     
                     std::vector<std::string> docData;
                     
                     // Document key
-                    docData.push_back(results[i].as_string());
+                    if (replyArray->element[i]->type == REDIS_REPLY_STRING) {
+                        docData.push_back(std::string(replyArray->element[i]->str, replyArray->element[i]->len));
+                    }
                     
                     // Document fields
-                    if (results[i + 1].is_array()) {
-                        auto fields = results[i + 1].as_array();
-                        for (const auto& field : fields) {
-                            docData.push_back(field.as_string());
+                    if (replyArray->element[i + 1]->type == REDIS_REPLY_ARRAY) {
+                        auto fieldsReply = replyArray->element[i + 1];
+                        for (size_t j = 0; j < fieldsReply->elements; ++j) {
+                            if (fieldsReply->element[j]->type == REDIS_REPLY_STRING) {
+                                docData.push_back(std::string(fieldsReply->element[j]->str, fieldsReply->element[j]->len));
+                            }
                         }
                     }
                     
@@ -367,10 +373,12 @@ Result<std::vector<std::string>> RedisSearchStorage::suggest(const std::string& 
         auto reply = redis_->command(cmd.begin(), cmd.end());
         
         std::vector<std::string> suggestions;
-        if (reply.is_array()) {
-            auto results = reply.as_array();
-            for (const auto& result : results) {
-                suggestions.push_back(result.as_string());
+        if (reply && reply->type == REDIS_REPLY_ARRAY) {
+            auto replyArray = reply.get();
+            for (size_t i = 0; i < replyArray->elements; ++i) {
+                if (replyArray->element[i]->type == REDIS_REPLY_STRING) {
+                    suggestions.push_back(std::string(replyArray->element[i]->str, replyArray->element[i]->len));
+                }
             }
         }
         
@@ -398,14 +406,17 @@ Result<int64_t> RedisSearchStorage::getDocumentCount() {
         auto reply = redis_->command("FT.INFO", indexName_);
         
         // Parse the INFO response to find document count
-        if (reply.is_array()) {
-            auto info = reply.as_array();
-            for (size_t i = 0; i < info.size() - 1; ++i) {
-                if (info[i].is_string() && info[i].as_string() == "num_docs") {
-                    return Result<int64_t>::Success(
-                        info[i + 1].as_integer(),
-                        "Document count retrieved successfully"
-                    );
+        if (reply && reply->type == REDIS_REPLY_ARRAY) {
+            auto replyArray = reply.get();
+            for (size_t i = 0; i < replyArray->elements - 1; ++i) {
+                if (replyArray->element[i]->type == REDIS_REPLY_STRING) {
+                    std::string key(replyArray->element[i]->str, replyArray->element[i]->len);
+                    if (key == "num_docs" && replyArray->element[i + 1]->type == REDIS_REPLY_INTEGER) {
+                        return Result<int64_t>::Success(
+                            replyArray->element[i + 1]->integer,
+                            "Document count retrieved successfully"
+                        );
+                    }
                 }
             }
         }
@@ -423,11 +434,14 @@ Result<std::unordered_map<std::string, std::string>> RedisSearchStorage::getInde
         
         std::unordered_map<std::string, std::string> info;
         
-        if (reply.is_array()) {
-            auto infoArray = reply.as_array();
-            for (size_t i = 0; i < infoArray.size() - 1; i += 2) {
-                if (infoArray[i].is_string() && infoArray[i + 1].is_string()) {
-                    info[infoArray[i].as_string()] = infoArray[i + 1].as_string();
+        if (reply && reply->type == REDIS_REPLY_ARRAY) {
+            auto replyArray = reply.get();
+            for (size_t i = 0; i < replyArray->elements - 1; i += 2) {
+                if (replyArray->element[i]->type == REDIS_REPLY_STRING && 
+                    replyArray->element[i + 1]->type == REDIS_REPLY_STRING) {
+                    std::string key(replyArray->element[i]->str, replyArray->element[i]->len);
+                    std::string value(replyArray->element[i + 1]->str, replyArray->element[i + 1]->len);
+                    info[key] = value;
                 }
             }
         }
@@ -455,4 +469,120 @@ Result<bool> RedisSearchStorage::testConnection() {
 
 Result<bool> RedisSearchStorage::ping() {
     return testConnection();
+}
+
+Result<std::vector<bool>> RedisSearchStorage::indexDocuments(const std::vector<SearchDocument>& documents) {
+    std::vector<bool> results;
+    
+    try {
+        for (const auto& document : documents) {
+            auto result = indexDocument(document);
+            results.push_back(result.success);
+        }
+        
+        return Result<std::vector<bool>>::Success(
+            std::move(results),
+            "Batch document indexing completed"
+        );
+        
+    } catch (const sw::redis::Error& e) {
+        return Result<std::vector<bool>>::Failure("Batch indexing failed: " + std::string(e.what()));
+    }
+}
+
+Result<bool> RedisSearchStorage::deleteDocumentsByDomain(const std::string& domain) {
+    try {
+        // Use FT.SEARCH to find all documents for this domain
+        std::vector<std::string> searchCmd = {
+            "FT.SEARCH", indexName_, "@domain:" + escapeRedisString(domain), "RETURN", "1", "url"
+        };
+        
+        auto reply = redis_->command(searchCmd.begin(), searchCmd.end());
+        
+        std::vector<std::string> urlsToDelete;
+        
+        if (reply && reply->type == REDIS_REPLY_ARRAY) {
+            auto replyArray = reply.get();
+            if (replyArray->elements > 0) {
+                // Skip the count (first element) and iterate through document results
+                for (size_t i = 1; i < replyArray->elements; i += 2) {
+                    if (i + 1 >= replyArray->elements) break;
+                    
+                    // Check if the next element contains fields
+                    if (replyArray->element[i + 1]->type == REDIS_REPLY_ARRAY) {
+                        auto fieldsReply = replyArray->element[i + 1];
+                        for (size_t j = 0; j < fieldsReply->elements - 1; j += 2) {
+                            if (fieldsReply->element[j]->type == REDIS_REPLY_STRING &&
+                                fieldsReply->element[j + 1]->type == REDIS_REPLY_STRING) {
+                                std::string field(fieldsReply->element[j]->str, fieldsReply->element[j]->len);
+                                std::string value(fieldsReply->element[j + 1]->str, fieldsReply->element[j + 1]->len);
+                                
+                                if (field == "url") {
+                                    urlsToDelete.push_back(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Delete each document found
+        int deletedCount = 0;
+        for (const auto& url : urlsToDelete) {
+            auto deleteResult = deleteDocument(url);
+            if (deleteResult.success) {
+                deletedCount++;
+            }
+        }
+        
+        return Result<bool>::Success(
+            true,
+            "Deleted " + std::to_string(deletedCount) + " documents for domain: " + domain
+        );
+        
+    } catch (const sw::redis::Error& e) {
+        return Result<bool>::Failure("Failed to delete documents by domain: " + std::string(e.what()));
+    }
+}
+
+Result<bool> RedisSearchStorage::reindexAll() {
+    try {
+        // Get all document keys
+        std::vector<std::string> searchCmd = {
+            "FT.SEARCH", indexName_, "*", "RETURN", "0"
+        };
+        
+        auto reply = redis_->command(searchCmd.begin(), searchCmd.end());
+        
+        if (reply && reply->type == REDIS_REPLY_ARRAY) {
+            auto replyArray = reply.get();
+            if (replyArray->elements > 0 && replyArray->element[0]->type == REDIS_REPLY_INTEGER) {
+                int64_t totalDocs = replyArray->element[0]->integer;
+                
+                if (totalDocs > 0) {
+                    // Drop and recreate the index
+                    auto dropResult = dropIndex();
+                    if (!dropResult.success) {
+                        return Result<bool>::Failure("Failed to drop index for reindexing: " + dropResult.message);
+                    }
+                    
+                    auto initResult = initializeIndex();
+                    if (!initResult.success) {
+                        return Result<bool>::Failure("Failed to recreate index for reindexing: " + initResult.message);
+                    }
+                    
+                    return Result<bool>::Success(
+                        true,
+                        "Reindexing completed. Index recreated for " + std::to_string(totalDocs) + " documents."
+                    );
+                }
+            }
+        }
+        
+        return Result<bool>::Success(true, "No documents found to reindex");
+        
+    } catch (const sw::redis::Error& e) {
+        return Result<bool>::Failure("Reindexing failed: " + std::string(e.what()));
+    }
 } 

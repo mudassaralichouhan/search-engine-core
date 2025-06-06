@@ -64,6 +64,17 @@ RUN apt-get update && \
 WORKDIR /usr/src/gtest
 RUN cmake . && make
 
+# Install Catch2 v3 for testing
+WORKDIR /deps
+RUN git clone --depth 1 --branch v3.4.0 https://github.com/catchorg/Catch2.git
+WORKDIR /deps/Catch2
+RUN mkdir build && \
+    cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig
+
 # Install Gumbo Parser
 WORKDIR /src
 RUN git clone --depth 1 https://github.com/google/gumbo-parser.git
@@ -72,11 +83,42 @@ RUN git clone --depth 1 https://github.com/google/gumbo-parser.git
 WORKDIR /src/gumbo-parser
 RUN ./autogen.sh && ./configure && make && make check && make install && ldconfig
 
+# Install hiredis (required for redis-plus-plus) - using CMAKE to generate config files
+WORKDIR /deps
+RUN git clone https://github.com/redis/hiredis.git
+WORKDIR /deps/hiredis
+RUN mkdir build && \
+    cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_SSL=ON && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig
+
+# Install redis-plus-plus
+WORKDIR /deps
+RUN git clone https://github.com/sewenew/redis-plus-plus.git
+WORKDIR /deps/redis-plus-plus
+RUN mkdir build
+WORKDIR /deps/redis-plus-plus/build
+RUN cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DCMAKE_PREFIX_PATH=/usr/local \
+        -DCMAKE_CXX_STANDARD=20 \
+        -DREDIS_PLUS_PLUS_CXX_STANDARD=20 \
+        -DREDIS_PLUS_PLUS_BUILD_TEST=OFF \
+        -DREDIS_PLUS_PLUS_BUILD_STATIC=ON \
+        -DREDIS_PLUS_PLUS_BUILD_SHARED=ON && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig
+
 # Set up project build
 WORKDIR /app
 COPY src/ /app/src/
 COPY public/ /app/public/
-COPY /cmake/linux/CMakeLists.txt /app/
+COPY tests/ /app/tests/
+COPY /CMakeLists.txt /app/
 COPY include/ /app/include/
 
 # Copy uWebSockets to the project
@@ -88,8 +130,23 @@ RUN apt install -y libcurl4-openssl-dev
 RUN rm -rf build && \
     mkdir build && \
     cd build && \
-    cmake -DCMAKE_PREFIX_PATH="/usr/local/lib/cmake/mongocxx-4.0.0;/usr/local/lib/cmake/bsoncxx-4.0.0" .. && \
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DCMAKE_CXX_STANDARD=20 \
+        -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+        -DCMAKE_CXX_EXTENSIONS=OFF \
+        -DPkgConfig_DIR=/usr/share/pkgconfig \
+        -DCMAKE_PREFIX_PATH="/usr/local/lib/cmake/mongocxx-4.0.0;/usr/local/lib/cmake/bsoncxx-4.0.0" \
+        -DBUILD_TESTS=ON && \
     make -j$(nproc)
+
+# Run tests after build - crawler tests first, then all tests
+RUN cd build && \
+    echo "Running crawler tests first..." && \
+    (ctest --test-dir . -R crawler --verbose || true) && \
+    echo "Running all tests..." && \
+    (ctest --test-dir . --verbose || true) && \
+    echo "Test execution completed"
 
 # Copy the startup script
 COPY start.sh /app/start.sh
@@ -120,6 +177,15 @@ COPY --from=builder /app/build/server ./server
 COPY --from=builder /usr/local/lib/libgumbo.so* /usr/local/lib/
 COPY --from=builder /usr/local/include/gumbo.h /usr/local/include/
 COPY --from=builder /usr/local/include/tag_enum.h /usr/local/include/
+
+# Copy hiredis library files from builder stage
+COPY --from=builder /usr/local/lib/libhiredis.so* /usr/local/lib/
+COPY --from=builder /usr/local/include/hiredis/ /usr/local/include/hiredis/
+
+# Copy redis-plus-plus library files from builder stage
+COPY --from=builder /usr/local/lib/libredis++.so* /usr/local/lib/
+COPY --from=builder /usr/local/lib/libredis++.a /usr/local/lib/
+COPY --from=builder /usr/local/include/sw/ /usr/local/include/sw/
 
 # Update library cache
 RUN ldconfig

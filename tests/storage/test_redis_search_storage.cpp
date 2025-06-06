@@ -58,23 +58,23 @@ namespace {
 
 TEST_CASE("RedisSearch Storage - Connection and Initialization", "[redis][storage]") {
     SECTION("Constructor with default parameters") {
-        REQUIRE_NOTHROW(RedisSearchStorage storage);
+        REQUIRE_NOTHROW(RedisSearchStorage{});
     }
     
     SECTION("Constructor with custom parameters") {
-        REQUIRE_NOTHROW(RedisSearchStorage storage("tcp://127.0.0.1:6379", "test_index", "test:"));
+        REQUIRE_NOTHROW(RedisSearchStorage{"tcp://127.0.0.1:6379", "test_index", "test:"});
     }
     
     SECTION("Test connection") {
         RedisSearchStorage storage("tcp://127.0.0.1:6379", "test_index");
         auto result = storage.testConnection();
         
-        if (result.isSuccess()) {
-            REQUIRE(result.getValue() == true);
-            REQUIRE(result.getMessage() == "Redis connection is healthy");
+        if (result.success) {
+            REQUIRE(result.value == true);
+            REQUIRE(result.message == "Redis connection is healthy");
         } else {
             // If Redis is not available, skip the rest of the tests
-            WARN("Redis not available: " + result.getErrorMessage());
+            WARN("Redis not available: " + result.message);
             return;
         }
     }
@@ -83,7 +83,7 @@ TEST_CASE("RedisSearch Storage - Connection and Initialization", "[redis][storag
         RedisSearchStorage storage("tcp://127.0.0.1:6379", "test_init_index");
         auto connectionTest = storage.testConnection();
         
-        if (!connectionTest.isSuccess()) {
+        if (!connectionTest.success) {
             WARN("Skipping Redis tests - Redis not available");
             return;
         }
@@ -92,7 +92,7 @@ TEST_CASE("RedisSearch Storage - Connection and Initialization", "[redis][storag
         storage.dropIndex();
         
         auto result = storage.initializeIndex();
-        REQUIRE(result.isSuccess());
+        REQUIRE(result.success);
         
         // Clean up
         storage.dropIndex();
@@ -104,7 +104,7 @@ TEST_CASE("RedisSearch Storage - Document Indexing and Retrieval", "[redis][stor
     
     // Skip tests if Redis is not available
     auto connectionTest = storage.testConnection();
-    if (!connectionTest.isSuccess()) {
+    if (!connectionTest.success) {
         WARN("Skipping Redis tests - Redis not available");
         return;
     }
@@ -112,7 +112,7 @@ TEST_CASE("RedisSearch Storage - Document Indexing and Retrieval", "[redis][stor
     // Initialize clean index
     storage.dropIndex();
     auto initResult = storage.initializeIndex();
-    REQUIRE(initResult.isSuccess());
+    REQUIRE(initResult.success);
     
     SECTION("Index and search single document") {
         SearchDocument testDoc = createTestSearchDocument("https://test-doc.com");
@@ -121,16 +121,16 @@ TEST_CASE("RedisSearch Storage - Document Indexing and Retrieval", "[redis][stor
         
         // Index the document
         auto indexResult = storage.indexDocument(testDoc);
-        REQUIRE(indexResult.isSuccess());
+        REQUIRE(indexResult.success);
         
         // Give Redis a moment to process
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         
         // Search for the document
         auto searchResult = storage.searchSimple("unique test", 10);
-        REQUIRE(searchResult.isSuccess());
+        REQUIRE(searchResult.success);
         
-        auto response = searchResult.getValue();
+        auto response = searchResult.value;
         REQUIRE(response.results.size() >= 1);
         
         // Verify the result
@@ -158,16 +158,16 @@ TEST_CASE("RedisSearch Storage - Document Indexing and Retrieval", "[redis][stor
         
         // Index the site profile
         auto indexResult = storage.indexSiteProfile(testProfile, content);
-        REQUIRE(indexResult.isSuccess());
+        REQUIRE(indexResult.success);
         
         // Give Redis a moment to process
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         
         // Search for the profile
         auto searchResult = storage.searchSimple("profile test", 10);
-        REQUIRE(searchResult.isSuccess());
+        REQUIRE(searchResult.success);
         
-        auto response = searchResult.getValue();
+        auto response = searchResult.value;
         REQUIRE(response.results.size() >= 1);
         
         // Clean up
@@ -180,23 +180,23 @@ TEST_CASE("RedisSearch Storage - Document Indexing and Retrieval", "[redis][stor
         
         // Index original document
         auto indexResult = storage.indexDocument(testDoc);
-        REQUIRE(indexResult.isSuccess());
+        REQUIRE(indexResult.success);
         
         // Update the document
         testDoc.title = "Updated Title";
         testDoc.content = "Updated content for testing document updates.";
         
         auto updateResult = storage.updateDocument(testDoc);
-        REQUIRE(updateResult.isSuccess());
+        REQUIRE(updateResult.success);
         
         // Give Redis a moment to process
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         
         // Search for the updated document
         auto searchResult = storage.searchSimple("updated", 10);
-        REQUIRE(searchResult.isSuccess());
+        REQUIRE(searchResult.success);
         
-        auto response = searchResult.getValue();
+        auto response = searchResult.value;
         REQUIRE(response.results.size() >= 1);
         
         // Clean up
@@ -209,28 +209,28 @@ TEST_CASE("RedisSearch Storage - Document Indexing and Retrieval", "[redis][stor
         
         // Index the document
         auto indexResult = storage.indexDocument(testDoc);
-        REQUIRE(indexResult.isSuccess());
+        REQUIRE(indexResult.success);
         
         // Give Redis a moment to process
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         
         // Verify it's searchable
         auto searchResult = storage.searchSimple("delete", 10);
-        REQUIRE(searchResult.isSuccess());
-        REQUIRE(searchResult.getValue().results.size() >= 1);
+        REQUIRE(searchResult.success);
+        REQUIRE(searchResult.value.results.size() >= 1);
         
         // Delete the document
         auto deleteResult = storage.deleteDocument("https://delete-test.com");
-        REQUIRE(deleteResult.isSuccess());
+        REQUIRE(deleteResult.success);
         
         // Give Redis a moment to process
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         
         // Verify it's no longer searchable
         auto searchAfterDelete = storage.searchSimple("delete document", 10);
-        if (searchAfterDelete.isSuccess()) {
+        if (searchAfterDelete.success) {
             bool found = false;
-            for (const auto& result : searchAfterDelete.getValue().results) {
+            for (const auto& result : searchAfterDelete.value.results) {
                 if (result.url == "https://delete-test.com") {
                     found = true;
                     break;
@@ -249,7 +249,7 @@ TEST_CASE("RedisSearch Storage - Advanced Search Features", "[redis][storage][se
     
     // Skip tests if Redis is not available
     auto connectionTest = storage.testConnection();
-    if (!connectionTest.isSuccess()) {
+    if (!connectionTest.success) {
         WARN("Skipping Redis tests - Redis not available");
         return;
     }
@@ -257,7 +257,7 @@ TEST_CASE("RedisSearch Storage - Advanced Search Features", "[redis][storage][se
     // Initialize clean index
     storage.dropIndex();
     auto initResult = storage.initializeIndex();
-    REQUIRE(initResult.isSuccess());
+    REQUIRE(initResult.success);
     
     // Index multiple test documents
     std::vector<SearchDocument> testDocs = {
@@ -284,7 +284,7 @@ TEST_CASE("RedisSearch Storage - Advanced Search Features", "[redis][storage][se
     // Index all documents
     for (const auto& doc : testDocs) {
         auto result = storage.indexDocument(doc);
-        REQUIRE(result.isSuccess());
+        REQUIRE(result.success);
     }
     
     // Give Redis a moment to process
@@ -297,9 +297,9 @@ TEST_CASE("RedisSearch Storage - Advanced Search Features", "[redis][storage][se
         query.category = "technology";
         
         auto searchResult = storage.search(query);
-        REQUIRE(searchResult.isSuccess());
+        REQUIRE(searchResult.success);
         
-        auto response = searchResult.getValue();
+        auto response = searchResult.value;
         // Should find technology news
         REQUIRE(response.results.size() >= 1);
     }
@@ -311,24 +311,24 @@ TEST_CASE("RedisSearch Storage - Advanced Search Features", "[redis][storage][se
         query.highlight = true;
         
         auto searchResult = storage.search(query);
-        REQUIRE(searchResult.isSuccess());
+        REQUIRE(searchResult.success);
         
-        auto response = searchResult.getValue();
+        auto response = searchResult.value;
         REQUIRE(response.results.size() >= 1);
         REQUIRE(response.queryTime >= 0);
     }
     
     SECTION("Get document count") {
         auto countResult = storage.getDocumentCount();
-        REQUIRE(countResult.isSuccess());
-        REQUIRE(countResult.getValue() >= 3);
+        REQUIRE(countResult.success);
+        REQUIRE(countResult.value >= 3);
     }
     
     SECTION("Get index info") {
         auto infoResult = storage.getIndexInfo();
-        REQUIRE(infoResult.isSuccess());
+        REQUIRE(infoResult.success);
         
-        auto info = infoResult.getValue();
+        auto info = infoResult.value;
         REQUIRE(!info.empty());
     }
     
@@ -341,7 +341,7 @@ TEST_CASE("RedisSearch Storage - Batch Operations", "[redis][storage][batch]") {
     
     // Skip tests if Redis is not available
     auto connectionTest = storage.testConnection();
-    if (!connectionTest.isSuccess()) {
+    if (!connectionTest.success) {
         WARN("Skipping Redis tests - Redis not available");
         return;
     }
@@ -349,7 +349,7 @@ TEST_CASE("RedisSearch Storage - Batch Operations", "[redis][storage][batch]") {
     // Initialize clean index
     storage.dropIndex();
     auto initResult = storage.initializeIndex();
-    REQUIRE(initResult.isSuccess());
+    REQUIRE(initResult.success);
     
     SECTION("Index multiple documents") {
         std::vector<SearchDocument> testDocs;
@@ -363,9 +363,9 @@ TEST_CASE("RedisSearch Storage - Batch Operations", "[redis][storage][batch]") {
         
         // Index documents in batch
         auto batchResult = storage.indexDocuments(testDocs);
-        REQUIRE(batchResult.isSuccess());
+        REQUIRE(batchResult.success);
         
-        auto results = batchResult.getValue();
+        auto results = batchResult.value;
         REQUIRE(results.size() == 5);
         
         // Verify all succeeded
@@ -378,8 +378,8 @@ TEST_CASE("RedisSearch Storage - Batch Operations", "[redis][storage][batch]") {
         
         // Verify documents are searchable
         auto searchResult = storage.searchSimple("batch document", 10);
-        REQUIRE(searchResult.isSuccess());
-        REQUIRE(searchResult.getValue().results.size() >= 5);
+        REQUIRE(searchResult.success);
+        REQUIRE(searchResult.value.results.size() >= 5);
         
         // Clean up
         for (int i = 0; i < 5; ++i) {
@@ -396,21 +396,21 @@ TEST_CASE("RedisSearch Storage - Error Handling", "[redis][storage][errors]") {
         RedisSearchStorage storage("tcp://127.0.0.1:6379", "test_error_index");
         
         auto connectionTest = storage.testConnection();
-        if (!connectionTest.isSuccess()) {
+        if (!connectionTest.success) {
             WARN("Skipping Redis tests - Redis not available");
             return;
         }
         
         auto deleteResult = storage.deleteDocument("https://non-existent.com");
-        REQUIRE(!deleteResult.isSuccess());
-        REQUIRE(deleteResult.getErrorMessage().find("not found") != std::string::npos);
+        REQUIRE(!deleteResult.success);
+        REQUIRE(deleteResult.message.find("not found") != std::string::npos);
     }
     
     SECTION("Search on non-existent index") {
         RedisSearchStorage storage("tcp://127.0.0.1:6379", "non_existent_index");
         
         auto connectionTest = storage.testConnection();
-        if (!connectionTest.isSuccess()) {
+        if (!connectionTest.success) {
             WARN("Skipping Redis tests - Redis not available");
             return;
         }

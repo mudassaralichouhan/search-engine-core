@@ -48,14 +48,14 @@ target_include_directories(crawler
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CURL_INCLUDE_DIRS}
-        # unofficial-gumbo should provide its own include dirs via the target
+        ${GUMBO_INCLUDE_DIRS} # Add system Gumbo include directories
 )
 
 # Link libraries
 target_link_libraries(crawler
     PUBLIC
         ${CURL_LIBRARIES}
-        unofficial::gumbo::gumbo # Link against vcpkg's Gumbo target
+        ${GUMBO_LIBRARIES} # Link against system Gumbo found by pkg-config
         Threads::Threads
 )
 
