@@ -1,4 +1,5 @@
 #include "../../include/search_engine/storage/RedisSearchStorage.h"
+#include "../../include/Logger.h"
 #include <algorithm>
 #include <sstream>
 #include <iomanip>
@@ -45,6 +46,7 @@ RedisSearchStorage::RedisSearchStorage(
     const std::string& indexName,
     const std::string& keyPrefix
 ) : indexName_(indexName), keyPrefix_(keyPrefix) {
+    LOG_DEBUG("RedisSearchStorage constructor called with index: " + indexName);
     try {
         sw::redis::ConnectionOptions opts;
         opts.host = "127.0.0.1";
@@ -61,15 +63,22 @@ RedisSearchStorage::RedisSearchStorage(
             }
         }
         
+        LOG_INFO("Connecting to Redis at " + opts.host + ":" + std::to_string(opts.port));
         redis_ = std::make_unique<sw::redis::Redis>(opts);
         
         // Test connection and initialize index if needed
         testConnection();
+        LOG_DEBUG("Redis connection test successful");
+        
         if (!indexExists()) {
+            LOG_INFO("Search index doesn't exist, creating: " + indexName_);
             initializeIndex();
+        } else {
+            LOG_INFO("Search index already exists: " + indexName_);
         }
         
     } catch (const sw::redis::Error& e) {
+        LOG_ERROR("Failed to initialize Redis connection: " + std::string(e.what()));
         throw std::runtime_error("Failed to initialize Redis connection: " + std::string(e.what()));
     }
 }
@@ -112,7 +121,12 @@ Result<bool> RedisSearchStorage::createSearchIndex() {
         return Result<bool>::Success(true, "Search index created successfully");
         
     } catch (const sw::redis::Error& e) {
-        return Result<bool>::Failure("Failed to create search index: " + std::string(e.what()));
+        std::string errorMsg = std::string(e.what());
+        // Check if the error is because index already exists
+        if (errorMsg.find("Index already exists") != std::string::npos) {
+            return Result<bool>::Success(true, "Search index already exists");
+        }
+        return Result<bool>::Failure("Failed to create search index: " + errorMsg);
     }
 }
 
@@ -121,8 +135,10 @@ Result<bool> RedisSearchStorage::initializeIndex() {
 }
 
 Result<bool> RedisSearchStorage::indexDocument(const SearchDocument& document) {
+    LOG_DEBUG("RedisSearchStorage::indexDocument called for URL: " + document.url);
     try {
         std::string key = generateDocumentKey(document.url);
+        LOG_TRACE("Generated Redis key: " + key + " for URL: " + document.url);
         
         std::unordered_map<std::string, std::string> fields;
         fields["url"] = escapeRedisString(document.url);
@@ -155,10 +171,12 @@ Result<bool> RedisSearchStorage::indexDocument(const SearchDocument& document) {
         
         // Store the document as a Redis hash
         redis_->hmset(key, fields.begin(), fields.end());
+        LOG_INFO("Document indexed successfully: " + document.url + " (title: " + document.title + ")");
         
         return Result<bool>::Success(true, "Document indexed successfully");
         
     } catch (const sw::redis::Error& e) {
+        LOG_ERROR("Failed to index document for URL: " + document.url + " - " + std::string(e.what()));
         return Result<bool>::Failure("Failed to index document: " + std::string(e.what()));
     }
 }
@@ -403,55 +421,114 @@ Result<bool> RedisSearchStorage::dropIndex() {
 
 Result<int64_t> RedisSearchStorage::getDocumentCount() {
     try {
-        auto reply = redis_->command("FT.INFO", indexName_);
+        LOG_DEBUG("RedisSearchStorage::getDocumentCount() - Starting to get document count");
         
-        // Parse the INFO response to find document count
-        if (reply && reply->type == REDIS_REPLY_ARRAY) {
-            auto replyArray = reply.get();
-            for (size_t i = 0; i < replyArray->elements - 1; ++i) {
-                if (replyArray->element[i]->type == REDIS_REPLY_STRING) {
-                    std::string key(replyArray->element[i]->str, replyArray->element[i]->len);
-                    if (key == "num_docs" && replyArray->element[i + 1]->type == REDIS_REPLY_INTEGER) {
-                        return Result<int64_t>::Success(
-                            replyArray->element[i + 1]->integer,
-                            "Document count retrieved successfully"
-                        );
-                    }
-                }
+        // Use getIndexInfo and extract the num_docs field from it
+        LOG_DEBUG("RedisSearchStorage::getDocumentCount() - Calling getIndexInfo()");
+        auto infoResult = getIndexInfo();
+        if (!infoResult.success) {
+            LOG_DEBUG("RedisSearchStorage::getDocumentCount() - getIndexInfo failed: " + infoResult.message);
+            return Result<int64_t>::Failure("Failed to get index info: " + infoResult.message);
+        }
+        
+        LOG_DEBUG("RedisSearchStorage::getDocumentCount() - Successfully got index info");
+        auto info = infoResult.value;
+        LOG_DEBUG("RedisSearchStorage::getDocumentCount() - Looking for num_docs field");
+        auto it = info.find("num_docs");
+        if (it != info.end()) {
+            LOG_DEBUG("RedisSearchStorage::getDocumentCount() - Found num_docs field with value: " + it->second);
+            try {
+                int64_t count = std::stoll(it->second);
+                LOG_DEBUG("RedisSearchStorage::getDocumentCount() - Successfully parsed count: " + std::to_string(count));
+                return Result<int64_t>::Success(count, "Document count retrieved successfully");
+            } catch (const std::exception& e) {
+                LOG_DEBUG("RedisSearchStorage::getDocumentCount() - Failed to parse num_docs value: " + it->second);
+                return Result<int64_t>::Failure("Failed to parse num_docs value: " + it->second);
             }
         }
         
-        return Result<int64_t>::Failure("Could not parse document count from index info");
+        LOG_DEBUG("RedisSearchStorage::getDocumentCount() - num_docs field not found in index info");
+        return Result<int64_t>::Failure("num_docs field not found in index info");
         
     } catch (const sw::redis::Error& e) {
+        LOG_DEBUG("RedisSearchStorage::getDocumentCount() - Redis error: " + std::string(e.what()));
         return Result<int64_t>::Failure("Failed to get document count: " + std::string(e.what()));
     }
 }
 
 Result<std::unordered_map<std::string, std::string>> RedisSearchStorage::getIndexInfo() {
     try {
+        LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Starting to get index info");
         auto reply = redis_->command("FT.INFO", indexName_);
+        LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Command executed, checking reply");
+        
+        if (!reply) {
+            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - No reply received");
+            return Result<std::unordered_map<std::string, std::string>>::Failure("No reply from Redis");
+        }
         
         std::unordered_map<std::string, std::string> info;
+        LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Created empty info map");
         
         if (reply && reply->type == REDIS_REPLY_ARRAY) {
+            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Reply is an array");
             auto replyArray = reply.get();
-            for (size_t i = 0; i < replyArray->elements - 1; i += 2) {
-                if (replyArray->element[i]->type == REDIS_REPLY_STRING && 
-                    replyArray->element[i + 1]->type == REDIS_REPLY_STRING) {
+            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Reply array elements: " + std::to_string(replyArray->elements));
+            
+            // Process elements sequentially looking for key-value pairs
+            for (size_t i = 0; i < replyArray->elements - 1; ++i) {
+                LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Processing element " + std::to_string(i));
+                if (replyArray->element[i]->type == REDIS_REPLY_STRING) {
                     std::string key(replyArray->element[i]->str, replyArray->element[i]->len);
-                    std::string value(replyArray->element[i + 1]->str, replyArray->element[i + 1]->len);
-                    info[key] = value;
+                    LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Found key: " + key);
+                    
+                    // Check if the next element is a simple value (not array/nil)
+                    LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Checking if next element exists");
+                    if (i + 1 < replyArray->elements) {
+                        LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Next element exists, getting element");
+                        auto nextElement = replyArray->element[i + 1];
+                        LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Next element type: " + std::to_string(nextElement->type));
+                        std::string value;
+                        bool hasValue = false;
+                        
+                        LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Checking element type and converting to string");
+                        if (nextElement->type == REDIS_REPLY_STRING) {
+                            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Element is string type");
+                            value = std::string(nextElement->str, nextElement->len);
+                            hasValue = true;
+                            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Converted string value: " + value);
+                        } else if (nextElement->type == REDIS_REPLY_INTEGER) {
+                            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Element is integer type");
+                            value = std::to_string(nextElement->integer);
+                            hasValue = true;
+                            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Converted integer value: " + value);
+                        } else if (nextElement->type == REDIS_REPLY_DOUBLE) {
+                            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Element is double type");
+                            value = std::to_string(nextElement->dval);
+                            hasValue = true;
+                            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Converted double value: " + value);
+                        }
+                        
+                        LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Checking if value was successfully converted");
+                        if (hasValue) {
+                            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Adding key-value pair to info map: " + key + " = " + value);
+                            info[key] = value;
+                            ++i; // Skip the value element since we processed it
+                            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Incremented index to skip processed value");
+                        }
+                    }
                 }
             }
         }
         
+        LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Preparing to return success result");
         return Result<std::unordered_map<std::string, std::string>>::Success(
             std::move(info),
             "Index info retrieved successfully"
         );
         
     } catch (const sw::redis::Error& e) {
+        LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Caught Redis error: " + std::string(e.what()));
         return Result<std::unordered_map<std::string, std::string>>::Failure(
             "Failed to get index info: " + std::string(e.what())
         );

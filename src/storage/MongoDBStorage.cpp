@@ -1,4 +1,5 @@
 #include "../../include/search_engine/storage/MongoDBStorage.h"
+#include "../../include/Logger.h"
 #include <bsoncxx/builder/stream/document.hpp>
 #include <bsoncxx/builder/stream/array.hpp>
 #include <bsoncxx/builder/stream/helpers.hpp>
@@ -48,20 +49,27 @@ namespace {
 }
 
 MongoDBStorage::MongoDBStorage(const std::string& connectionString, const std::string& databaseName) {
+    LOG_DEBUG("MongoDBStorage constructor called with database: " + databaseName);
     try {
+        LOG_INFO("Initializing MongoDB connection to: " + connectionString);
+        
         // Ensure instance is initialized
         MongoInstance::getInstance();
+        LOG_DEBUG("MongoDB instance initialized");
         
         // Create client and connect to database
         mongocxx::uri uri{connectionString};
         client_ = std::make_unique<mongocxx::client>(uri);
         database_ = (*client_)[databaseName];
         siteProfilesCollection_ = database_["site_profiles"];
+        LOG_INFO("Connected to MongoDB database: " + databaseName);
         
         // Ensure indexes are created
         ensureIndexes();
+        LOG_DEBUG("MongoDB indexes ensured");
         
     } catch (const mongocxx::exception& e) {
+        LOG_ERROR("Failed to initialize MongoDB connection: " + std::string(e.what()));
         throw std::runtime_error("Failed to initialize MongoDB connection: " + std::string(e.what()));
     }
 }
@@ -279,37 +287,50 @@ SiteProfile MongoDBStorage::bsonToSiteProfile(const bsoncxx::document::view& doc
 }
 
 Result<std::string> MongoDBStorage::storeSiteProfile(const SiteProfile& profile) {
+    LOG_DEBUG("MongoDBStorage::storeSiteProfile called for URL: " + profile.url);
     try {
         auto doc = siteProfileToBson(profile);
+        LOG_TRACE("Site profile converted to BSON document");
+        
         auto result = siteProfilesCollection_.insert_one(doc.view());
         
         if (result) {
+            std::string id = result->inserted_id().get_oid().value.to_string();
+            LOG_INFO("Site profile stored successfully with ID: " + id + " for URL: " + profile.url);
             return Result<std::string>::Success(
-                std::string(result->inserted_id().get_oid().value.to_string()),
+                id,
                 "Site profile stored successfully"
             );
         } else {
+            LOG_ERROR("Failed to insert site profile for URL: " + profile.url);
             return Result<std::string>::Failure("Failed to insert site profile");
         }
     } catch (const mongocxx::exception& e) {
+        LOG_ERROR("MongoDB error storing site profile for URL: " + profile.url + " - " + std::string(e.what()));
         return Result<std::string>::Failure("MongoDB error: " + std::string(e.what()));
     }
 }
 
 Result<SiteProfile> MongoDBStorage::getSiteProfile(const std::string& url) {
+    LOG_DEBUG("MongoDBStorage::getSiteProfile called for URL: " + url);
     try {
         auto filter = document{} << "url" << url << finalize;
+        LOG_TRACE("MongoDB query filter created for URL: " + url);
+        
         auto result = siteProfilesCollection_.find_one(filter.view());
         
         if (result) {
+            LOG_INFO("Site profile found and retrieved for URL: " + url);
             return Result<SiteProfile>::Success(
                 bsonToSiteProfile(result->view()),
                 "Site profile retrieved successfully"
             );
         } else {
+            LOG_WARNING("Site profile not found for URL: " + url);
             return Result<SiteProfile>::Failure("Site profile not found for URL: " + url);
         }
     } catch (const mongocxx::exception& e) {
+        LOG_ERROR("MongoDB error retrieving site profile for URL: " + url + " - " + std::string(e.what()));
         return Result<SiteProfile>::Failure("MongoDB error: " + std::string(e.what()));
     }
 }
@@ -333,42 +354,55 @@ Result<SiteProfile> MongoDBStorage::getSiteProfileById(const std::string& id) {
 }
 
 Result<bool> MongoDBStorage::updateSiteProfile(const SiteProfile& profile) {
+    LOG_DEBUG("MongoDBStorage::updateSiteProfile called for URL: " + profile.url);
     try {
         if (!profile.id) {
+            LOG_ERROR("Cannot update site profile without ID for URL: " + profile.url);
             return Result<bool>::Failure("Cannot update site profile without ID");
         }
         
+        LOG_TRACE("Updating site profile with ID: " + *profile.id);
         auto filter = document{} << "_id" << bsoncxx::oid{*profile.id} << finalize;
         auto update = document{} << "$set" << siteProfileToBson(profile) << finalize;
         
         auto result = siteProfilesCollection_.update_one(filter.view(), update.view());
         
         if (result && result->modified_count() > 0) {
+            LOG_INFO("Site profile updated successfully for URL: " + profile.url + " (ID: " + *profile.id + ")");
             return Result<bool>::Success(true, "Site profile updated successfully");
         } else {
+            LOG_WARNING("Site profile not found or no changes made for URL: " + profile.url);
             return Result<bool>::Failure("Site profile not found or no changes made");
         }
     } catch (const mongocxx::exception& e) {
+        LOG_ERROR("MongoDB error updating site profile for URL: " + profile.url + " - " + std::string(e.what()));
         return Result<bool>::Failure("MongoDB error: " + std::string(e.what()));
     }
 }
 
 Result<bool> MongoDBStorage::deleteSiteProfile(const std::string& url) {
+    LOG_DEBUG("MongoDBStorage::deleteSiteProfile called for URL: " + url);
     try {
         auto filter = document{} << "url" << url << finalize;
+        LOG_TRACE("Delete filter created for URL: " + url);
+        
         auto result = siteProfilesCollection_.delete_one(filter.view());
         
         if (result && result->deleted_count() > 0) {
+            LOG_INFO("Site profile deleted successfully for URL: " + url);
             return Result<bool>::Success(true, "Site profile deleted successfully");
         } else {
+            LOG_WARNING("Site profile not found for deletion, URL: " + url);
             return Result<bool>::Failure("Site profile not found for URL: " + url);
         }
     } catch (const mongocxx::exception& e) {
+        LOG_ERROR("MongoDB error deleting site profile for URL: " + url + " - " + std::string(e.what()));
         return Result<bool>::Failure("MongoDB error: " + std::string(e.what()));
     }
 }
 
 Result<std::vector<SiteProfile>> MongoDBStorage::getSiteProfilesByDomain(const std::string& domain) {
+    LOG_DEBUG("MongoDBStorage::getSiteProfilesByDomain called for domain: " + domain);
     try {
         auto filter = document{} << "domain" << domain << finalize;
         auto cursor = siteProfilesCollection_.find(filter.view());
@@ -378,11 +412,13 @@ Result<std::vector<SiteProfile>> MongoDBStorage::getSiteProfilesByDomain(const s
             profiles.push_back(bsonToSiteProfile(doc));
         }
         
+        LOG_INFO("Retrieved " + std::to_string(profiles.size()) + " site profiles for domain: " + domain);
         return Result<std::vector<SiteProfile>>::Success(
             std::move(profiles),
             "Site profiles retrieved successfully for domain: " + domain
         );
     } catch (const mongocxx::exception& e) {
+        LOG_ERROR("MongoDB error retrieving site profiles for domain: " + domain + " - " + std::string(e.what()));
         return Result<std::vector<SiteProfile>>::Failure("MongoDB error: " + std::string(e.what()));
     }
 }
@@ -426,11 +462,14 @@ Result<int64_t> MongoDBStorage::getSiteCountByStatus(CrawlStatus status) {
 }
 
 Result<bool> MongoDBStorage::testConnection() {
+    LOG_DEBUG("MongoDBStorage::testConnection called");
     try {
         // Simple ping to test connection
         auto result = database_.run_command(document{} << "ping" << 1 << finalize);
+        LOG_INFO("MongoDB connection test successful");
         return Result<bool>::Success(true, "MongoDB connection is healthy");
     } catch (const mongocxx::exception& e) {
+        LOG_ERROR("MongoDB connection test failed: " + std::string(e.what()));
         return Result<bool>::Failure("MongoDB connection test failed: " + std::string(e.what()));
     }
 }

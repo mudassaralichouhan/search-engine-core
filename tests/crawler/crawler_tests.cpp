@@ -418,23 +418,11 @@ int main(int argc, char* argv[]) {
     LogLevel logLevel = LogLevel::INFO;
     
     // Check for LOG_LEVEL environment variable
-    // Using a cross-platform safe approach to get environment variables
     std::string levelStr;
-    #ifdef _WIN32
-        // Windows-specific secure version
-        char* buffer = nullptr;
-        size_t size = 0;
-        if (_dupenv_s(&buffer, &size, "LOG_LEVEL") == 0 && buffer != nullptr) {
-            levelStr = buffer;
-            free(buffer);
-        }
-    #else
-        // POSIX systems (Linux, macOS)
-        const char* logLevelEnv = std::getenv("LOG_LEVEL");
-        if (logLevelEnv) {
-            levelStr = logLevelEnv;
-        }
-    #endif
+    const char* logLevelEnv = std::getenv("LOG_LEVEL");
+    if (logLevelEnv) {
+        levelStr = logLevelEnv;
+    }
     
     if (!levelStr.empty()) {
         if (levelStr == "NONE") {
@@ -453,12 +441,7 @@ int main(int argc, char* argv[]) {
     }
     
     // Initialize the global logger
-    // Use a cross-platform path for the log file
-    #ifdef _WIN32
-        std::string logFilePath = "D:/Projects/hatef.ir/search-engine-core/tests/logs/crawler_test.log";
-    #else
-        std::string logFilePath = "./tests/logs/crawler_test.log";
-    #endif
+    std::string logFilePath = "./tests/logs/crawler_test.log";
     
     Logger::getInstance().init(logLevel, true, logFilePath);
     

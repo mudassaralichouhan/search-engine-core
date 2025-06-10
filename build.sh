@@ -9,6 +9,25 @@ set -x
 # Save the original directory at the very beginning
 ORIGINAL_DIR="$(pwd)"
 
+# Check for test parameter
+TEST_FILTER="$1"
+
+# Show usage if help is requested
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    echo "Usage: $0 [test_name]"
+    echo ""
+    echo "Arguments:"
+    echo "  test_name    Optional. Name or pattern of specific test to run after build"
+    echo "               If not provided, all tests will be run"
+    echo ""
+    echo "Examples:"
+    echo "  $0                    # Build and run all tests"
+    echo "  $0 crawler            # Build and run tests matching 'crawler'"
+    echo "  $0 'Basic Crawling'   # Build and run the 'Basic Crawling' test"
+    echo ""
+    exit 0
+fi
+
 # Function to check if a command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -38,32 +57,32 @@ rm -f .ninja_deps
 rm -f .ninja_log
 
 # Update package lists
-echo "Updating package lists..."
-# apt-get update
+# echo "Updating package lists..."
+# # apt-get update
 
-# Install required build tools and dependencies
-echo "Installing build tools and dependencies..."
-apt-get install -y \
-    build-essential \
-    cmake \
-    git \
-    pkg-config \
-    wget \
-    curl \
-    libssl-dev \
-    zlib1g-dev \
-    libuv1-dev \
-    nlohmann-json3-dev \
-    python3 \
-    python3-pip \
-    software-properties-common \
-    autotools-dev \
-    autoconf \
-    automake \
-    libtool-bin \
-    libgtest-dev \
-    libcurl4-openssl-dev \
-    ca-certificates
+# # Install required build tools and dependencies
+# echo "Installing build tools and dependencies..."
+# apt-get install -y \
+#     build-essential \
+#     cmake \
+#     git \
+#     pkg-config \
+#     wget \
+#     curl \
+#     libssl-dev \
+#     zlib1g-dev \
+#     libuv1-dev \
+#     nlohmann-json3-dev \
+#     python3 \
+#     python3-pip \
+#     software-properties-common \
+#     autotools-dev \
+#     autoconf \
+#     automake \
+#     libtool-bin \
+#     libgtest-dev \
+#     libcurl4-openssl-dev \
+#     ca-certificates
 
 # Check and install Catch2 if not already installed
 echo "Checking Catch2..."
@@ -317,8 +336,13 @@ if [ $? -eq 0 ]; then
     fi
     
     # Run tests if available
-    echo "Running tests..."
-    ctest --test-dir . || echo "Tests completed with some failures or no tests found"
+    if [ -n "$TEST_FILTER" ]; then
+        echo "Running specific test: $TEST_FILTER"
+        ctest --test-dir . -R "$TEST_FILTER" --verbose || echo "Test '$TEST_FILTER' completed with some failures or test not found"
+    else
+        echo "Running all tests..."
+        ctest --test-dir . || echo "Tests completed with some failures or no tests found"
+    fi
     
 else
     echo "Build failed with error code $?"
@@ -329,6 +353,12 @@ fi
 cd ..
 
 echo "Build process completed successfully!"
+echo ""
 echo "To run the application:"
 echo "  cd build"
-echo "  ./search-engine-core (or ./Debug/search-engine-core)"
+echo "  ./server"
+echo ""
+echo "To run specific tests after build:"
+echo "  ./build.sh crawler              # Run tests matching 'crawler'"
+echo "  ./build.sh 'Basic Crawling'     # Run specific test by name"
+echo "  ./build.sh --help               # Show help"

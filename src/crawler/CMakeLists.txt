@@ -59,12 +59,8 @@ target_link_libraries(crawler
         Threads::Threads
 )
 
-# Set compiler flags
-if(MSVC)
-    target_compile_options(crawler PRIVATE /W4)
-else()
-    target_compile_options(crawler PRIVATE -Wall -Wextra -Wpedantic)
-endif()
+# Set compiler flags (Linux/GCC)
+target_compile_options(crawler PRIVATE -Wall -Wextra -Wpedantic)
 
 # Install rules
 install(TARGETS crawler

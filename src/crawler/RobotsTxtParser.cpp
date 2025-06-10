@@ -167,8 +167,12 @@ std::chrono::milliseconds RobotsTxtParser::getCrawlDelay(const std::string& doma
     
     const DomainRules& rules = it->second;
     
+    // Convert userAgent to lowercase for case-insensitive matching
+    std::string lowerUserAgent = userAgent;
+    std::transform(lowerUserAgent.begin(), lowerUserAgent.end(), lowerUserAgent.begin(), ::tolower);
+    
     // Check specific user agent rules first
-    auto userAgentIt = rules.userAgentRules.find(userAgent);
+    auto userAgentIt = rules.userAgentRules.find(lowerUserAgent);
     if (userAgentIt != rules.userAgentRules.end()) {
         LOG_DEBUG("Found specific crawl delay for userAgent: " + userAgent + " = " + std::to_string(userAgentIt->second.crawlDelay.count()) + "ms");
         return userAgentIt->second.crawlDelay;

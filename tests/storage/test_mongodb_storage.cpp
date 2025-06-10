@@ -91,7 +91,7 @@ TEST_CASE("MongoDB Storage - Site Profile CRUD Operations", "[mongodb][storage][
     }
     
     SECTION("Store and retrieve site profile") {
-        SiteProfile testProfile = createTestSiteProfile("https://test-store.com");
+        SiteProfile testProfile = createTestSiteProfile("https://hatef.ir");
         
         // Store the profile
         auto storeResult = storage.storeSiteProfile(testProfile);
@@ -101,7 +101,7 @@ TEST_CASE("MongoDB Storage - Site Profile CRUD Operations", "[mongodb][storage][
         std::string profileId = storeResult.value;
         
         // Retrieve by URL
-        auto retrieveResult = storage.getSiteProfile("https://test-store.com");
+        auto retrieveResult = storage.getSiteProfile("https://hatef.ir");
         REQUIRE(retrieveResult.success);
         
         SiteProfile retrieved = retrieveResult.value;
@@ -119,18 +119,18 @@ TEST_CASE("MongoDB Storage - Site Profile CRUD Operations", "[mongodb][storage][
         REQUIRE(retrieveByIdResult.value.url == testProfile.url);
         
         // Clean up
-        storage.deleteSiteProfile("https://test-store.com");
+        storage.deleteSiteProfile("https://hatef.ir");
     }
     
     SECTION("Update site profile") {
-        SiteProfile testProfile = createTestSiteProfile("https://test-update.com");
+        SiteProfile testProfile = createTestSiteProfile("https://hatef.ir");
         
         // Store the profile
         auto storeResult = storage.storeSiteProfile(testProfile);
         REQUIRE(storeResult.success);
         
         // Retrieve and modify
-        auto retrieveResult = storage.getSiteProfile("https://test-update.com");
+        auto retrieveResult = storage.getSiteProfile("https://hatef.ir");
         REQUIRE(retrieveResult.success);
         
         SiteProfile retrieved = retrieveResult.value;
@@ -143,7 +143,7 @@ TEST_CASE("MongoDB Storage - Site Profile CRUD Operations", "[mongodb][storage][
         REQUIRE(updateResult.success);
         
         // Retrieve again and verify changes
-        auto verifyResult = storage.getSiteProfile("https://test-update.com");
+        auto verifyResult = storage.getSiteProfile("https://hatef.ir");
         REQUIRE(verifyResult.success);
         
         SiteProfile verified = verifyResult.value;
@@ -152,7 +152,7 @@ TEST_CASE("MongoDB Storage - Site Profile CRUD Operations", "[mongodb][storage][
         REQUIRE(verified.contentQuality == 0.9);
         
         // Clean up
-        storage.deleteSiteProfile("https://test-update.com");
+        storage.deleteSiteProfile("https://hatef.ir");
     }
     
     SECTION("Delete site profile") {

@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_session.hpp>
 #include "../../include/search_engine/storage/RedisSearchStorage.h"
+#include "../../include/Logger.h"
 #include <chrono>
 #include <thread>
 
@@ -115,43 +116,64 @@ TEST_CASE("RedisSearch Storage - Document Indexing and Retrieval", "[redis][stor
     REQUIRE(initResult.success);
     
     SECTION("Index and search single document") {
-        SearchDocument testDoc = createTestSearchDocument("https://test-doc.com");
-        testDoc.title = "Unique Test Document";
-        testDoc.content = "This document contains unique content for testing search functionality.";
+        SearchDocument testDoc = createTestSearchDocument("https://hatef.ir");
+        LOG_DEBUG("Created test document for URL: https://hatef.ir");
+        
+        testDoc.title = "سند آزمایشی منحصر به فرد";
+        testDoc.language = "fa";  // Set language to Persian
+        testDoc.domain = "hatef.ir";
+        LOG_DEBUG("Set document title: " + testDoc.title);
+        
+        testDoc.content = "این یک سند آزمایشی برای موتور جستجوی هاتف است که قابلیت‌های جستجوی متن کامل را آزمایش می‌کند.";
+        LOG_DEBUG("Set document content length: " + std::to_string(testDoc.content.length()) + " characters");
         
         // Index the document
         auto indexResult = storage.indexDocument(testDoc);
+        LOG_DEBUG("Indexing result - Success: " + std::string(indexResult.success ? "true" : "false"));
         REQUIRE(indexResult.success);
         
         // Give Redis a moment to process
+        LOG_DEBUG("Waiting for Redis to process...");
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         
         // Search for the document
-        auto searchResult = storage.searchSimple("unique test", 10);
+        auto searchResult = storage.searchSimple("موتور جستجوی هاتف", 10);
+        LOG_DEBUG("Search result - Success: " + std::string(searchResult.success ? "true" : "false"));
         REQUIRE(searchResult.success);
         
         auto response = searchResult.value;
+        LOG_DEBUG("Number of search results: " + std::to_string(response.results.size()));
         REQUIRE(response.results.size() >= 1);
         
         // Verify the result
         bool found = false;
         for (const auto& result : response.results) {
-            if (result.url == "https://test-doc.com") {
-                REQUIRE(result.title == "Unique Test Document");
+            LOG_DEBUG("Checking result URL: " + result.url);
+            if (result.url == "https://hatef.ir") {
+                LOG_DEBUG("Found matching URL");
+                REQUIRE(result.title == "سند آزمایشی منحصر به فرد");
+                LOG_DEBUG("Title verification passed");
+                
                 REQUIRE(!result.snippet.empty());
-                REQUIRE(result.domain == "test-doc.com");
+                LOG_DEBUG("Snippet verification passed");
+                
+                REQUIRE(result.domain == "hatef.ir");
+                LOG_DEBUG("Domain verification passed");
+                
                 found = true;
                 break;
             }
         }
+        LOG_DEBUG("Document found in results: " + std::string(found ? "true" : "false"));
         REQUIRE(found);
         
         // Clean up
-        storage.deleteDocument("https://test-doc.com");
+        storage.deleteDocument("https://hatef.ir");
+        LOG_DEBUG("Deleted document from storage");
     }
     
     SECTION("Index site profile") {
-        SiteProfile testProfile = createTestSiteProfile("https://profile-test.com");
+        SiteProfile testProfile = createTestSiteProfile("https://hatef.ir");
         testProfile.title = "Profile Test Site";
         
         std::string content = "This is the main content of the profile test site with searchable text.";
@@ -171,11 +193,11 @@ TEST_CASE("RedisSearch Storage - Document Indexing and Retrieval", "[redis][stor
         REQUIRE(response.results.size() >= 1);
         
         // Clean up
-        storage.deleteDocument("https://profile-test.com");
+        storage.deleteDocument("https://hatef.ir");
     }
     
     SECTION("Update document") {
-        SearchDocument testDoc = createTestSearchDocument("https://update-test.com");
+        SearchDocument testDoc = createTestSearchDocument("https://hatef.ir");
         testDoc.title = "Original Title";
         
         // Index original document
@@ -200,11 +222,11 @@ TEST_CASE("RedisSearch Storage - Document Indexing and Retrieval", "[redis][stor
         REQUIRE(response.results.size() >= 1);
         
         // Clean up
-        storage.deleteDocument("https://update-test.com");
+        storage.deleteDocument("https://hatef.ir");
     }
     
     SECTION("Delete document") {
-        SearchDocument testDoc = createTestSearchDocument("https://delete-test.com");
+        SearchDocument testDoc = createTestSearchDocument("https://hatef.ir");
         testDoc.title = "Document to Delete";
         
         // Index the document
@@ -220,7 +242,7 @@ TEST_CASE("RedisSearch Storage - Document Indexing and Retrieval", "[redis][stor
         REQUIRE(searchResult.value.results.size() >= 1);
         
         // Delete the document
-        auto deleteResult = storage.deleteDocument("https://delete-test.com");
+        auto deleteResult = storage.deleteDocument("https://hatef.ir");
         REQUIRE(deleteResult.success);
         
         // Give Redis a moment to process
@@ -231,7 +253,7 @@ TEST_CASE("RedisSearch Storage - Document Indexing and Retrieval", "[redis][stor
         if (searchAfterDelete.success) {
             bool found = false;
             for (const auto& result : searchAfterDelete.value.results) {
-                if (result.url == "https://delete-test.com") {
+                if (result.url == "https://hatef.ir") {
                     found = true;
                     break;
                 }

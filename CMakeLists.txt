@@ -12,6 +12,7 @@ list(APPEND CMAKE_PREFIX_PATH "/usr/local/lib/cmake/bsoncxx-4.0.0")
 # Find required packages
 find_package(mongocxx REQUIRED CONFIG)
 find_package(bsoncxx REQUIRED CONFIG)
+find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GUMBO REQUIRED gumbo)
@@ -45,8 +46,8 @@ endif()
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/public
-    ${CMAKE_SOURCE_DIR}/uWebSockets/src
-    ${CMAKE_SOURCE_DIR}/uWebSockets/uSockets/src
+    /usr/local/include/uwebsockets
+    /usr/local/include/usockets
     ${GUMBO_INCLUDE_DIRS}
 )
 
@@ -86,11 +87,13 @@ add_executable(server ${MAIN_SOURCES} ${HEADERS})
 # Link libraries
 target_link_libraries(server
     PRIVATE
+        storage
+        crawler
         /usr/local/lib/libmongocxx.so
         /usr/local/lib/libbsoncxx.so
+        OpenSSL::SSL
+        OpenSSL::Crypto
         pthread
-        ssl
-        crypto
         z
         ${CURL_LIBRARIES}
         CURL::libcurl
@@ -104,11 +107,10 @@ if(REDIS_AVAILABLE)
     target_compile_definitions(server PRIVATE REDIS_AVAILABLE)
 endif()
 
-# Link uWebSockets object files
-file(GLOB UWS_OBJECTS "${CMAKE_SOURCE_DIR}/uWebSockets/uSockets/*.o")
+# Link uSockets library
 target_link_libraries(server
     PRIVATE
-        ${UWS_OBJECTS}
+        /usr/local/lib/libuSockets.a
 )
 
 # Enable testing and add tests

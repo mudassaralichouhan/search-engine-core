@@ -61,7 +61,13 @@ TEST_CASE("URLFrontier handles visited URLs", "[URLFrontier]") {
     SECTION("Doesn't add already visited URLs") {
         std::string url = "https://example.com/page1";
         frontier.addURL(url);
+        
+        // Simulate crawler workflow: get URL from queue then mark as visited
+        std::string retrieved = frontier.getNextURL();
+        REQUIRE(retrieved == url);
         frontier.markVisited(url);
+        
+        // Try to add the same URL again - should be skipped
         frontier.addURL(url);
         
         REQUIRE(frontier.size() == 0);

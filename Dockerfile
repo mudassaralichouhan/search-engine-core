@@ -21,17 +21,11 @@ RUN apt-get update && apt-get install -y \
 # Debug: Find MongoDB driver files
 
 
-# Clone and build uWebSockets
-WORKDIR /deps
-RUN git clone --recurse-submodules https://github.com/uNetworking/uWebSockets.git
-WORKDIR /deps/uWebSockets
-RUN make -j$(nproc) WITH_EXAMPLES=0
-
-
 RUN apt-get install -y \
     cmake \
-    build-essential;
-
+    build-essential \
+    libssl-dev \
+    zlib1g-dev;
 
 RUN echo "Searching for MongoDB driver files:" && \
     echo "MongoDB C++ driver headers:" && \
@@ -41,12 +35,28 @@ RUN echo "Searching for MongoDB driver files:" && \
     echo "MongoDB CMake config files:" && \
     find /usr/local/lib/cmake -name "*mongocxx*" -o -name "*bsoncxx*"
 
+# Build and install uSockets with SSL support
+WORKDIR /deps
+RUN git clone --depth 1 https://github.com/uNetworking/uSockets.git
+WORKDIR /deps/uSockets
+RUN make WITH_OPENSSL=1 -j$(nproc) && \
+    mkdir -p /usr/local/include/uSockets && \
+    cp src/*.h /usr/local/include/uSockets/ && \
+    cp uSockets.a /usr/local/lib/libuSockets.a && \
+    ln -sf /usr/local/include/uSockets/libusockets.h /usr/local/include/libusockets.h
+
+# Clone and build uWebSockets
+WORKDIR /deps
+RUN git clone --recurse-submodules https://github.com/uNetworking/uWebSockets.git
+WORKDIR /deps/uWebSockets
+RUN make -j$(nproc) WITH_EXAMPLES=0
+
 # Install uWebSockets headers to system include path
 RUN mkdir -p /usr/local/include/uwebsockets && \
     cp -r src/* /usr/local/include/uwebsockets/ && \
     mkdir -p /usr/local/include/usockets && \
     cp -r uSockets/src/* /usr/local/include/usockets/ && \
-    ln -s /usr/local/include/usockets/libusockets.h /usr/local/include/libusockets.h
+    ln -sf /usr/local/include/usockets/libusockets.h /usr/local/include/libusockets.h
 
 # Build system libgtest (required for Gumbo make check)
 
@@ -121,8 +131,7 @@ COPY tests/ /app/tests/
 COPY /CMakeLists.txt /app/
 COPY include/ /app/include/
 
-# Copy uWebSockets to the project
-RUN cp -r /deps/uWebSockets ./uWebSockets
+# uWebSockets and uSockets are now installed system-wide, no need to copy
 
 RUN apt install -y libcurl4-openssl-dev
 

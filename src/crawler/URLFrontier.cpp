@@ -117,7 +117,7 @@ std::chrono::system_clock::time_point URLFrontier::getLastVisitTime(const std::s
 }
 
 std::string URLFrontier::extractDomain(const std::string& url) const {
-    static const std::regex domainRegex(R"(https?://([^/]+))");
+    static const std::regex domainRegex(R"(https?://([^/:]+))");
     std::smatch matches;
     if (std::regex_search(url, matches, domainRegex) && matches.size() > 1) {
         std::string domain = matches[1].str();

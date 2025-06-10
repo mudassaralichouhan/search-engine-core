@@ -1,4 +1,5 @@
 #include "../../include/search_engine/storage/ContentStorage.h"
+#include "../../include/Logger.h"
 #include <regex>
 #include <algorithm>
 #include <sstream>
@@ -85,26 +86,38 @@ ContentStorage::ContentStorage(
     const std::string& redisIndexName
 #endif
 ) {
+    LOG_DEBUG("ContentStorage constructor called");
     try {
+        LOG_INFO("Initializing ContentStorage with MongoDB and Redis");
         mongoStorage_ = std::make_unique<MongoDBStorage>(mongoConnectionString, mongoDatabaseName);
+        LOG_DEBUG("MongoDB storage initialized");
+        
 #ifdef REDIS_AVAILABLE
         redisStorage_ = std::make_unique<RedisSearchStorage>(redisConnectionString, redisIndexName);
+        LOG_DEBUG("Redis search storage initialized");
 #endif
         
         // Test connections
         auto mongoTest = mongoStorage_->testConnection();
         if (!mongoTest.success) {
+            LOG_ERROR("MongoDB connection test failed: " + mongoTest.message);
             throw std::runtime_error("MongoDB connection failed: " + mongoTest.message);
         }
+        LOG_INFO("MongoDB connection test successful");
         
 #ifdef REDIS_AVAILABLE
         auto redisTest = redisStorage_->testConnection();
         if (!redisTest.success) {
+            LOG_ERROR("Redis connection test failed: " + redisTest.message);
             throw std::runtime_error("Redis connection failed: " + redisTest.message);
         }
+        LOG_INFO("Redis connection test successful");
 #endif
         
+        LOG_INFO("ContentStorage initialization completed successfully");
+        
     } catch (const std::exception& e) {
+        LOG_ERROR("Failed to initialize ContentStorage: " + std::string(e.what()));
         throw std::runtime_error("Failed to initialize ContentStorage: " + std::string(e.what()));
     }
 }
@@ -180,13 +193,16 @@ std::string ContentStorage::extractSearchableContent(const CrawlResult& crawlRes
 }
 
 Result<std::string> ContentStorage::storeCrawlResult(const CrawlResult& crawlResult) {
+    LOG_DEBUG("ContentStorage::storeCrawlResult called for URL: " + crawlResult.url);
     try {
         // Convert CrawlResult to SiteProfile
         SiteProfile profile = crawlResultToSiteProfile(crawlResult);
+        LOG_TRACE("CrawlResult converted to SiteProfile for URL: " + crawlResult.url);
         
         // Check if site profile already exists
         auto existingProfile = mongoStorage_->getSiteProfile(crawlResult.url);
         if (existingProfile.success) {
+            LOG_INFO("Updating existing site profile for URL: " + crawlResult.url);
             // Update existing profile
             auto existing = existingProfile.value;
             
@@ -209,12 +225,15 @@ Result<std::string> ContentStorage::storeCrawlResult(const CrawlResult& crawlRes
             // Update the profile in MongoDB
             auto mongoResult = mongoStorage_->updateSiteProfile(profile);
             if (!mongoResult.success) {
+                LOG_ERROR("Failed to update site profile in MongoDB for URL: " + crawlResult.url + " - " + mongoResult.message);
                 return Result<std::string>::Failure("Failed to update in MongoDB: " + mongoResult.message);
             }
         } else {
+            LOG_INFO("Storing new site profile for URL: " + crawlResult.url);
             // Store new profile in MongoDB
             auto mongoResult = mongoStorage_->storeSiteProfile(profile);
             if (!mongoResult.success) {
+                LOG_ERROR("Failed to store site profile in MongoDB for URL: " + crawlResult.url + " - " + mongoResult.message);
                 return Result<std::string>::Failure("Failed to store in MongoDB: " + mongoResult.message);
             }
             profile.id = mongoResult.value;
@@ -223,21 +242,25 @@ Result<std::string> ContentStorage::storeCrawlResult(const CrawlResult& crawlRes
         // Index in Redis if successful and has content
 #ifdef REDIS_AVAILABLE
         if (crawlResult.success && crawlResult.textContent) {
+            LOG_DEBUG("Indexing content in Redis for URL: " + crawlResult.url);
             std::string searchableContent = extractSearchableContent(crawlResult);
             auto redisResult = redisStorage_->indexSiteProfile(profile, searchableContent);
             if (!redisResult.success) {
+                LOG_WARNING("Failed to index in Redis for URL: " + crawlResult.url + " - " + redisResult.message);
                 // Log warning but don't fail the operation
                 // In a real system, you might want to queue this for retry
             }
         }
 #endif
         
+        LOG_INFO("Crawl result stored successfully for URL: " + crawlResult.url + " (ID: " + profile.id.value_or("") + ")");
         return Result<std::string>::Success(
             profile.id.value_or(""),
             "Crawl result stored successfully"
         );
         
     } catch (const std::exception& e) {
+        LOG_ERROR("Exception in storeCrawlResult for URL: " + crawlResult.url + " - " + std::string(e.what()));
         return Result<std::string>::Failure("Exception in storeCrawlResult: " + std::string(e.what()));
     }
 }
@@ -279,6 +302,7 @@ Result<std::vector<std::string>> ContentStorage::suggest(const std::string& pref
 #endif
 
 Result<std::vector<std::string>> ContentStorage::storeCrawlResults(const std::vector<CrawlResult>& crawlResults) {
+    LOG_DEBUG("ContentStorage::storeCrawlResults called with " + std::to_string(crawlResults.size()) + " results");
     std::vector<std::string> ids;
     
     for (const auto& crawlResult : crawlResults) {
@@ -286,12 +310,14 @@ Result<std::vector<std::string>> ContentStorage::storeCrawlResults(const std::ve
         if (result.success) {
             ids.push_back(result.value);
         } else {
+            LOG_ERROR("Failed to store crawl result for " + crawlResult.url + ": " + result.message);
             return Result<std::vector<std::string>>::Failure(
                 "Failed to store crawl result for " + crawlResult.url + ": " + result.message
             );
         }
     }
     
+    LOG_INFO("All " + std::to_string(crawlResults.size()) + " crawl results stored successfully");
     return Result<std::vector<std::string>>::Success(
         std::move(ids),
         "All crawl results stored successfully"
@@ -355,42 +381,81 @@ Result<bool> ContentStorage::testConnections() {
 }
 
 Result<std::unordered_map<std::string, std::string>> ContentStorage::getStorageStats() {
+    LOG_DEBUG("ContentStorage::getStorageStats() - Starting to retrieve storage statistics");
     try {
+        LOG_DEBUG("ContentStorage::getStorageStats() - Entering try block");
         std::unordered_map<std::string, std::string> stats;
+        LOG_DEBUG("ContentStorage::getStorageStats() - Created empty stats map");
         
         // Get MongoDB stats
+        LOG_DEBUG("ContentStorage::getStorageStats() - Attempting to get MongoDB total site count");
         auto mongoCount = mongoStorage_->getTotalSiteCount();
+        LOG_DEBUG("ContentStorage::getStorageStats() - MongoDB getTotalSiteCount() returned, success: " + std::string(mongoCount.success ? "true" : "false"));
         if (mongoCount.success) {
+            LOG_DEBUG("ContentStorage::getStorageStats() - MongoDB total count: " + std::to_string(mongoCount.value));
             stats["mongodb_total_documents"] = std::to_string(mongoCount.value);
+            LOG_DEBUG("ContentStorage::getStorageStats() - Added mongodb_total_documents to stats");
+        } else {
+            LOG_DEBUG("ContentStorage::getStorageStats() - Failed to get MongoDB total count: " + mongoCount.message);
         }
         
+        LOG_DEBUG("ContentStorage::getStorageStats() - Attempting to get MongoDB successful crawls count");
         auto mongoSuccessCount = mongoStorage_->getSiteCountByStatus(CrawlStatus::SUCCESS);
+        LOG_DEBUG("ContentStorage::getStorageStats() - MongoDB getSiteCountByStatus(SUCCESS) returned, success: " + std::string(mongoSuccessCount.success ? "true" : "false"));
         if (mongoSuccessCount.success) {
+            LOG_DEBUG("ContentStorage::getStorageStats() - MongoDB successful crawls count: " + std::to_string(mongoSuccessCount.value));
             stats["mongodb_successful_crawls"] = std::to_string(mongoSuccessCount.value);
+            LOG_DEBUG("ContentStorage::getStorageStats() - Added mongodb_successful_crawls to stats");
+        } else {
+            LOG_DEBUG("ContentStorage::getStorageStats() - Failed to get MongoDB successful crawls count: " + mongoSuccessCount.message);
         }
         
 #ifdef REDIS_AVAILABLE
+        LOG_DEBUG("ContentStorage::getStorageStats() - Redis is available, getting Redis stats");
         // Get Redis stats
+        LOG_DEBUG("ContentStorage::getStorageStats() - Attempting to get Redis document count");
         auto redisCount = redisStorage_->getDocumentCount();
+        LOG_DEBUG("ContentStorage::getStorageStats() - Redis getDocumentCount() returned, success: " + std::string(redisCount.success ? "true" : "false"));
         if (redisCount.success) {
+            LOG_DEBUG("ContentStorage::getStorageStats() - Redis document count: " + std::to_string(redisCount.value));
             stats["redis_indexed_documents"] = std::to_string(redisCount.value);
+            LOG_DEBUG("ContentStorage::getStorageStats() - Added redis_indexed_documents to stats");
+        } else {
+            LOG_DEBUG("ContentStorage::getStorageStats() - Redis document count failed: " + redisCount.message);
+            // Add debug info about why redis count failed
+            stats["redis_count_error"] = redisCount.message;
+            LOG_DEBUG("ContentStorage::getStorageStats() - Added redis_count_error to stats");
         }
         
+        LOG_DEBUG("ContentStorage::getStorageStats() - Attempting to get Redis index info");
         auto redisInfo = redisStorage_->getIndexInfo();
+        LOG_DEBUG("ContentStorage::getStorageStats() - Redis getIndexInfo() returned, success: " + std::string(redisInfo.success ? "true" : "false"));
         if (redisInfo.success) {
             auto info = redisInfo.value;
+            LOG_DEBUG("ContentStorage::getStorageStats() - Redis index info retrieved, processing " + std::to_string(info.size()) + " entries");
             for (const auto& [key, value] : info) {
+                LOG_DEBUG("ContentStorage::getStorageStats() - Processing Redis info entry: " + key + " = " + value);
                 stats["redis_" + key] = value;
+                LOG_DEBUG("ContentStorage::getStorageStats() - Added redis_" + key + " to stats");
             }
+        } else {
+            LOG_DEBUG("ContentStorage::getStorageStats() - Redis index info failed: " + redisInfo.message);
+            // Add debug info about why redis info failed
+            stats["redis_info_error"] = redisInfo.message;
+            LOG_DEBUG("ContentStorage::getStorageStats() - Added redis_info_error to stats");
         }
+#else
+        LOG_DEBUG("ContentStorage::getStorageStats() - Redis is not available (REDIS_AVAILABLE not defined)");
 #endif
         
+        LOG_DEBUG("ContentStorage::getStorageStats() - Preparing to return success result with " + std::to_string(stats.size()) + " stats entries");
         return Result<std::unordered_map<std::string, std::string>>::Success(
             std::move(stats),
             "Storage statistics retrieved successfully"
         );
         
     } catch (const std::exception& e) {
+        LOG_DEBUG("ContentStorage::getStorageStats() - Exception caught: " + std::string(e.what()));
         return Result<std::unordered_map<std::string, std::string>>::Failure(
             "Exception in getStorageStats: " + std::string(e.what())
         );

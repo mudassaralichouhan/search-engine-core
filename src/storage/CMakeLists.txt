@@ -54,6 +54,7 @@ set(STORAGE_SOURCES
     MongoDBStorage.cpp
     ContentStorage.cpp
     ../infrastructure.cpp
+    ../common/Logger.cpp
 )
 
 # Add RedisSearchStorage only if Redis dependencies are available
@@ -114,40 +115,15 @@ if(REDIS_AVAILABLE)
     endif()
 endif()
 
-# Platform-specific settings
-if(WIN32)
-    target_link_libraries(storage 
-        PRIVATE
-            ws2_32
-            iphlpapi
-            crypt32
-            secur32
-            bcrypt
-    )
-    
-    # Windows-specific compile definitions
-    target_compile_definitions(storage PRIVATE
-        _WIN32_WINNT=0x0601
-        NOMINMAX
-        WIN32_LEAN_AND_MEAN
-    )
-endif()
+# Platform-specific settings removed (Linux-only build)
 
-# Set compiler flags
-if(MSVC)
-    target_compile_options(storage PRIVATE 
-        /W4 
-        /WX-  # Don't treat warnings as errors for now
-        /permissive-
-    )
-else()
-    target_compile_options(storage PRIVATE 
-        -Wall 
-        -Wextra 
-        -Wpedantic
-        -Wno-unused-parameter  # MongoDB drivers have unused parameters
-    )
-endif()
+# Set compiler flags (Linux/GCC)
+target_compile_options(storage PRIVATE 
+    -Wall 
+    -Wextra 
+    -Wpedantic
+    -Wno-unused-parameter  # MongoDB drivers have unused parameters
+)
 
 # Preprocessor definitions
 target_compile_definitions(storage PRIVATE
@@ -156,7 +132,7 @@ target_compile_definitions(storage PRIVATE
 )
 
 # Create individual component targets for selective building
-add_library(MongoDBStorage STATIC MongoDBStorage.cpp ../infrastructure.cpp)
+add_library(MongoDBStorage STATIC MongoDBStorage.cpp ../infrastructure.cpp ../common/Logger.cpp)
 target_include_directories(MongoDBStorage 
     PUBLIC 
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>
@@ -165,7 +141,7 @@ target_include_directories(MongoDBStorage
 target_link_libraries(MongoDBStorage PUBLIC mongo::bsoncxx_shared mongo::mongocxx_shared)
 
 if(REDIS_AVAILABLE)
-    add_library(RedisSearchStorage STATIC RedisSearchStorage.cpp ../infrastructure.cpp)
+    add_library(RedisSearchStorage STATIC RedisSearchStorage.cpp ../infrastructure.cpp ../common/Logger.cpp)
     target_include_directories(RedisSearchStorage 
         PUBLIC 
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>
@@ -177,7 +153,7 @@ if(REDIS_AVAILABLE)
     target_compile_definitions(RedisSearchStorage PUBLIC REDIS_AVAILABLE)
 endif()
 
-add_library(ContentStorage STATIC ContentStorage.cpp ../infrastructure.cpp)
+add_library(ContentStorage STATIC ContentStorage.cpp ../infrastructure.cpp ../common/Logger.cpp)
 target_include_directories(ContentStorage 
     PUBLIC 
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>

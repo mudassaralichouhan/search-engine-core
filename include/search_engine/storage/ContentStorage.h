@@ -6,7 +6,7 @@
 #endif
 #include "SiteProfile.h"
 #include "../../infrastructure.h"
-#include "../../src/crawler/models/CrawlResult.h"
+#include "../../../src/crawler/models/CrawlResult.h"
 #include <memory>
 #include <string>
 #include <vector>

@@ -8,85 +8,99 @@ if(NOT TARGET storage)
     message(FATAL_ERROR "Storage library target not found. Make sure src/storage is built first.")
 endif()
 
-# MongoDB paths (should match main CMakeLists.txt)
-set(MONGOC_DRIVER_DIR "C:/mongo-c-driver")
-set(MONGOCXX_DRIVER_DIR "C:/mongo-cxx-driver")
-
-# Test source files - conditionally include Redis-dependent tests
-set(TEST_SOURCES
-    test_mongodb_storage.cpp
+# Individual test executables
+add_executable(test_mongodb_storage test_mongodb_storage.cpp)
+target_link_libraries(test_mongodb_storage PRIVATE
+    Catch2::Catch2WithMain
+    storage
 )
 
-# Add Redis-dependent tests only if Redis is available
-if(DEFINED REDIS_AVAILABLE AND REDIS_AVAILABLE)
-    list(APPEND TEST_SOURCES 
+# Add Redis-dependent tests only if Redis was detected in parent build
+if(REDIS_AVAILABLE)
+    add_executable(test_redis_search_storage test_redis_search_storage.cpp)
+    target_link_libraries(test_redis_search_storage PRIVATE
+        Catch2::Catch2WithMain
+        storage
+    )
+    target_compile_definitions(test_redis_search_storage PRIVATE REDIS_AVAILABLE)
+    
+    add_executable(test_content_storage test_content_storage.cpp)
+    target_link_libraries(test_content_storage PRIVATE
+        Catch2::Catch2WithMain
+        storage
+    )
+    target_compile_definitions(test_content_storage PRIVATE REDIS_AVAILABLE)
+    
+    # Add debug Redis utility
+    add_executable(debug_redis debug_redis.cpp)
+    target_link_libraries(debug_redis PRIVATE
+        storage
+    )
+    target_compile_definitions(debug_redis PRIVATE REDIS_AVAILABLE)
+    
+    message(STATUS "Including Redis-dependent storage tests")
+else()
+    message(STATUS "Excluding Redis-dependent storage tests (Redis not available)")
+endif()
+
+# Combined storage test executable (for convenience)
+set(COMBINED_TEST_SOURCES test_mongodb_storage.cpp)
+if(REDIS_AVAILABLE)
+    list(APPEND COMBINED_TEST_SOURCES 
         test_redis_search_storage.cpp
         test_content_storage.cpp
     )
 endif()
 
-# Create test executables
-foreach(TEST_SOURCE ${TEST_SOURCES})
-    get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
-    
-    add_executable(${TEST_NAME} ${TEST_SOURCE})
-    
-    # Link with storage library and test framework
-    target_link_libraries(${TEST_NAME} PRIVATE
-        Catch2::Catch2WithMain
-        storage
-        SearchEngine::Storage
-    )
-    
-    # Include directories
-    target_include_directories(${TEST_NAME} PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../src
-    )
-    
-    # Set runtime environment for MongoDB DLLs
-    set_target_properties(${TEST_NAME} PROPERTIES
-        VS_DEBUGGER_ENVIRONMENT "PATH=${MONGOCXX_DRIVER_DIR}/bin;${MONGOC_DRIVER_DIR}/bin;$(LocalDebuggerEnvironment)"
-    )
-    
-    # Add test to CTest
-    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
-    
-    # Set test properties with environment
-    set_tests_properties(${TEST_NAME} PROPERTIES
-        TIMEOUT 300
-        LABELS "storage"
-        ENVIRONMENT "PATH=${MONGOCXX_DRIVER_DIR}/bin;${MONGOC_DRIVER_DIR}/bin;$ENV{PATH}"
-    )
-endforeach()
-
-# Create a combined storage test executable
-add_executable(storage_tests ${TEST_SOURCES})
-
+add_executable(storage_tests ${COMBINED_TEST_SOURCES})
 target_link_libraries(storage_tests PRIVATE
     Catch2::Catch2WithMain
     storage
-    SearchEngine::Storage
 )
 
-target_include_directories(storage_tests PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../src
+if(REDIS_AVAILABLE)
+    target_compile_definitions(storage_tests PRIVATE REDIS_AVAILABLE)
+endif()
+
+# Include test framework
+include(CTest)
+include(Catch)
+
+# Add individual tests to CTest
+add_test(NAME mongodb_storage_test COMMAND test_mongodb_storage)
+set_tests_properties(mongodb_storage_test PROPERTIES
+    TIMEOUT 300
+    LABELS "storage;mongodb"
 )
 
-# Set runtime environment for MongoDB DLLs
-set_target_properties(storage_tests PROPERTIES
-    VS_DEBUGGER_ENVIRONMENT "PATH=${MONGOCXX_DRIVER_DIR}/bin;${MONGOC_DRIVER_DIR}/bin;$(LocalDebuggerEnvironment)"
-)
+if(REDIS_AVAILABLE)
+    add_test(NAME redis_search_storage_test COMMAND test_redis_search_storage)
+    set_tests_properties(redis_search_storage_test PROPERTIES
+        TIMEOUT 300
+        LABELS "storage;redis"
+    )
+    
+    add_test(NAME content_storage_test COMMAND test_content_storage)
+    set_tests_properties(content_storage_test PROPERTIES
+        TIMEOUT 300
+        LABELS "storage;content"
+    )
+endif()
 
-# Add combined test to CTest with proper environment
+# Add combined test to CTest
 add_test(NAME storage_tests COMMAND storage_tests)
 set_tests_properties(storage_tests PROPERTIES
     TIMEOUT 600
-    LABELS "storage;integration"
-    ENVIRONMENT "PATH=${MONGOCXX_DRIVER_DIR}/bin;${MONGOC_DRIVER_DIR}/bin;$ENV{PATH}"
+    LABELS "storage;integration;combined"
 )
 
-# Note: Disabled catch_discover_tests to avoid MongoDB DLL dependency during CMake configuration
-# The tests can still be run manually or via CTest with the proper environment
-message(STATUS "Storage tests configured. Run tests manually with proper MongoDB DLL path or use CTest.") 
+# Auto-discover individual test cases within each executable
+catch_discover_tests(test_mongodb_storage)
+catch_discover_tests(storage_tests)
+
+if(REDIS_AVAILABLE)
+    catch_discover_tests(test_redis_search_storage)
+    catch_discover_tests(test_content_storage)
+endif()
+
+message(STATUS "Storage tests configured with individual and combined executables + auto-discovery") 

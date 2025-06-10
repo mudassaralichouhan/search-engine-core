@@ -178,8 +178,16 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
     }
     
     result.content = std::move(responseData);
-    result.success = true;
-    LOG_INFO("Request successful, content size: " + std::to_string(result.content.size()) + " bytes");
+    
+    // Set success based on HTTP status code
+    // 2xx status codes are considered successful
+    result.success = (result.statusCode >= 200 && result.statusCode < 300);
+    
+    if (result.success) {
+        LOG_INFO("Request successful, content size: " + std::to_string(result.content.size()) + " bytes");
+    } else {
+        LOG_INFO("Request completed with error status " + std::to_string(result.statusCode) + ", content size: " + std::to_string(result.content.size()) + " bytes");
+    }
     
     // Clean up the local curl handle
     curl_easy_cleanup(localCurl);
