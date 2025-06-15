@@ -9,6 +9,10 @@ on:
       docker_tag:
         required: false
         type: string
+      cache_version:
+        required: false
+        type: string
+        default: '1'
 
 permissions:
   contents: read
@@ -35,4 +39,5 @@ jobs:
     with:
       docker_image: ghcr.io/${{ github.repository }}
       docker_tag: latest
+      cache_version: ${{ inputs.cache_version }}
 

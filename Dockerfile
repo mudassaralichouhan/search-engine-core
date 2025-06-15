@@ -20,12 +20,14 @@ RUN apt-get update && apt-get install -y \
 
 # Debug: Find MongoDB driver files
 
+# Cache bust for CMake update
+ARG CACHEBUST=1
 
 RUN apt-get install -y \
     cmake \
     build-essential \
     libssl-dev \
-    zlib1g-dev;
+    zlib1g-dev
 
 RUN echo "Searching for MongoDB driver files:" && \
     echo "MongoDB C++ driver headers:" && \

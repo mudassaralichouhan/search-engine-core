@@ -9,6 +9,10 @@ on:
       docker_tag:
         required: true
         type: string
+      cache_version:
+        required: false
+        type: string
+        default: '1'
 
 permissions:
   contents: read
@@ -45,6 +49,7 @@ jobs:
         cache-to: type=gha,mode=max
         build-args: |
           BASE_IMAGE=ghcr.io/${{ github.repository }}/mongodb-server:latest
+          CACHEBUST=${{ inputs.cache_version }}
 
     - name: Run container tests
       run: |
