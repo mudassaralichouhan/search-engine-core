@@ -1,0 +1,6 @@
+{
+  "uri": "tcp://127.0.0.1:6379",
+  "pool_size": 4,
+  "timeout_ms": 5000,
+  "retry_attempts": 3
+} 

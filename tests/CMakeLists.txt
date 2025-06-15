@@ -8,4 +8,5 @@ enable_testing()
 
 # Add test executables
 add_subdirectory(crawler)
-add_subdirectory(storage) 
+add_subdirectory(storage)
+add_subdirectory(search_core) 

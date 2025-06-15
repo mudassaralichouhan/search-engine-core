@@ -1,0 +1,7 @@
+{
+  "field_weights": {
+    "title": 2.0,
+    "body": 1.0
+  },
+  "offset_boost": 0.1
+} 

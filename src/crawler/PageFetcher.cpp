@@ -85,6 +85,15 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
     LOG_DEBUG("Setting timeout: " + std::to_string(timeoutMs) + "ms");
     curl_easy_setopt(localCurl, CURLOPT_TIMEOUT_MS, timeoutMs);
     
+    // Set connection timeout to 1 second
+    LOG_DEBUG("Setting connection timeout: 1000ms");
+    curl_easy_setopt(localCurl, CURLOPT_CONNECTTIMEOUT_MS, 1000L);
+    
+    // Set low-speed time and limit to abort slow connections
+    LOG_DEBUG("Setting low speed time: 2 seconds");
+    curl_easy_setopt(localCurl, CURLOPT_LOW_SPEED_TIME, 2L);
+    curl_easy_setopt(localCurl, CURLOPT_LOW_SPEED_LIMIT, 1L);
+    
     // Set redirect options
     LOG_TRACE("Setting follow location: " + std::string(followRedirects ? "true" : "false"));
     curl_easy_setopt(localCurl, CURLOPT_FOLLOWLOCATION, followRedirects ? 1L : 0L);

@@ -60,6 +60,7 @@ endif()
 # Add subdirectories for libraries
 add_subdirectory(src/crawler)
 add_subdirectory(src/storage)
+add_subdirectory(src/search_core)
 
 # Add source files recursively to include subdirectories like src/common/
 # file(GLOB_RECURSE SOURCES "src/*.cpp")
@@ -89,6 +90,7 @@ target_link_libraries(server
     PRIVATE
         storage
         crawler
+        search_core
         /usr/local/lib/libmongocxx.so
         /usr/local/lib/libbsoncxx.so
         OpenSSL::SSL

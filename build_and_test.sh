@@ -40,7 +40,8 @@ else
     echo "Running test: $1 (timeout: ${TEST_TIMEOUT}s)"
     
     # Check if this is a storage test (contains keywords related to storage tests)
-    if [[ "$1" == *"Storage"* ]] || [[ "$1" == *"MongoDB"* ]] || [[ "$1" == *"Redis"* ]] || [[ "$1" == *"Content"* ]] || [[ "$1" == *"Index"* ]] || [[ "$1" == *"Document"* ]] || [[ "$1" == *"CRUD"* ]] || [[ "$1" == *"Profile"* ]]; then
+    # Be more specific about Redis tests - only match actual storage tests, not search_core tests
+    if [[ "$1" == *"Storage"* ]] || [[ "$1" == *"MongoDB"* ]] || [[ "$1" == *"RedisSearch Storage"* ]] || [[ "$1" == *"Content"* ]] || [[ "$1" == *"Index"* ]] || [[ "$1" == *"Document"* ]] || [[ "$1" == *"CRUD"* ]] || [[ "$1" == *"Profile"* ]]; then
         echo "Detected storage test, running storage_tests with filter..."
         cd tests/storage
         # Use Catch2 syntax for filtering tests (supports wildcards with *)
