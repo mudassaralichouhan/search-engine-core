@@ -1,71 +1,57 @@
 #pragma once
-
-#include <memory>
 #include <string>
+#include <memory>
 #include <vector>
+#include <string_view>
 
 namespace hatef::search {
 
-// AST Node hierarchy
-struct Node { 
-    virtual ~Node() = default; 
+struct ParseError : std::runtime_error {
+    using std::runtime_error::runtime_error;
 };
 
-struct Term : Node { 
-    std::string value; 
-    bool exact = false;
+struct Node {
+    virtual ~Node() = default;
+    // double-dispatch pretty-print to Redis syntax
+    virtual std::string to_redis() const = 0;
+};
+using NodePtr = std::unique_ptr<Node>;
+
+struct Term : Node {
+    std::string value;
+    bool exact{false};
     
-    Term(std::string val, bool is_exact = false) 
-        : value(std::move(val)), exact(is_exact) {}
+    // Add explicit constructors
+    Term() = default;
+    Term(std::string val, bool ex = false) : value(std::move(val)), exact(ex) {}
+    
+    std::string to_redis() const override;
 };
 
-struct And : Node { 
-    std::vector<std::unique_ptr<Node>> children; 
+struct Filter : Node {
+    std::string field;   // e.g. "domain"
+    std::string value;   // e.g. "example.com"
     
-    void addChild(std::unique_ptr<Node> child) {
-        children.push_back(std::move(child));
-    }
+    // Add explicit constructors
+    Filter() = default;
+    Filter(std::string f, std::string v) : field(std::move(f)), value(std::move(v)) {}
+    
+    std::string to_redis() const override;
 };
 
-struct Or : Node { 
-    std::vector<std::unique_ptr<Node>> children; 
-    
-    void addChild(std::unique_ptr<Node> child) {
-        children.push_back(std::move(child));
-    }
-};
-
-struct Filter : Node { 
-    std::string field;
-    std::string value; 
-    
-    Filter(std::string f, std::string v) 
-        : field(std::move(f)), value(std::move(v)) {}
-};
+struct And : Node { std::vector<NodePtr> children; std::string to_redis() const override; };
+struct Or  : Node { std::vector<NodePtr> children; std::string to_redis() const override; };
 
 class QueryParser {
 public:
-    /// Parse a user query string into an AST
-    std::unique_ptr<Node> parse(const std::string& query);
-    
-    /// Convert an AST node to RedisSearch syntax
-    std::string toRedisSyntax(const Node& node);
+    /// Parse raw user query into AST. Throws ParseError on syntax issues.
+    [[nodiscard]] NodePtr parse(std::string_view q) const;
 
-private:
-    /// Normalize text (lowercase, NFKC, strip punctuation)
-    std::string normalize(const std::string& text);
+    /// Convert AST node to Redis syntax (the method tests expect)
+    [[nodiscard]] std::string toRedisSyntax(const Node& ast) const;
     
-    /// Tokenize the normalized query
-    std::vector<std::string> tokenize(const std::string& text);
-    
-    /// Parse tokens into AST
-    std::unique_ptr<Node> parseTokens(const std::vector<std::string>& tokens);
-    
-    /// Handle special tokens like site:, AND, OR
-    bool isSpecialToken(const std::string& token);
-    
-    /// Convert filter token to Filter node
-    std::unique_ptr<Filter> parseFilter(const std::string& token);
+    /// Convenience: return full Redis syntax in one call.
+    [[nodiscard]] std::string to_redis(std::string_view q) const;
 };
 
 } // namespace hatef::search 

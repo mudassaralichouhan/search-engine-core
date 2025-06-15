@@ -39,14 +39,23 @@
 build/
 out/
 cmake-build-*/
-*/CMakeFiles/*
-build/CMakeFiles/*
-*.cmake
+
+# CMake generated files
 CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+*.cmake
+!CMakeLists.txt
+Makefile
+*.make
 install_manifest.txt
 compile_commands.json
-CTestTestfile.cmake
-cmake_install.cmake
+DartConfiguration.tcl
+
+# CMakeFiles directories (at any level)
+**/CMakeFiles/
+
+# Ninja build files
 build.ninja
 .ninja_deps
 .ninja_log

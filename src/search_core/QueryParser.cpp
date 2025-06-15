@@ -1,299 +1,313 @@
 #include "search_core/QueryParser.hpp"
 #include <algorithm>
 #include <cctype>
-#include <regex>
 #include <sstream>
-#include <iomanip>
+#include <ranges>
+#include <span>
 
 namespace hatef::search {
 
-std::unique_ptr<Node> QueryParser::parse(const std::string& query) {
-    if (query.empty()) {
-        return std::make_unique<Term>("");
-    }
-    
-    auto normalized = normalize(query);
-    auto tokens = tokenize(normalized);
-    return parseTokens(tokens);
-}
+namespace {
 
-std::string QueryParser::normalize(const std::string& text) {
-    std::string result;
-    result.reserve(text.size());
-    
-    bool in_quotes = false;
-    for (char c : text) {
-        if (c == '"') {
-            in_quotes = !in_quotes;
-            result += c;
-        } else if (in_quotes) {
-            // Preserve everything inside quotes
-            result += c;
-        } else {
-            // Convert to lowercase and handle punctuation
-            if (std::isalnum(c) || c == ':' || c == '-' || c == '.' || c == ' ') {
-                result += static_cast<char>(std::tolower(c));
-            } else {
-                result += ' ';
-            }
-        }
-    }
-    
-    return result;
-}
+// Token types
+enum class TokenType {
+    WORD,
+    QUOTED_STRING,
+    AND_OP,
+    OR_OP,
+    FILTER,
+    EOF_TOKEN
+};
 
-std::vector<std::string> QueryParser::tokenize(const std::string& text) {
-    std::vector<std::string> tokens;
-    std::string current_token;
-    bool in_quotes = false;
+struct Token {
+    TokenType type;
+    std::string value;
+    std::string field; // For filter tokens
+};
+
+class Lexer {
+public:
+    explicit Lexer(std::string_view input) : input_(input), pos_(0) {}
     
-    for (size_t i = 0; i < text.size(); ++i) {
-        char c = text[i];
+    Token next() {
+        skipWhitespace();
         
-        if (c == '"' && !in_quotes) {
-            // Start of quoted string
-            in_quotes = true;
-            current_token = "\"";
-        } else if (c == '"' && in_quotes) {
-            // End of quoted string
-            current_token += "\"";
-            tokens.push_back(current_token);
-            current_token.clear();
-            in_quotes = false;
-        } else if (in_quotes) {
-            // Inside quotes, preserve everything
-            current_token += c;
-        } else if (std::isspace(c)) {
-            // Outside quotes, whitespace separates tokens
-            if (!current_token.empty()) {
-                // Clean up tokens - remove trailing colons from malformed filters
-                if (current_token.back() == ':') {
-                    // Check if this is a trailing colon (i.e., colon at the end with no value after)
-                    auto colon_pos = current_token.find(':');
-                    if (colon_pos == current_token.length() - 1) {
-                        current_token.pop_back();
-                    }
-                }
-                if (!current_token.empty()) {
-                    tokens.push_back(current_token);
-                }
-                current_token.clear();
-            }
-        } else {
-            // Regular character
-            current_token += c;
+        if (pos_ >= input_.size()) {
+            return {TokenType::EOF_TOKEN, "", ""};
         }
-    }
-    
-    // Add final token if any
-    if (!current_token.empty()) {
-        // Clean up final token too
-        if (current_token.back() == ':') {
-            // Check if this is a trailing colon (i.e., colon at the end with no value after)
-            auto colon_pos = current_token.find(':');
-            if (colon_pos == current_token.length() - 1) {
-                current_token.pop_back();
-            }
-        }
-        if (!current_token.empty()) {
-            tokens.push_back(current_token);
-        }
-    }
-    
-    return tokens;
-}
-
-std::unique_ptr<Node> QueryParser::parseTokens(const std::vector<std::string>& tokens) {
-    if (tokens.empty()) {
-        return std::make_unique<Term>("");
-    }
-    
-    if (tokens.size() == 1) {
-        const auto& token = tokens[0];
         
         // Check for quoted string
-        if (token.front() == '"' && token.back() == '"' && token.size() > 1) {
-            return std::make_unique<Term>(token.substr(1, token.size() - 2), true);
+        if (input_[pos_] == '"') {
+            return parseQuotedString();
         }
         
-        // Check for filter
-        if (auto filter = parseFilter(token)) {
-            return std::move(filter);
+        // Parse word/operator/filter
+        auto word = parseWord();
+        
+        if (word.empty()) {
+            throw ParseError("Unexpected character at position " + std::to_string(pos_));
         }
         
-        return std::make_unique<Term>(token);
-    }
-    
-    // Handle multiple tokens - look for OR first, then group by AND
-    std::vector<std::unique_ptr<Node>> or_groups;
-    std::vector<std::unique_ptr<Node>> current_and_group;
-    
-    // First, collect all non-operator tokens and check if we have only operators
-    std::vector<std::string> non_operators;
-    for (const auto& token : tokens) {
-        if (token != "and" && token != "AND" && token != "or" && token != "OR") {
-            non_operators.push_back(token);
-        }
-    }
-    
-    // If we only have operators, treat them as regular terms
-    if (non_operators.empty()) {
-        for (const auto& token : tokens) {
-            current_and_group.push_back(std::make_unique<Term>(token));
-        }
-        
-        if (current_and_group.size() == 1) {
-            return std::move(current_and_group[0]);
-        } else {
-            auto and_node = std::make_unique<And>();
-            for (auto& node : current_and_group) {
-                and_node->addChild(std::move(node));
-            }
-            return std::move(and_node);
-        }
-    }
-    
-    // Normal parsing logic for tokens with operands
-    for (size_t i = 0; i < tokens.size(); ++i) {
-        const auto& token = tokens[i];
-        
-        if (token == "or" || token == "OR") {
-            // Finish current AND group and start new one
-            if (!current_and_group.empty()) {
-                if (current_and_group.size() == 1) {
-                    or_groups.push_back(std::move(current_and_group[0]));
-                } else {
-                    auto and_node = std::make_unique<And>();
-                    for (auto& node : current_and_group) {
-                        and_node->addChild(std::move(node));
-                    }
-                    or_groups.push_back(std::move(and_node));
-                }
-                current_and_group.clear();
-            }
-        } else if (token == "and" || token == "AND") {
-            // Skip explicit AND (it's default)
-            continue;
-        } else {
-            std::unique_ptr<Node> node;
-            
-            // Check for quoted string
-            if (token.front() == '"' && token.back() == '"' && token.size() > 1) {
-                node = std::make_unique<Term>(token.substr(1, token.size() - 2), true);
-            } else if (auto filter = parseFilter(token)) {
-                node = std::move(filter);
+        // Check for filter syntax (field:value)
+        if (auto colonPos = word.find(':'); colonPos != std::string::npos) {
+            // Handle edge cases
+            if (colonPos == 0) {
+                // ":value" -> treat as "value"
+                std::string value = word.substr(1);
+                return {TokenType::WORD, normalize(value), ""};
+            } else if (colonPos == word.size() - 1) {
+                // "field:" -> treat as "field"
+                std::string field = word.substr(0, colonPos);
+                return {TokenType::WORD, normalize(field), ""};
             } else {
-                node = std::make_unique<Term>(token);
+                // Normal filter case
+                std::string field = word.substr(0, colonPos);
+                std::string value = word.substr(colonPos + 1);
+                
+                // Handle site: alias
+                if (field == "site") {
+                    field = "domain";
+                }
+                
+                return {TokenType::FILTER, value, field};
             }
+        }
+        
+        // Check for operators
+        std::string wordLower = word;
+        std::transform(wordLower.begin(), wordLower.end(), wordLower.begin(), ::tolower);
+        
+        if (wordLower == "and") {
+            return {TokenType::AND_OP, "AND", ""};
+        }
+        if (wordLower == "or" || wordLower == "|") {
+            return {TokenType::OR_OP, "OR", ""};
+        }
+        
+        return {TokenType::WORD, normalize(word), ""};
+    }
+    
+    Token peek() {
+        auto savedPos = pos_;
+        auto token = next();
+        pos_ = savedPos;
+        return token;
+    }
+
+private:
+    void skipWhitespace() {
+        while (pos_ < input_.size() && std::isspace(input_[pos_])) {
+            ++pos_;
+        }
+    }
+    
+    Token parseQuotedString() {
+        ++pos_; // Skip opening quote
+        std::string value;
+        
+        while (pos_ < input_.size() && input_[pos_] != '"') {
+            value += input_[pos_++];
+        }
+        
+        if (pos_ >= input_.size()) {
+            throw ParseError("Unmatched quote in query");
+        }
+        
+        ++pos_; // Skip closing quote
+        return {TokenType::QUOTED_STRING, value, ""};
+    }
+    
+    std::string parseWord() {
+        std::string word;
+        
+        while (pos_ < input_.size() && !std::isspace(input_[pos_]) && input_[pos_] != '"') {
+            word += input_[pos_++];
+        }
+        
+        return word;
+    }
+    
+    std::string normalize(const std::string& text) {
+        std::string result;
+        
+        for (char c : text) {
+            if (std::isalnum(c) || c == '-' || c == '|' || c == ':') {
+                result += std::tolower(c);
+            }
+        }
+        
+        return result;
+    }
+    
+    std::string_view input_;
+    size_t pos_;
+};
+
+class Parser {
+public:
+    explicit Parser(std::string_view input) : lexer_(input) {}
+    
+    NodePtr parse() {
+        auto result = parseExpression();
+        
+        auto token = lexer_.next();
+        if (token.type != TokenType::EOF_TOKEN) {
+            throw ParseError("Unexpected token: " + token.value);
+        }
+        
+        if (!result) {
+            throw ParseError("Empty query");
+        }
+        
+        return result;
+    }
+
+private:
+    NodePtr parseExpression() {
+        auto left = parseTerm();
+        
+        if (!left) {
+            return nullptr;
+        }
+        
+        while (true) {
+            auto token = lexer_.peek();
             
-            current_and_group.push_back(std::move(node));
-        }
-    }
-    
-    // Add remaining AND group
-    if (!current_and_group.empty()) {
-        if (current_and_group.size() == 1) {
-            or_groups.push_back(std::move(current_and_group[0]));
-        } else {
-            auto and_node = std::make_unique<And>();
-            for (auto& node : current_and_group) {
-                and_node->addChild(std::move(node));
-            }
-            or_groups.push_back(std::move(and_node));
-        }
-    }
-    
-    // Return final structure
-    if (or_groups.empty()) {
-        return std::make_unique<Term>("");
-    } else if (or_groups.size() == 1) {
-        return std::move(or_groups[0]);
-    } else {
-        auto or_node = std::make_unique<Or>();
-        for (auto& group : or_groups) {
-            or_node->addChild(std::move(group));
-        }
-        return std::move(or_node);
-    }
-}
-
-bool QueryParser::isSpecialToken(const std::string& token) {
-    return token.find(':') != std::string::npos ||
-           token == "and" || token == "AND" ||
-           token == "or" || token == "OR";
-}
-
-std::unique_ptr<Filter> QueryParser::parseFilter(const std::string& token) {
-    auto colon_pos = token.find(':');
-    if (colon_pos == std::string::npos || colon_pos == 0 || colon_pos == token.size() - 1) {
-        return nullptr;
-    }
-    
-    std::string field = token.substr(0, colon_pos);
-    std::string value = token.substr(colon_pos + 1);
-    
-    // Handle special field mappings
-    if (field == "site") {
-        field = "domain";
-    }
-    
-    return std::make_unique<Filter>(std::move(field), std::move(value));
-}
-
-std::string QueryParser::toRedisSyntax(const Node& node) {
-    if (auto term = dynamic_cast<const Term*>(&node)) {
-        if (term->value.empty()) {
-            return "";
-        }
-        if (term->exact) {
-            return "\"" + term->value + "\"";
-        }
-        return term->value;
-    }
-    
-    if (auto and_node = dynamic_cast<const And*>(&node)) {
-        if (and_node->children.empty()) {
-            return "";
-        }
-        std::ostringstream oss;
-        oss << "(";
-        bool first = true;
-        for (const auto& child : and_node->children) {
-            auto child_syntax = toRedisSyntax(*child);
-            if (!child_syntax.empty()) {
-                if (!first) oss << " ";
-                oss << child_syntax;
-                first = false;
+            if (token.type == TokenType::OR_OP) {
+                lexer_.next(); // Consume OR
+                auto right = parseTerm();
+                
+                if (!right) {
+                    throw ParseError("Expected term after OR");
+                }
+                
+                if (auto* orNode = dynamic_cast<Or*>(left.get())) {
+                    orNode->children.push_back(std::move(right));
+                } else {
+                    auto newOr = std::make_unique<Or>();
+                    newOr->children.push_back(std::move(left));
+                    newOr->children.push_back(std::move(right));
+                    left = std::move(newOr);
+                }
+            } else if (token.type == TokenType::AND_OP) {
+                lexer_.next(); // Consume AND
+                auto right = parseTerm();
+                
+                if (!right) {
+                    throw ParseError("Expected term after AND");
+                }
+                
+                if (auto* andNode = dynamic_cast<And*>(left.get())) {
+                    andNode->children.push_back(std::move(right));
+                } else {
+                    auto newAnd = std::make_unique<And>();
+                    newAnd->children.push_back(std::move(left));
+                    newAnd->children.push_back(std::move(right));
+                    left = std::move(newAnd);
+                }
+            } else if (token.type == TokenType::WORD || token.type == TokenType::QUOTED_STRING || token.type == TokenType::FILTER) {
+                // Implicit AND
+                auto right = parseTerm();
+                
+                if (!right) {
+                    break;
+                }
+                
+                if (auto* andNode = dynamic_cast<And*>(left.get())) {
+                    andNode->children.push_back(std::move(right));
+                } else {
+                    auto newAnd = std::make_unique<And>();
+                    newAnd->children.push_back(std::move(left));
+                    newAnd->children.push_back(std::move(right));
+                    left = std::move(newAnd);
+                }
+            } else {
+                break;
             }
         }
-        oss << ")";
-        return first ? "" : oss.str();
+        
+        return left;
     }
     
-    if (auto or_node = dynamic_cast<const Or*>(&node)) {
-        if (or_node->children.empty()) {
-            return "";
+    NodePtr parseTerm() {
+        auto token = lexer_.peek();
+        
+        switch (token.type) {
+            case TokenType::WORD:
+                lexer_.next();
+                return std::make_unique<Term>(Term{token.value, false});
+                
+            case TokenType::QUOTED_STRING:
+                lexer_.next();
+                return std::make_unique<Term>(Term{token.value, true});
+                
+            case TokenType::FILTER:
+                lexer_.next();
+                return std::make_unique<Filter>(Filter{token.field, token.value});
+                
+            default:
+                return nullptr;
         }
-        std::ostringstream oss;
-        oss << "(";
-        bool first = true;
-        for (const auto& child : or_node->children) {
-            auto child_syntax = toRedisSyntax(*child);
-            if (!child_syntax.empty()) {
-                if (!first) oss << " | ";
-                oss << child_syntax;
-                first = false;
-            }
-        }
-        oss << ")";
-        return first ? "" : oss.str();
     }
     
-    if (auto filter = dynamic_cast<const Filter*>(&node)) {
-        return "@" + filter->field + ":{" + filter->value + "}";
+    Lexer lexer_;
+};
+
+} // anonymous namespace
+
+// Node implementations
+std::string Term::to_redis() const {
+    if (exact) {
+        return "\"" + value + "\"";
+    }
+    return value;
+}
+
+std::string Filter::to_redis() const {
+    return "@" + field + ":{" + value + "}";
+}
+
+std::string And::to_redis() const {
+    std::ostringstream oss;
+    for (size_t i = 0; i < children.size(); ++i) {
+        if (i > 0) oss << " ";
+        oss << children[i]->to_redis();
+    }
+    return oss.str();
+}
+
+std::string Or::to_redis() const {
+    std::ostringstream oss;
+    for (size_t i = 0; i < children.size(); ++i) {
+        if (i > 0) oss << "|";
+        oss << children[i]->to_redis();
+    }
+    return oss.str();
+}
+
+// QueryParser implementation
+NodePtr QueryParser::parse(std::string_view q) const {
+    // Trim whitespace
+    auto start = q.find_first_not_of(" \t\n\r");
+    auto end = q.find_last_not_of(" \t\n\r");
+    
+    if (start == std::string_view::npos) {
+        throw ParseError("Empty query");
     }
     
-    return "";
+    q = q.substr(start, end - start + 1);
+    
+    Parser parser(q);
+    return parser.parse();
+}
+
+std::string QueryParser::toRedisSyntax(const Node& ast) const {
+    return ast.to_redis();
+}
+
+std::string QueryParser::to_redis(std::string_view q) const {
+    auto ast = parse(q);
+    return ast->to_redis();
 }
 
 } // namespace hatef::search 
