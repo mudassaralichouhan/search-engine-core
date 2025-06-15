@@ -23,11 +23,23 @@ RUN apt-get update && apt-get install -y \
 # Cache bust for CMake update
 ARG CACHEBUST=1
 
-RUN apt-get install -y \
-    cmake \
+# Install specific CMake version (3.31.8 - latest)
+RUN apt-get update && apt-get install -y \
     build-essential \
     libssl-dev \
-    zlib1g-dev
+    zlib1g-dev \
+    wget && \
+    # Remove any existing cmake
+    apt-get remove -y cmake && \
+    # Download and install CMake 3.31.8
+    wget https://github.com/Kitware/CMake/releases/download/v3.31.8/cmake-3.31.8-linux-x86_64.sh && \
+    chmod +x cmake-3.31.8-linux-x86_64.sh && \
+    ./cmake-3.31.8-linux-x86_64.sh --skip-license --prefix=/usr/local && \
+    rm cmake-3.31.8-linux-x86_64.sh && \
+    # Update PATH to use the new cmake
+    ln -sf /usr/local/bin/cmake /usr/bin/cmake && \
+    # Verify installation
+    cmake --version
 
 RUN echo "Searching for MongoDB driver files:" && \
     echo "MongoDB C++ driver headers:" && \
