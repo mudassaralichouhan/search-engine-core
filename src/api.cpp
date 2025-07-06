@@ -10,17 +10,22 @@ namespace api {
 
     std::map<std::string, std::string> parseQueryString(const std::string& queryString) {
         std::map<std::string, std::string> params;
-        size_t pos = 0;
-        while ((pos = queryString.find('&')) != std::string::npos) {
-            std::string key = queryString.substr(0, pos);
-            std::string value = queryString.substr(pos + 1, queryString.find('=', pos) - pos - 1);
-            params[key] = value;
+        if (queryString.empty()) {
+            return params;
         }
-        if (!queryString.empty()) {
-            std::string key = queryString.substr(0, queryString.find('='));
-            std::string value = queryString.substr(queryString.find('=') + 1);
+        
+        std::stringstream ss(queryString);
+        std::string item;
+        
+        while (std::getline(ss, item, '&')) {
+            size_t equalPos = item.find('=');
+            if (equalPos != std::string::npos) {
+                std::string key = item.substr(0, equalPos);
+                std::string value = item.substr(equalPos + 1);
             params[key] = value;
+            }
         }
+        
         return params;
     }
 

@@ -23,6 +23,7 @@
 #include <iomanip>
 #include "../include/utils.h"
 #include "../include/api.h"
+#include "../include/search_api.h"
 #include "../include/Logger.h"
 
 using namespace std;
@@ -175,6 +176,12 @@ int main() {
         .get("/", [indexHtml](auto* res, auto* req) {
             traceRequest(res, req);
             api::handleRoot(res, req, indexHtml);
+        })
+        
+        // Handle search endpoint
+        .get("/search", [](auto* res, auto* req) {
+            traceRequest(res, req);
+            search_api::handleSearch(res, req);
         })
         
         // Handle all static files

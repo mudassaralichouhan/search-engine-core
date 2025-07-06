@@ -95,6 +95,8 @@ list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*crawler/.*\\.cpp$")
 list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*storage/.*\\.cpp$")
 list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*test.*\\.cpp$")
 list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*common/.*\\.cpp$")
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*scoring/.*\\.cpp$")
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*search_core/.*\\.cpp$")
 
 file(GLOB_RECURSE HEADERS "include/*.h" "include/*.hpp")
 
