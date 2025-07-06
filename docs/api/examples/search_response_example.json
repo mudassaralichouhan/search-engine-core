@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "total": 123,
+    "page": 1,
+    "pageSize": 10
+  },
+  "results": [
+    {
+      "url": "https://example.com/page",
+      "title": "Example Page Title",
+      "snippet": "This is a snippet of the content with <em>highlighted</em> search terms...",
+      "score": 0.987,
+      "timestamp": "2024-01-15T10:30:00Z"
+    },
+    {
+      "url": "https://docs.example.com/guide",
+      "title": "Getting Started Guide",
+      "snippet": "Learn how to get started with our <em>search</em> API...",
+      "score": 0.845,
+      "timestamp": "2024-01-14T08:15:00Z"
+    },
+    {
+      "url": "https://blog.example.com/search-tips",
+      "title": "Advanced Search Tips and Tricks",
+      "snippet": "Discover advanced <em>search</em> techniques to find exactly what you need...",
+      "score": 0.723,
+      "timestamp": "2024-01-13T14:22:00Z"
+    }
+  ]
+} 

@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/search_response.schema.json",
+  "title": "Search Response",
+  "description": "Schema for the search endpoint response",
+  "type": "object",
+  "required": ["meta", "results"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Metadata about the search results",
+      "required": ["total", "page", "pageSize"],
+      "properties": {
+        "total": {
+          "type": "integer",
+          "description": "Total number of results matching the query",
+          "minimum": 0
+        },
+        "page": {
+          "type": "integer",
+          "description": "Current page number (1-based)",
+          "minimum": 1
+        },
+        "pageSize": {
+          "type": "integer",
+          "description": "Number of results returned in this page",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "array",
+      "description": "Array of search results",
+      "items": {
+        "type": "object",
+        "required": ["url", "title", "snippet", "score", "timestamp"],
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Full URL of the matched document",
+            "format": "uri"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the document"
+          },
+          "snippet": {
+            "type": "string",
+            "description": "Text snippet with search terms highlighted"
+          },
+          "score": {
+            "type": "number",
+            "description": "Relevance score between 0.0 and 1.0",
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "ISO 8601 formatted timestamp of when the document was last indexed",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+} 
