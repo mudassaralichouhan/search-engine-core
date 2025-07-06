@@ -54,7 +54,6 @@ set(STORAGE_SOURCES
     MongoDBStorage.cpp
     ContentStorage.cpp
     ../infrastructure.cpp
-    ../common/Logger.cpp
 )
 
 # Add RedisSearchStorage only if Redis dependencies are available
@@ -98,6 +97,7 @@ target_include_directories(storage
 # Link required libraries
 target_link_libraries(storage
     PUBLIC
+        common
         mongo::bsoncxx_shared
         mongo::mongocxx_shared
         Threads::Threads
@@ -132,34 +132,36 @@ target_compile_definitions(storage PRIVATE
 )
 
 # Create individual component targets for selective building
-add_library(MongoDBStorage STATIC MongoDBStorage.cpp ../infrastructure.cpp ../common/Logger.cpp)
+add_library(MongoDBStorage STATIC MongoDBStorage.cpp ../infrastructure.cpp)
 target_include_directories(MongoDBStorage 
     PUBLIC 
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>
         $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(MongoDBStorage PUBLIC mongo::bsoncxx_shared mongo::mongocxx_shared)
+target_link_libraries(MongoDBStorage PUBLIC common mongo::bsoncxx_shared mongo::mongocxx_shared)
 
 if(REDIS_AVAILABLE)
-    add_library(RedisSearchStorage STATIC RedisSearchStorage.cpp ../infrastructure.cpp ../common/Logger.cpp)
+    add_library(RedisSearchStorage STATIC RedisSearchStorage.cpp ../infrastructure.cpp)
     target_include_directories(RedisSearchStorage 
         PUBLIC 
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>
             $<INSTALL_INTERFACE:include>
     )
     if(redis++_FOUND)
-        target_link_libraries(RedisSearchStorage PUBLIC redis++::redis++)
+        target_link_libraries(RedisSearchStorage PUBLIC common redis++::redis++)
+    else()
+        target_link_libraries(RedisSearchStorage PUBLIC common)
     endif()
     target_compile_definitions(RedisSearchStorage PUBLIC REDIS_AVAILABLE)
 endif()
 
-add_library(ContentStorage STATIC ContentStorage.cpp ../infrastructure.cpp ../common/Logger.cpp)
+add_library(ContentStorage STATIC ContentStorage.cpp ../infrastructure.cpp)
 target_include_directories(ContentStorage 
     PUBLIC 
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>
         $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(ContentStorage PUBLIC MongoDBStorage)
+target_link_libraries(ContentStorage PUBLIC common MongoDBStorage)
 if(REDIS_AVAILABLE)
     target_link_libraries(ContentStorage PUBLIC RedisSearchStorage)
     target_compile_definitions(ContentStorage PUBLIC REDIS_AVAILABLE)
@@ -167,6 +169,14 @@ endif()
 
 # Export targets for use by other CMake projects
 install(TARGETS storage MongoDBStorage ContentStorage
+    EXPORT StorageTargets
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+
+# Also install common as part of StorageTargets since storage depends on it
+install(TARGETS common
     EXPORT StorageTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib

@@ -25,7 +25,6 @@ set(CRAWLER_SOURCES
     RobotsTxtParser.cpp
     PageFetcher.cpp
     ContentParser.cpp
-    ../common/Logger.cpp
 )
 
 # Add header files
@@ -54,6 +53,7 @@ target_include_directories(crawler
 # Link libraries
 target_link_libraries(crawler
     PUBLIC
+        common
         ${CURL_LIBRARIES}
         ${GUMBO_LIBRARIES} # Link against system Gumbo found by pkg-config
         Threads::Threads

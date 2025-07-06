@@ -34,6 +34,9 @@
 /x64/*
 /Debug/*
 
+# Project specific executables
+server
+debug_redis
 
 # Build directories
 build/

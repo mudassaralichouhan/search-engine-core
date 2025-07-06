@@ -568,7 +568,6 @@ int main(int argc, char* argv[]) {
     
     Logger::getInstance().init(logLevel, true, logFilePath);
     
-    std::cout << "Logger initialized with level: " << levelStr << " (" << static_cast<int>(logLevel) << ")" << std::endl;
     
     // Run the tests
     return Catch::Session().run(argc, argv);

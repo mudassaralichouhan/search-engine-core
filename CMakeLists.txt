@@ -56,10 +56,28 @@ if(REDIS_AVAILABLE)
     include_directories(${REDIS_INCLUDE_DIRS})
 endif()
 
+# Create a common library for shared code
+add_library(common STATIC
+    src/common/Logger.cpp
+)
+target_include_directories(common 
+    PUBLIC 
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+
+# Install common library
+install(TARGETS common
+    EXPORT CommonTargets
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
 
 # Add subdirectories for libraries
 add_subdirectory(src/crawler)
 add_subdirectory(src/storage)
+add_subdirectory(src/scoring)
 add_subdirectory(src/search_core)
 
 # Add source files recursively to include subdirectories like src/common/
@@ -72,13 +90,11 @@ add_subdirectory(src/search_core)
 
 file(GLOB_RECURSE MAIN_SOURCES "src/*.cpp" "src/main.cpp")
 
-# Add Logger implementation
-list(APPEND MAIN_SOURCES "src/common/Logger.cpp")
-
-# Remove crawler sources, storage sources, and test sources from MAIN_SOURCES
+# Remove crawler sources, storage sources, test sources, and common sources from MAIN_SOURCES
 list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*crawler/.*\\.cpp$")
 list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*storage/.*\\.cpp$")
 list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*test.*\\.cpp$")
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*common/.*\\.cpp$")
 
 file(GLOB_RECURSE HEADERS "include/*.h" "include/*.hpp")
 
@@ -88,9 +104,11 @@ add_executable(server ${MAIN_SOURCES} ${HEADERS})
 # Link libraries
 target_link_libraries(server
     PRIVATE
+        common
         storage
         crawler
         search_core
+        scoring
         /usr/local/lib/libmongocxx.so
         /usr/local/lib/libbsoncxx.so
         OpenSSL::SSL

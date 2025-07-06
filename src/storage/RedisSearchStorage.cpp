@@ -25,16 +25,6 @@ namespace {
         return std::to_string(hasher(url));
     }
     
-    // Helper function to extract domain from URL
-    std::string extractDomain(const std::string& url) {
-        std::regex domainRegex(R"(https?://(?:www\.)?([^/]+))");
-        std::smatch match;
-        if (std::regex_search(url, match, domainRegex)) {
-            return match[1].str();
-        }
-        return "";
-    }
-    
     // Helper function to convert time_point to Unix timestamp
     int64_t timePointToUnixTimestamp(const std::chrono::system_clock::time_point& tp) {
         return std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count();
@@ -476,9 +466,33 @@ Result<std::unordered_map<std::string, std::string>> RedisSearchStorage::getInde
             LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Reply array elements: " + std::to_string(replyArray->elements));
             
             // Process elements sequentially looking for key-value pairs
-            for (size_t i = 0; i < replyArray->elements - 1; ++i) {
+            for (size_t i = 0; i < replyArray->elements; ++i) {
                 LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Processing element " + std::to_string(i));
+                
+                // Log the type and content of current element
                 if (replyArray->element[i]->type == REDIS_REPLY_STRING) {
+                    std::string elementStr(replyArray->element[i]->str, replyArray->element[i]->len);
+                    LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Element " + std::to_string(i) + 
+                              " is STRING: '" + elementStr + "'");
+                } else if (replyArray->element[i]->type == REDIS_REPLY_INTEGER) {
+                    LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Element " + std::to_string(i) + 
+                              " is INTEGER: " + std::to_string(replyArray->element[i]->integer));
+                } else if (replyArray->element[i]->type == REDIS_REPLY_DOUBLE) {
+                    LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Element " + std::to_string(i) + 
+                              " is DOUBLE: " + std::to_string(replyArray->element[i]->dval));
+                } else if (replyArray->element[i]->type == REDIS_REPLY_ARRAY) {
+                    LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Element " + std::to_string(i) + 
+                              " is ARRAY with " + std::to_string(replyArray->element[i]->elements) + " elements");
+                } else if (replyArray->element[i]->type == REDIS_REPLY_NIL) {
+                    LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Element " + std::to_string(i) + " is NIL");
+                } else {
+                    LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Element " + std::to_string(i) + 
+                              " has unknown type: " + std::to_string(replyArray->element[i]->type));
+                }
+                
+                // Handle both string and status types as potential keys
+                if (replyArray->element[i]->type == REDIS_REPLY_STRING || 
+                    replyArray->element[i]->type == 5) { // REDIS_REPLY_STATUS
                     std::string key(replyArray->element[i]->str, replyArray->element[i]->len);
                     LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Found key: " + key);
                     
@@ -507,6 +521,16 @@ Result<std::unordered_map<std::string, std::string>> RedisSearchStorage::getInde
                             value = std::to_string(nextElement->dval);
                             hasValue = true;
                             LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Converted double value: " + value);
+                        } else if (nextElement->type == 5) { // REDIS_REPLY_STATUS
+                            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Element is status type");
+                            value = std::string(nextElement->str, nextElement->len);
+                            hasValue = true;
+                            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Converted status value: " + value);
+                        } else if (nextElement->type == 6) { // REDIS_REPLY_ERROR
+                            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Element is error type");
+                            value = std::string(nextElement->str, nextElement->len);
+                            hasValue = true;
+                            LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Converted error value: " + value);
                         }
                         
                         LOG_DEBUG("RedisSearchStorage::getIndexInfo() - Checking if value was successfully converted");
