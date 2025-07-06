@@ -185,6 +185,11 @@ RUN apt-get update && apt-get install -y mongodb-mongosh && rm -rf /var/lib/apt/
 # Set default port
 ENV PORT=3000
 
+# Set default Redis configuration for search
+ENV SEARCH_REDIS_URI=tcp://127.0.0.1:6379
+ENV SEARCH_REDIS_POOL_SIZE=4
+ENV SEARCH_INDEX_NAME=search_index
+
 WORKDIR /app
 
 # Create necessary directories with proper permissions
