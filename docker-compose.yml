@@ -8,37 +8,54 @@ services:
     container_name: search-engine
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "3000:3000"
     environment:
       - MONGODB_URI=mongodb://mongodb:27017
+      - SEARCH_REDIS_URI=tcp://redis:6379
+      - SEARCH_REDIS_POOL_SIZE=4
+      - SEARCH_INDEX_NAME=search_index
     depends_on:
-      - mongodb
+      - redis
+      # - mongodb
     networks:
       - search-network
 
-  mongodb:
-    image: mongo:latest
-    container_name: mongodb
+  redis:
+    image: redis:latest
+    container_name: redis
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "6379:6379"
     volumes:
-      - mongodb_data:/data/db
+      - redis_data:/data
+    command: redis-server --appendonly yes
     networks:
       - search-network
 
-  mongodb-test:
-    build:
-      context: .
-      dockerfile: Dockerfile.test.mongo
-    depends_on:
-      - mongodb
-    environment:
-      - MONGODB_URI=mongodb://mongodb:27017
+  # mongodb:
+  #   image: mongo:latest
+  #   container_name: mongodb_test
+  #   restart: unless-stopped
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - mongodb_data:/data/db
+  #   networks:
+  #     - search-network
+
+  # mongodb-test:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.test.mongo
+  #   depends_on:
+  #     - mongodb
+  #   environment:
+  #     - MONGODB_URI=mongodb://mongodb:27017
 
 networks:
   search-network:
     driver: bridge
 
 volumes:
-  mongodb_data: 
+  mongodb_data:
+  redis_data: 

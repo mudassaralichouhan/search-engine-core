@@ -1,0 +1,27 @@
+User-agent: *
+Allow: /
+
+# Allow crawling of main pages
+Allow: /index.html
+Allow: /about.html
+Allow: /privacy.html
+Allow: /advanced.html
+Allow: /search.html
+
+# Disallow crawling of API endpoints and internal pages
+Disallow: /api/
+Disallow: /admin/
+Disallow: /internal/
+Disallow: /coming-soon/
+
+# Allow crawling of static assets
+Allow: /assets/
+Allow: /css/
+Allow: /js/
+Allow: /images/
+
+# Crawl delay (optional - be respectful to server resources)
+Crawl-delay: 1
+
+# Sitemap location (if you have one)
+# Sitemap: https://yoursite.com/sitemap.xml 

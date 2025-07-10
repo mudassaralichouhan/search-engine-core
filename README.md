@@ -13,7 +13,7 @@ transparent, respectful, and supportive of all.
 
 # Search Engine Core
 
-A high-performance search engine built with C++, uWebSockets, MongoDB, and Redis with comprehensive logging and testing infrastructure.
+A high-performance search engine built with C++, uWebSockets, MongoDB, and Redis with comprehensive logging, testing infrastructure, and a modern controller-based routing system.
 
 ## Project Structure
 
@@ -25,52 +25,138 @@ A high-performance search engine built with C++, uWebSockets, MongoDB, and Redis
 │   ├── docker-build-server.yml    # MongoDB server build
 │   └── docker-build-app.yml       # Application build
 ├── src/
-│   ├── common/                # Shared utilities
-│   │   └── Logger.cpp         # Centralized logging implementation
-│   ├── crawler/               # Web crawling components with full logging
-│   │   ├── PageFetcher.cpp    # HTTP fetching with request/response logging
+│   ├── controllers/            # Controller-based routing system
+│   │   ├── HomeController.cpp  # Home page and coming soon handling
+│   │   ├── SearchController.cpp # Search functionality and API endpoints
+│   │   └── StaticFileController.cpp # Static file serving
+│   ├── routing/                # Routing infrastructure
+│   │   ├── Controller.cpp      # Base controller class with route registration
+│   │   └── RouteRegistry.cpp   # Central route registry singleton
+│   ├── common/                 # Shared utilities
+│   │   └── Logger.cpp          # Centralized logging implementation
+│   ├── crawler/                # Web crawling components with full logging
+│   │   ├── PageFetcher.cpp     # HTTP fetching with request/response logging
 │   │   ├── RobotsTxtParser.cpp # Robots.txt parsing with rule logging
-│   │   └── URLFrontier.cpp    # URL queue management with frontier logging
-│   ├── search_core/           # Search API implementation
-│   │   ├── SearchClient.cpp   # RedisSearch interface with connection pooling
-│   │   ├── QueryParser.cpp    # Query parsing with AST generation
-│   │   └── Scorer.cpp         # Result ranking and scoring configuration
-│   └── storage/               # Data persistence with comprehensive logging
-│       ├── MongoDBStorage.cpp # MongoDB operations with CRUD logging
+│   │   └── URLFrontier.cpp     # URL queue management with frontier logging
+│   ├── search_core/            # Search API implementation
+│   │   ├── SearchClient.cpp    # RedisSearch interface with connection pooling
+│   │   ├── QueryParser.cpp     # Query parsing with AST generation
+│   │   └── Scorer.cpp          # Result ranking and scoring configuration
+│   └── storage/                # Data persistence with comprehensive logging
+│       ├── MongoDBStorage.cpp  # MongoDB operations with CRUD logging
 │       ├── RedisSearchStorage.cpp # Redis search indexing with operation logging
-│       └── ContentStorage.cpp # Unified storage with detailed flow logging
+│       └── ContentStorage.cpp  # Unified storage with detailed flow logging
 ├── include/
-│   ├── Logger.h               # Logging interface with multiple levels
-│   ├── search_core/           # Search API headers
-│   │   ├── SearchClient.hpp   # RedisSearch client interface
-│   │   ├── QueryParser.hpp    # Query parsing and AST definitions
-│   │   └── Scorer.hpp         # Scoring configuration interface
-│   └── search_engine/         # Public API headers
+│   ├── routing/                # Routing system headers
+│   │   ├── Controller.h        # Base controller interface
+│   │   └── RouteRegistry.h     # Route registry interface
+│   ├── Logger.h                # Logging interface with multiple levels
+│   ├── search_core/            # Search API headers
+│   │   ├── SearchClient.hpp    # RedisSearch client interface
+│   │   ├── QueryParser.hpp     # Query parsing and AST definitions
+│   │   └── Scorer.hpp          # Scoring configuration interface
+│   └── search_engine/          # Public API headers
+├── pages/                      # Frontend source files
+│   ├── index.html              # Main search page
+│   ├── search.html             # Search results page
+│   ├── advanced.html           # Advanced search interface
+│   ├── about.html              # About page
+│   └── privacy.html            # Privacy policy page
+├── public/                     # Static files served by server
+│   ├── coming-soon.html        # Default landing page
+│   ├── index.html              # Main search page (served at /test)
+│   ├── search.html             # Search results page
+│   ├── advanced.html           # Advanced search interface
+│   ├── about.html              # About page
+│   ├── privacy.html            # Privacy policy page
+│   └── assets/                 # CSS, JS, and other static assets
 ├── tests/
-│   ├── crawler/               # Crawler component unit tests (25 tests)
-│   │   ├── crawler_tests.cpp  # Core crawler functionality
+│   ├── crawler/                # Crawler component unit tests (25 tests)
+│   │   ├── crawler_tests.cpp   # Core crawler functionality
 │   │   ├── page_fetcher_tests.cpp # HTTP fetching tests
 │   │   └── url_frontier_tests.cpp # URL queue tests
-│   ├── search_core/           # Search API unit tests
-│   │   ├── TestSearchClient.cpp    # Redis connection and search tests
-│   │   ├── TestQueryParser.cpp     # Query parsing tests (10 test cases)
-│   │   ├── TestScorer.cpp          # Scoring configuration tests
-│   │   └── TestExactSearchE2E.cpp  # End-to-end integration tests
-│   └── storage/               # Storage component unit tests (64 total tests)
+│   ├── search_core/            # Search API unit tests
+│   │   ├── TestSearchClient.cpp     # Redis connection and search tests
+│   │   ├── TestQueryParser.cpp      # Query parsing tests (10 test cases)
+│   │   ├── TestScorer.cpp           # Scoring configuration tests
+│   │   └── TestExactSearchE2E.cpp   # End-to-end integration tests
+│   └── storage/                # Storage component unit tests (64 total tests)
 │       ├── test_mongodb_storage.cpp # MongoDB CRUD operations (25 tests)
 │       ├── test_redis_search_storage.cpp # Redis search functionality
 │       └── test_content_storage.cpp # Unified storage tests
-├── config/                    # Configuration files
-│   ├── redis.json            # Redis connection configuration
-│   └── scoring.json          # Search result scoring weights
-├── public/                    # Static files
-├── build.sh                   # Enhanced build script with test support
-├── build_and_test.sh         # New comprehensive build and test runner
-├── build_search_core.sh      # Search API specific build script
-├── Dockerfile                # Main application Dockerfile
-├── Dockerfile.mongodb        # MongoDB drivers Dockerfile
-└── Dockerfile.mongodb-server # MongoDB server Dockerfile
+├── config/                     # Configuration files
+│   ├── redis.json             # Redis connection configuration
+│   └── scoring.json           # Search result scoring weights
+├── build.sh                    # Enhanced build script with test support
+├── build_and_test.sh          # New comprehensive build and test runner
+├── build_search_core.sh       # Search API specific build script
+├── Dockerfile                 # Main application Dockerfile
+├── Dockerfile.mongodb         # MongoDB drivers Dockerfile
+└── Dockerfile.mongodb-server  # MongoDB server Dockerfile
 ```
+
+## Web Server Architecture
+
+### Controller-Based Routing System
+
+The search engine now features a modern, attribute-based routing system inspired by .NET Core's controller architecture:
+
+**Key Features**:
+- **Route Attributes**: Declarative route registration using macros
+- **Controller Classes**: Organized request handling with clear separation of concerns
+- **Central Registry**: Single source of truth for all application routes
+- **Middleware Support**: Request tracing and logging integration
+
+**Route Registration**:
+```cpp
+// Example controller with route attributes
+class HomeController : public Controller {
+public:
+    ROUTE_GET("/", handleHome)
+    ROUTE_GET("/test", handleTest)
+    
+    static void handleHome(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
+    static void handleTest(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
+};
+```
+
+**Available Controllers**:
+- **HomeController**: Handles default routes (`/` → coming soon, `/test` → main search)
+- **SearchController**: Search API endpoints and functionality
+- **StaticFileController**: Static file serving with proper MIME types
+
+### Frontend Organization
+
+**Dual Structure**:
+- **`pages/`**: Source HTML files for development and editing
+- **`public/`**: Static files served by the web server
+
+**Routing Strategy**:
+- **Default Route (`/`)**: Serves `coming-soon.html` for initial landing
+- **Main Search (`/test`)**: Serves the primary search interface
+- **Static Routes**: Direct access to HTML pages (`/about`, `/privacy`, etc.)
+
+**Asset Management**:
+- CSS and JavaScript files properly referenced from `public/assets/`
+- All relative paths updated to work with the new structure
+- Consistent asset serving across all pages
+
+### Server Features
+
+**Request Tracing**:
+- Comprehensive request logging with timestamps
+- Header information capture for debugging
+- Performance monitoring capabilities
+
+**Environment Configuration**:
+- Configurable port via `PORT` environment variable
+- Default port 3000 for development
+- Docker-ready configuration
+
+**Static File Serving**:
+- Proper MIME type detection
+- Efficient file serving with caching headers
+- Support for all common web assets
 
 ## Search Engine API (search_core)
 
@@ -145,6 +231,11 @@ The search engine now features a centralized logging system with multiple levels
 - **LOG_ERROR**: Error conditions (failed operations, exceptions)
 
 ### Logging Coverage
+
+**Web Server Components** (Recently Enhanced):
+- **Request Tracing**: All HTTP requests logged with method, path, and headers
+- **Route Registration**: Startup logging of all registered routes
+- **Controller Operations**: Detailed logging of request handling and responses
 
 **Storage Components** (Recently Enhanced):
 - **MongoDBStorage**: Full CRUD operation logging including connection establishment, document operations, and error handling
@@ -307,36 +398,54 @@ docker run -d --name redis -p 6379:6379 redis/redis-stack-server:latest
 | LOG_LEVEL | Logging verbosity level | INFO | Test output detail |
 | MONGODB_URI | MongoDB connection string | mongodb://localhost:27017 | Storage tests |
 | REDIS_URI | Redis connection string | redis://localhost:6379 | Search tests |
+| PORT | Web server port | 3000 | Server startup |
 
 ## Recent Major Improvements
 
-### 1. Search Engine API Implementation (search_core)
+### 1. Controller-Based Routing System
+- **Implemented attribute-based routing** similar to .NET Core controllers
+- **Created centralized route registry** for better route management
+- **Added request tracing middleware** with comprehensive logging
+- **Organized request handling** into logical controller classes
+
+### 2. Frontend Architecture Reorganization
+- **Separated source and served files** with `pages/` and `public/` directories
+- **Implemented strategic routing** with coming soon page as default
+- **Updated all asset references** to work with new structure
+- **Enhanced static file serving** with proper MIME types
+
+### 3. Search Engine API Implementation (search_core)
 - **Implemented complete RedisSearch interface** with connection pooling and thread safety
 - **Built advanced query parser** supporting exact phrases, boolean operators, and domain filters
 - **Created configurable scoring system** with JSON-based field weights
 - **Comprehensive test coverage** including unit, integration, and performance tests
 
-### 2. Comprehensive Logging Implementation
+### 4. Comprehensive Logging Implementation
 - **Added detailed logging to all storage components** matching existing crawler patterns
 - **Implemented proper error context** with operation-specific details
 - **Enhanced debugging capabilities** with trace-level logging for fine-grained analysis
 
-### 3. Build System Resolution
+### 5. Build System Resolution
 - **Fixed Logger linking issues** that prevented storage library compilation
 - **Streamlined CMake configuration** for Linux-only development
 - **Resolved undefined symbol errors** in storage component tests
 
-### 4. MongoDB Testing Infrastructure
+### 6. MongoDB Testing Infrastructure
 - **Resolved authentication conflicts** by configuring proper test environment
 - **Established reliable test database** with clean state management
 - **Implemented comprehensive CRUD testing** with detailed operational verification
 
-### 5. Enhanced Test Coverage
+### 7. Enhanced Test Coverage
 - **Expanded from basic crawler tests to comprehensive storage testing**
 - **Implemented individual and combined test executables** for flexible testing
 - **Added auto-discovery of test cases** for better CI integration
 
 ## Performance and Reliability
+
+**Web Server Performance**:
+- Efficient static file serving with proper caching
+- Request tracing with minimal overhead
+- Controller-based architecture for scalable request handling
 
 **Search Performance**:
 - Sub-5ms p95 latency for local Redis operations
@@ -381,3 +490,14 @@ GET /search?q="machine learning"&limit=10&domain=arxiv.org
 ```
 
 This will provide a complete HTTP REST API for search functionality while maintaining the modular architecture.
+
+### Enhanced Frontend Features
+- **Progressive Web App (PWA)** capabilities
+- **Advanced search filters** and faceted search
+- **Real-time search suggestions** with autocomplete
+- **Mobile-responsive design** improvements
+
+### Scalability Improvements
+- **Load balancing** support for multiple server instances
+- **Caching layers** for improved performance
+- **Microservices architecture** for component isolation

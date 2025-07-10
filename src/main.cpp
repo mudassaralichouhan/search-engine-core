@@ -4,124 +4,21 @@
 
 #include <filesystem>
 #include <uwebsockets/App.h>
+#include "../include/routing/RouteRegistry.h"
+#include "../include/Logger.h"
 
-#include <locale>
-#include <codecvt>
+// Include all controllers to trigger their static initialization
+#include "controllers/HomeController.h"
+#include "controllers/SearchController.h"
+#include "controllers/StaticFileController.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <vector>
-#include <map>
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <sstream>
 #include <chrono>
 #include <iomanip>
-#include "../include/utils.h"
-#include "../include/api.h"
-#include "../include/search_api.h"
-#include "../include/Logger.h"
+#include <sstream>
 
 using namespace std;
 
-#include <nlohmann/json.hpp>
 
-using json = nlohmann::json;
-
-struct User {
-    std::string email;
-};
-
-
-
-// Function to parse query string parameters
-map<string, string> parseQueryString(const string& queryString) {
-    map<string, string> params;
-    size_t pos = 0;
-    while ((pos = queryString.find('&')) != string::npos) {
-        string key = queryString.substr(0, pos);
-        string value = queryString.substr(pos + 1, queryString.find('=', pos) - pos - 1);
-        params[key] = value;
-    }
-    if (!queryString.empty()) {
-        string key = queryString.substr(0, queryString.find('='));
-        string value = queryString.substr(queryString.find('=') + 1);
-        params[key] = value;
-    }
-    return params;
-}
-
-
-
-
-std::string getEnvVarValue(const char* envVarName) {
-    const char* value = std::getenv(envVarName);
-    return value ? std::string(value) : "";
-}
-
-
-
-
-
-char* get_body()
-{
-    char* content_length = getenv("CONTENT_LENGTH");
-    if (!content_length)
-        return nullptr;
-    int size = atoi(content_length);
-    if (size == 0)
-        return nullptr;
-    char* body = (char*)calloc(size + 1, sizeof(char));
-    if (body != nullptr) {
-        size_t read = std::fread(body, size, 1, stdin);
-        if (read != 1) {
-            free(body);
-            return nullptr;
-        }
-    }
-    return body;
-}
-// (int argc, char* argv[], char* envp[])
-
-
-// #include <filesystem>
-// #include <fstream>
-// #include <sstream>
-// #include <string>
-
-std::string loadFile(const std::string& path) {
-    LOG_DEBUG("Attempting to load file: " + path);
-    
-    // Check if file exists and user has permission to access it
-    if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path)) {
-        LOG_ERROR("Error: File does not exist or is not a regular file: " + path);
-        return "";
-    }
-    
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        LOG_ERROR("Error: Could not open file: " + path);
-
-        LOG_ERROR("Current working directory: " + std::filesystem::current_path().string());
-        return "";
-    }
-    
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    std::string content = buffer.str();
-    
-    if (content.empty()) {
-        LOG_WARNING("Warning: File is empty: " + path);
-    } else {
-        LOG_INFO("Successfully loaded file: " + path + " (size: " + std::to_string(content.length()) + " bytes)");
-    }
-    
-    return content;
-}
 
 // Helper function to get current timestamp
 std::string getCurrentTimestamp() {
@@ -163,49 +60,38 @@ int main() {
     // Initialize logger
     Logger::getInstance().init(LogLevel::INFO, true, "server.log");
     
-    // Pre-load index.html
-    std::string indexHtml = loadFile("public/index.html");
+    // Log registered routes
+    LOG_INFO("=== Registered Routes ===");
+    for (const auto& route : routing::RouteRegistry::getInstance().getRoutes()) {
+        LOG_INFO(routing::methodToString(route.method) + " " + route.path + 
+                 " -> " + route.controllerName + "::" + route.actionName);
+    }
+    LOG_INFO("========================");
 
     // Get port from environment variable or use default
     const char* port_env = std::getenv("PORT");
     int port = port_env ? std::stoi(port_env) : 3000;
     LOG_INFO("Using port: " + std::to_string(port));
 
-    uWS::App()
-        // Serve index.html at root
-        .get("/", [indexHtml](auto* res, auto* req) {
-            traceRequest(res, req);
-            api::handleRoot(res, req, indexHtml);
-        })
-        
-        // Handle search endpoint
-        .get("/search", [](auto* res, auto* req) {
-            traceRequest(res, req);
-            search_api::handleSearch(res, req);
-        })
-        
-        // Handle all static files
-        .get("/*", [](auto* res, auto* req) {
-            traceRequest(res, req);
-            std::string path = std::string(req->getUrl());
-            api::handleStaticFile(res, req, path);
-        })
+    // Create app and apply all registered routes
+    auto app = uWS::App();
+    
 
-        // Handle email subscription endpoint
-        .post("/api/v2/email-subscribe", [](auto* res, auto* req) {
-            traceRequest(res, req);
-            api::handleEmailSubscribe(res, req);
-        })
-
-        .listen(port, [port](auto* listen_socket) {
-            if (listen_socket) {
-                LOG_INFO("Server listening on port " + std::to_string(port));
-            }
-            else {
-                LOG_ERROR("Failed to listen on port " + std::to_string(port));
-            }
-        })
-        .run();
+    // Add request tracing middleware wrapper
+    routing::RouteRegistry::getInstance().applyRoutes(app);
+    
+    // Start the server
+    app.listen(port, [port](auto* listen_socket) {
+        
+        if (listen_socket) {
+            LOG_INFO("Server listening on port " + std::to_string(port));
+            LOG_INFO("Access the search engine at: http://localhost:" + std::to_string(port) + "/test");
+            LOG_INFO("Coming soon page at: http://localhost:" + std::to_string(port) + "/");
+        }
+        else {
+            LOG_ERROR("Failed to listen on port " + std::to_string(port));
+        }
+    }).run();
 
     return 0;
 }

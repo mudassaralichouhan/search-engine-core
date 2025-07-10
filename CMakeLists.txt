@@ -4,6 +4,9 @@ project(search_engine)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Disable uWebSockets header
+add_definitions(-DUWS_HTTPRESPONSE_NO_WRITEMARK)
+
 # Add MongoDB specific paths
 include_directories(/usr/local/include/mongocxx/v_noabi /usr/local/include/bsoncxx/v_noabi)
 list(APPEND CMAKE_PREFIX_PATH "/usr/local/lib/cmake/mongocxx-4.0.0")
@@ -59,6 +62,7 @@ endif()
 # Create a common library for shared code
 add_library(common STATIC
     src/common/Logger.cpp
+    src/common/JsMinifier.cpp
 )
 target_include_directories(common 
     PUBLIC 

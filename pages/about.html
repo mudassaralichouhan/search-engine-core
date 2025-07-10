@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn about our mission to make information accessible to everyone">
+    <title>About Us - Search Engine</title>
+    
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="../assets/css/main.css">
+    
+    <!-- Page-specific styles -->
+    <style>
+        .hero-about {
+            background: linear-gradient(135deg, #004080 0%, #00A676 100%);
+            color: white;
+            padding: var(--spacing-xxl) 0;
+            text-align: center;
+            margin-bottom: var(--spacing-xxl);
+        }
+
+        .hero-about h1 {
+            font-size: 48px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .hero-about p {
+            font-size: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+
+        .content-section {
+            padding: var(--spacing-xxl) 0;
+        }
+
+        .content-section h2 {
+            text-align: center;
+            color: var(--primary-blue);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .mission-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--spacing-xl);
+            margin-top: var(--spacing-xl);
+        }
+
+        .mission-card {
+            text-align: center;
+            padding: var(--spacing-xl);
+        }
+
+        .mission-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto var(--spacing-lg);
+            background: var(--secondary-green);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mission-icon svg {
+            width: 40px;
+            height: 40px;
+            stroke: white;
+        }
+
+        .values-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-lg);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .value-item {
+            background: var(--bg-white);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 2px 8px var(--shadow);
+            border-left: 4px solid var(--secondary-green);
+        }
+
+        .value-item h3 {
+            color: var(--primary-blue);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .team-section {
+            background: var(--bg-light-gray);
+            padding: var(--spacing-xxl) 0;
+        }
+
+        .stats-banner {
+            background: var(--primary-blue);
+            color: white;
+            padding: var(--spacing-xxl) 0;
+            text-align: center;
+        }
+
+        .stats-banner h2 {
+            color: white;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-xl);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: 700;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .timeline {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            padding: var(--spacing-lg) 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--secondary-green);
+            transform: translateX(-50%);
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .timeline-item:nth-child(even) {
+            flex-direction: row-reverse;
+        }
+
+        .timeline-content {
+            flex: 1;
+            background: var(--bg-white);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .timeline-dot {
+            width: 20px;
+            height: 20px;
+            background: var(--secondary-green);
+            border-radius: 50%;
+            margin: 0 var(--spacing-lg);
+            flex-shrink: 0;
+        }
+
+        .timeline-date {
+            font-weight: 600;
+            color: var(--primary-blue);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        @media (max-width: 768px) {
+            .hero-about h1 {
+                font-size: 36px;
+            }
+
+            .timeline::before {
+                left: 20px;
+            }
+
+            .timeline-item,
+            .timeline-item:nth-child(even) {
+                flex-direction: row;
+            }
+
+            .timeline-dot {
+                margin: 0 var(--spacing-md) 0 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <!-- Navigation Header -->
+        <nav class="nav-header">
+            <div class="container">
+                <div class="nav-content">
+                    <a href="index.html" class="nav-logo">Search</a>
+                    <ul class="nav-links">
+                        <li><a href="index.html" class="nav-link">Home</a></li>
+                        <li><a href="advanced.html" class="nav-link">Advanced Search</a></li>
+                        <li><a href="about.html" class="nav-link active">About</a></li>
+                        <li><a href="privacy.html" class="nav-link">Privacy</a></li>
+                    </ul>
+                    <button class="btn btn--ghost btn--small" id="themeToggle">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="hero-about">
+            <div class="container">
+                <h1>About Our Search Engine</h1>
+                <p>We're on a mission to organize the world's information and make it universally accessible and useful.</p>
+            </div>
+        </section>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Mission Section -->
+            <section class="content-section">
+                <div class="container">
+                    <h2>Our Mission</h2>
+                    <div class="mission-grid">
+                        <div class="mission-card">
+                            <div class="mission-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                </svg>
+                            </div>
+                            <h3>Global Access</h3>
+                            <p>Making information accessible to everyone, everywhere, regardless of language or location.</p>
+                        </div>
+                        <div class="mission-card">
+                            <div class="mission-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                    <path d="M2 17l10 5 10-5"></path>
+                                    <path d="M2 12l10 5 10-5"></path>
+                                </svg>
+                            </div>
+                            <h3>Quality Results</h3>
+                            <p>Delivering the most relevant and accurate search results through advanced algorithms.</p>
+                        </div>
+                        <div class="mission-card">
+                            <div class="mission-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                </svg>
+                            </div>
+                            <h3>Privacy First</h3>
+                            <p>Protecting user privacy while providing powerful search capabilities.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Values Section -->
+            <section class="content-section">
+                <div class="container">
+                    <h2>Our Values</h2>
+                    <div class="values-list">
+                        <div class="value-item">
+                            <h3>Innovation</h3>
+                            <p>Continuously improving our technology to deliver better search experiences.</p>
+                        </div>
+                        <div class="value-item">
+                            <h3>Transparency</h3>
+                            <p>Being open about how our search algorithms work and how we handle data.</p>
+                        </div>
+                        <div class="value-item">
+                            <h3>Reliability</h3>
+                            <p>Ensuring our service is available 24/7 with consistent performance.</p>
+                        </div>
+                        <div class="value-item">
+                            <h3>Inclusivity</h3>
+                            <p>Building a search engine that serves everyone, in every language.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Stats Section -->
+            <section class="stats-banner">
+                <div class="container">
+                    <h2>By the Numbers</h2>
+                    <div class="stats-row">
+                        <div class="stat">
+                            <span class="stat-number">50M+</span>
+                            <span class="stat-label">Pages Indexed</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number">0.3s</span>
+                            <span class="stat-label">Average Search Time</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number">99.9%</span>
+                            <span class="stat-label">Uptime</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number">40+</span>
+                            <span class="stat-label">Languages Supported</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Timeline Section -->
+            <section class="content-section">
+                <div class="container">
+                    <h2>Our Journey</h2>
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-content">
+                                <div class="timeline-date">2020</div>
+                                <h4>Founded</h4>
+                                <p>Started with a vision to create a better search experience.</p>
+                            </div>
+                            <div class="timeline-dot"></div>
+                            <div style="flex: 1;"></div>
+                        </div>
+                        <div class="timeline-item">
+                            <div style="flex: 1;"></div>
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-date">2021</div>
+                                <h4>First Million Users</h4>
+                                <p>Reached our first milestone of 1 million monthly active users.</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-content">
+                                <div class="timeline-date">2022</div>
+                                <h4>Global Expansion</h4>
+                                <p>Expanded to support 20+ languages and regional search.</p>
+                            </div>
+                            <div class="timeline-dot"></div>
+                            <div style="flex: 1;"></div>
+                        </div>
+                        <div class="timeline-item">
+                            <div style="flex: 1;"></div>
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-date">2023</div>
+                                <h4>AI Integration</h4>
+                                <p>Launched advanced AI-powered search features.</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-content">
+                                <div class="timeline-date">2024</div>
+                                <h4>Privacy Focus</h4>
+                                <p>Introduced industry-leading privacy features and zero tracking.</p>
+                            </div>
+                            <div class="timeline-dot"></div>
+                            <div style="flex: 1;"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container">
+                <div class="footer-content">
+                    <div class="footer-section">
+                        <h4>Product</h4>
+                        <ul class="footer-links">
+                            <li><a href="features.html">Features</a></li>
+                            <li><a href="api.html">API</a></li>
+                            <li><a href="pricing.html">Pricing</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-section">
+                        <h4>Company</h4>
+                        <ul class="footer-links">
+                            <li><a href="about.html">About Us</a></li>
+                            <li><a href="careers.html">Careers</a></li>
+                            <li><a href="contact.html">Contact</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-section">
+                        <h4>Resources</h4>
+                        <ul class="footer-links">
+                            <li><a href="blog.html">Blog</a></li>
+                            <li><a href="docs.html">Documentation</a></li>
+                            <li><a href="support.html">Support</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-section">
+                        <h4>Legal</h4>
+                        <ul class="footer-links">
+                            <li><a href="privacy.html">Privacy Policy</a></li>
+                            <li><a href="terms.html">Terms of Service</a></li>
+                            <li><a href="cookies.html">Cookie Policy</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <p>&copy; 2024 Search Engine. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Main JavaScript -->
+    <script src="../assets/js/main.js"></script>
+</body>
+</html> 

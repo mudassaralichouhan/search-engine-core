@@ -1,203 +1,345 @@
-console.log(
-  "%c Proudly Crafted with ZiOn.",
-  "background: #222; color: #bada55"
-);
+// ===================================
+// Search Engine Core JavaScript
+// ===================================
 
-(function ($) {
-  $.fn.countdown = function (options, callback) {
-    //custom 'this' selector
-    thisEl = $(this);
-    interval = 0;
-    // array of custom settings
-    var settings = {
-      date: null,
-      format: null,
+// Global configuration
+const SearchConfig = {
+    API_BASE_URL: '/api', // Update this with your actual API endpoint
+    DEBOUNCE_DELAY: 300,
+    MIN_QUERY_LENGTH: 2,
+    MAX_SUGGESTIONS: 10,
+    STORAGE_PREFIX: 'search_engine_'
+};
+
+// ===================================
+// Utility Functions
+// ===================================
+
+// Debounce function for search input
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
     };
-
-    // append the settings array to options
-    if (options) {
-      $.extend(settings, options);
-    }
-
-    //create the countdown processing function
-    function countdown_proc() {
-      var eventDate = Date.parse(settings.date) / 1000;
-      var currentDate = Math.floor($.now() / 1000);
-
-      if (eventDate <= currentDate) {
-        callback.call(this);
-        clearInterval(interval);
-      }
-
-      var seconds = eventDate - currentDate;
-
-      var days = Math.floor(seconds / (60 * 60 * 24));
-      //calculate the number of days
-
-      seconds -= days * 60 * 60 * 24;
-      //update the seconds variable with number of days removed
-
-      var hours = Math.floor(seconds / (60 * 60));
-      seconds -= hours * 60 * 60;
-      //update the seconds variable with number of hours removed
-
-      var minutes = Math.floor(seconds / 60);
-      seconds -= minutes * 60;
-
-      //logic for the two_digits ON setting
-      if (settings.format == "on") {
-        days = String(days).length >= 2 ? days : "0" + days;
-        hours = String(hours).length >= 2 ? hours : "0" + hours;
-        minutes = String(minutes).length >= 2 ? minutes : "0" + minutes;
-        seconds = String(seconds).length >= 2 ? seconds : "0" + seconds;
-      }
-
-      //update the countdown's html values.
-      thisEl.find(".days").text(days);
-      thisEl.find(".hours").text(hours);
-      thisEl.find(".minutes").text(minutes);
-      thisEl.find(".seconds").text(seconds);
-    }
-
-    //run the function
-    countdown_proc();
-
-    //loop the function
-    interval = setInterval(countdown_proc, 1000);
-  };
-})(jQuery);
-
-//Provide the plugin settings
-$("#countdown").countdown(
-  {
-    //The countdown end date
-    date: "22 Sep 2025 04:00:00",
-
-    // on (03:07:52) | off (3:7:52) - two_digits set to ON maintains layout consistency
-    format: "on",
-  },
-
-  function () {
-    // This will run when the countdown ends
-    //alert("We're Out Now");
-  }
-);
-
-function setHeights() {
-  var windowHeight = $(window).height();
-  $(".slide").height(windowHeight);
 }
 
-setHeights();
-
-$(window).resize(function () {
-  setHeights();
-});
-
-function addSticky() {
-  $(".slide").each(function () {
-    var scrollerAnchor = $(this).offset().top;
-    if (window.scrollY >= scrollerAnchor) {
-      $(this).addClass("fix-it");
-    } else {
-      $(this).removeClass("fix-it");
-    }
-  });
-}
-
-$(window).scroll(function () {
-  addSticky();
-});
-
-(function () {
-  if (document.getElementById("slideshow") == null) return;
-
-  // we set the 'fx' class on the first image when the page loads
-  document
-    .getElementById("slideshow")
-    .getElementsByTagName("img")[0].className = "fx";
-
-  // this calls the kenBurns function every 4 seconds
-  // you can increase or decrease this value to get different effects
-  window.setInterval(kenBurns, 8000);
-
-  // the third variable is to keep track of where we are in the loop
-  // if it is set to 1 (instead of 0) it is because the first image is styled when the page loads
-  var images = document.getElementById("slideshow").getElementsByTagName("img"),
-    numberOfImages = images.length,
-    i = 1;
-
-  function kenBurns() {
-    if (i == numberOfImages) {
-      i = 0;
-    }
-    images[i].className = "fx";
-
-    // we can't remove the class from the previous element or we'd get a bouncing effect so we clean up the one before last
-    // (there must be a smarter way to do this though)
-    if (i === 0) {
-      images[numberOfImages - 2].className = "";
-    }
-    if (i === 1) {
-      images[numberOfImages - 1].className = "";
-    }
-    if (i > 1) {
-      images[i - 2].className = "";
-    }
-    i++;
-  }
-})();
-
-$("#header_slide").owlCarousel({
-  items: 1,
-  loop: true,
-  autoplay: true,
-  autoplaySpeed: 1500,
-});
-
-$("#subscription-form").submit(function (e) {
-  e.preventDefault();
-  var $form = $("#subscription-form");
-  var submit = $("#subscribe-button");
-  var ajaxResponse = $("#subscription-response");
-  var email = $("#subscriber-email").val();
-
-  $.ajax({
-    type: "POST",
-    url: "/api/v2/email-subscribe",
-    dataType: "json",
-    contentType: "application/json", // Important: Specify JSON content type
-    data: JSON.stringify({
-      email: email,
-    }),
-    cache: false,
-    beforeSend: function (result) {
-      submit.val("در حال پردازش...");
+// Storage utilities
+const Storage = {
+    set(key, value) {
+        try {
+            localStorage.setItem(SearchConfig.STORAGE_PREFIX + key, JSON.stringify(value));
+        } catch (e) {
+            console.error('Storage error:', e);
+        }
     },
+    
+    get(key) {
+        try {
+            const item = localStorage.getItem(SearchConfig.STORAGE_PREFIX + key);
+            return item ? JSON.parse(item) : null;
+        } catch (e) {
+            console.error('Storage error:', e);
+            return null;
+        }
+    },
+    
+    remove(key) {
+        localStorage.removeItem(SearchConfig.STORAGE_PREFIX + key);
+    }
+};
 
-    // error: function ( jqXHR,  textStatus,  errorThrown) {
+// ===================================
+// Search Functionality
+// ===================================
 
-    // },
-  })
-    .done(function (data, textStatus, jqXHR) {
-      var ajaxResponse = $("#subscription-response");
-      ajaxResponse.html("ثبت نام شما در خبر نامه با موفقیت انجام شد.");
-      $form.fadeOut(500);
-    })
+class SearchEngine {
+    constructor() {
+        this.searchInput = null;
+        this.searchButton = null;
+        this.suggestionsContainer = null;
+        this.recentSearches = Storage.get('recent_searches') || [];
+    }
 
-    .fail(function (jqXHR, textStatus, errorThrown) {
-      var submit = $("#subscribe-button");
-      submit.val("من رو با خبر کن");
+    init() {
+        this.bindElements();
+        this.attachEventListeners();
+        this.setupKeyboardShortcuts();
+    }
 
-      var ajaxResponse = $("#subscription-response");
-      if (jqXHR.status == 200) {
-        ajaxResponse.html("ثبت نام شما در خبر نامه با موفقیت انجام شد.");
-        $form.fadeOut(500);
-      } else {
-        if (jqXHR.responseText == "duplicate")
-          ajaxResponse.html("شما یک بار ثبت نام کرده اید.");
-        else ajaxResponse.html(jqXHR.responseText);
-      }
-      //  $form.fadeout(500);
-    });
+    bindElements() {
+        this.searchInput = document.getElementById('searchInput');
+        this.searchButton = document.getElementById('searchButton');
+        this.suggestionsContainer = document.getElementById('searchSuggestions');
+    }
+
+    attachEventListeners() {
+        if (this.searchInput) {
+            this.searchInput.addEventListener('input', debounce((e) => {
+                this.handleSearchInput(e.target.value);
+            }, SearchConfig.DEBOUNCE_DELAY));
+
+            this.searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.performSearch(e.target.value);
+                }
+            });
+        }
+
+        if (this.searchButton) {
+            this.searchButton.addEventListener('click', () => {
+                this.performSearch(this.searchInput.value);
+            });
+        }
+    }
+
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + K to focus search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                if (this.searchInput) {
+                    this.searchInput.focus();
+                    this.searchInput.select();
+                }
+            }
+            
+            // Escape to clear search
+            if (e.key === 'Escape' && this.searchInput === document.activeElement) {
+                this.searchInput.value = '';
+                this.hideSuggestions();
+            }
+        });
+    }
+
+    async handleSearchInput(query) {
+        if (query.length < SearchConfig.MIN_QUERY_LENGTH) {
+            this.hideSuggestions();
+            return;
+        }
+
+        try {
+            const suggestions = await this.fetchSuggestions(query);
+            this.displaySuggestions(suggestions);
+        } catch (error) {
+            console.error('Error fetching suggestions:', error);
+        }
+    }
+
+    async fetchSuggestions(query) {
+        // In a real application, this would make an API call
+        // For now, returning mock suggestions
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                const mockSuggestions = [
+                    `${query} tutorial`,
+                    `${query} examples`,
+                    `${query} documentation`,
+                    `${query} best practices`,
+                    `${query} vs`,
+                ];
+                resolve(mockSuggestions.slice(0, SearchConfig.MAX_SUGGESTIONS));
+            }, 100);
+        });
+    }
+
+    displaySuggestions(suggestions) {
+        if (!this.suggestionsContainer || suggestions.length === 0) {
+            this.hideSuggestions();
+            return;
+        }
+
+        const html = suggestions.map((suggestion, index) => `
+            <div class="suggestion-item" data-index="${index}" tabindex="0">
+                <svg class="suggestion-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <span>${this.highlightMatch(suggestion, this.searchInput.value)}</span>
+            </div>
+        `).join('');
+
+        this.suggestionsContainer.innerHTML = html;
+        this.suggestionsContainer.classList.remove('hidden');
+
+        // Add click handlers to suggestions
+        this.suggestionsContainer.querySelectorAll('.suggestion-item').forEach((item) => {
+            item.addEventListener('click', () => {
+                const text = item.textContent.trim();
+                this.searchInput.value = text;
+                this.performSearch(text);
+            });
+        });
+    }
+
+    highlightMatch(text, query) {
+        const regex = new RegExp(`(${query})`, 'gi');
+        return text.replace(regex, '<strong>$1</strong>');
+    }
+
+    hideSuggestions() {
+        if (this.suggestionsContainer) {
+            this.suggestionsContainer.classList.add('hidden');
+        }
+    }
+
+    performSearch(query) {
+        const trimmedQuery = query.trim();
+        
+        if (!trimmedQuery) {
+            return;
+        }
+
+        // Show loading state
+        if (this.searchButton) {
+            this.searchButton.classList.add('loading');
+        }
+
+        // Save to recent searches
+        this.saveRecentSearch(trimmedQuery);
+
+        // In a real application, redirect to results page or perform search
+        setTimeout(() => {
+            if (this.searchButton) {
+                this.searchButton.classList.remove('loading');
+            }
+            
+            // Redirect to results page with query parameter
+            window.location.href = `/search.html?q=${encodeURIComponent(trimmedQuery)}`;
+        }, 500);
+    }
+
+    saveRecentSearch(query) {
+        // Remove duplicates and limit to 10 recent searches
+        this.recentSearches = [query, ...this.recentSearches.filter(q => q !== query)].slice(0, 10);
+        Storage.set('recent_searches', this.recentSearches);
+    }
+
+    getRecentSearches() {
+        return this.recentSearches;
+    }
+
+    clearRecentSearches() {
+        this.recentSearches = [];
+        Storage.remove('recent_searches');
+    }
+}
+
+// ===================================
+// Page Navigation
+// ===================================
+
+class Navigation {
+    constructor() {
+        this.mobileMenuButton = null;
+        this.navLinks = null;
+    }
+
+    init() {
+        this.bindElements();
+        this.attachEventListeners();
+        this.highlightActiveLink();
+    }
+
+    bindElements() {
+        this.mobileMenuButton = document.getElementById('mobileMenuButton');
+        this.navLinks = document.querySelector('.nav-links');
+    }
+
+    attachEventListeners() {
+        if (this.mobileMenuButton && this.navLinks) {
+            this.mobileMenuButton.addEventListener('click', () => {
+                this.toggleMobileMenu();
+            });
+        }
+    }
+
+    toggleMobileMenu() {
+        this.navLinks.classList.toggle('nav-links--mobile-active');
+        this.mobileMenuButton.classList.toggle('active');
+    }
+
+    highlightActiveLink() {
+        const currentPath = window.location.pathname;
+        document.querySelectorAll('.nav-link').forEach(link => {
+            if (link.getAttribute('href') === currentPath) {
+                link.classList.add('active');
+            }
+        });
+    }
+}
+
+// ===================================
+// Theme Management
+// ===================================
+
+class ThemeManager {
+    constructor() {
+        this.theme = Storage.get('theme') || 'light';
+    }
+
+    init() {
+        this.applyTheme();
+        this.bindThemeToggle();
+    }
+
+    applyTheme() {
+        document.documentElement.setAttribute('data-theme', this.theme);
+    }
+
+    bindThemeToggle() {
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                this.toggleTheme();
+            });
+        }
+    }
+
+    toggleTheme() {
+        this.theme = this.theme === 'light' ? 'dark' : 'light';
+        Storage.set('theme', this.theme);
+        this.applyTheme();
+    }
+}
+
+// ===================================
+// Initialize on DOM Ready
+// ===================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize search engine
+    const searchEngine = new SearchEngine();
+    searchEngine.init();
+
+    // Initialize navigation
+    const navigation = new Navigation();
+    navigation.init();
+
+    // Initialize theme manager
+    const themeManager = new ThemeManager();
+    themeManager.init();
+
+    // Make search engine available globally for other scripts
+    window.searchEngine = searchEngine;
 });
+
+// ===================================
+// Export for use in other modules
+// ===================================
+
+// If using modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        SearchEngine,
+        Navigation,
+        ThemeManager,
+        Storage,
+        debounce
+    };
+} 

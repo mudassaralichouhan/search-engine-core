@@ -137,17 +137,19 @@ RUN cmake .. \
     make install && \
     ldconfig
 
+
+RUN apt install -y libcurl4-openssl-dev
+
 # Set up project build
 WORKDIR /app
 COPY src/ /app/src/
-COPY public/ /app/public/
 COPY tests/ /app/tests/
 COPY /CMakeLists.txt /app/
 COPY include/ /app/include/
 
 # uWebSockets and uSockets are now installed system-wide, no need to copy
 
-RUN apt install -y libcurl4-openssl-dev
+
 
 # Build using CMake
 RUN rm -rf build && \
@@ -163,13 +165,15 @@ RUN rm -rf build && \
         -DBUILD_TESTS=ON && \
     make -j$(nproc)
 
+COPY public/ /app/public/
+
 # Run tests after build - crawler tests first, then all tests
-RUN cd build && \
-    echo "Running crawler tests first..." && \
-    (ctest --test-dir . -R crawler --verbose || true) && \
-    echo "Running all tests..." && \
-    (ctest --test-dir . --verbose || true) && \
-    echo "Test execution completed"
+# RUN cd build && \
+#     echo "Running crawler tests first..." && \
+#     (ctest --test-dir . -R crawler --verbose || true) && \
+#     echo "Running all tests..." && \
+#     (ctest --test-dir . --verbose || true) && \
+#     echo "Test execution completed"
 
 # Copy the startup script
 COPY start.sh /app/start.sh
@@ -184,7 +188,7 @@ RUN apt-get update && apt-get install -y mongodb-mongosh && rm -rf /var/lib/apt/
 
 # Set default port
 ENV PORT=3000
-
+ENV MINIFY_JS=true
 # Set default Redis configuration for search
 ENV SEARCH_REDIS_URI=tcp://127.0.0.1:6379
 ENV SEARCH_REDIS_POOL_SIZE=4

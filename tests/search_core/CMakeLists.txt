@@ -10,6 +10,7 @@ function(create_search_test test_name test_file)
     target_link_libraries(${test_name} 
         PRIVATE 
             search_core
+            common
             Catch2::Catch2WithMain
     )
     

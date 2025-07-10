@@ -3,8 +3,30 @@
 #include <fstream>
 #include <filesystem>
 #include <iostream>
+#include "../../src/common/JsMinifier.h"
+#include <cassert>
 
 using namespace hatef::search;
+
+void test_js_minifier() {
+    JsMinifier& minifier = JsMinifier::getInstance();
+    minifier.setEnabled(true);
+    std::string js = R"(
+        // This is a comment
+        var x = 1; /* multi-line
+        comment */ var y = 2;   
+        function foo() {   return x + y;   } // end of line comment
+    )";
+    std::string expected = "var x=1;var y=2;function foo(){return x+y;}";
+    std::string result = minifier.process(js);
+    assert(result == expected && "JsMinifier minify failed");
+    std::cout << "JsMinifier minify test passed!\n";
+}
+
+int main() {
+    test_js_minifier();
+    return 0;
+}
 
 TEST_CASE("Scorer default configuration", "[Scorer]") {
     Scorer scorer;
