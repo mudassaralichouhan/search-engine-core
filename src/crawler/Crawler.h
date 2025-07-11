@@ -9,6 +9,7 @@
 #include <atomic>
 #include "models/CrawlResult.h"
 #include "models/CrawlConfig.h"
+#include "../../include/search_engine/storage/ContentStorage.h"
 
 class URLFrontier;
 class RobotsTxtParser;
@@ -17,7 +18,7 @@ class ContentParser;
 
 class Crawler {
 public:
-    Crawler(const CrawlConfig& config);
+    Crawler(const CrawlConfig& config, std::shared_ptr<search_engine::storage::ContentStorage> storage = nullptr);
     ~Crawler();
 
     // Start the crawling process
@@ -31,6 +32,14 @@ public:
     
     // Get the current crawl results
     std::vector<CrawlResult> getResults();
+    
+    // Get access to the PageFetcher for configuration
+    PageFetcher* getPageFetcher();
+    
+    // Update crawler configuration
+    void setMaxPages(size_t maxPages);
+    void setMaxDepth(size_t maxDepth);
+    void updateConfig(const CrawlConfig& newConfig);
 
 private:
     // Main crawling loop
@@ -46,6 +55,7 @@ private:
     std::unique_ptr<RobotsTxtParser> robotsParser;
     std::unique_ptr<PageFetcher> pageFetcher;
     std::unique_ptr<ContentParser> contentParser;
+    std::shared_ptr<search_engine::storage::ContentStorage> storage;
     
     CrawlConfig config;
     std::atomic<bool> isRunning;

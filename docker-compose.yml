@@ -16,7 +16,7 @@ services:
       - SEARCH_INDEX_NAME=search_index
     depends_on:
       - redis
-      # - mongodb
+      - mongodb
     networks:
       - search-network
 
@@ -32,16 +32,16 @@ services:
     networks:
       - search-network
 
-  # mongodb:
-  #   image: mongo:latest
-  #   container_name: mongodb_test
-  #   restart: unless-stopped
-  #   ports:
-  #     - "27017:27017"
-  #   volumes:
-  #     - mongodb_data:/data/db
-  #   networks:
-  #     - search-network
+  mongodb:
+    image: mongodb/mongodb-enterprise-server:latest
+    container_name: mongodb_test
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - search-network
 
   # mongodb-test:
   #   build:

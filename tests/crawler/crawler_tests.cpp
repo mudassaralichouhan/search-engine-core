@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_session.hpp>
 #include "Crawler.h"
+#include "PageFetcher.h"
 #include "models/CrawlConfig.h"
 #include "../../include/Logger.h"
 #include "models/CrawlResult.h"
@@ -47,7 +48,7 @@ TEST_CASE("Basic Crawling", "[Crawler]") {
     config.userAgent = "TestBot/1.0";
     config.maxDepth = 1;
     
-    Crawler crawler(config);
+    Crawler crawler(config, nullptr); // No storage for basic tests
     
     SECTION("Starts and stops crawling") {
         LOG_INFO("Adding seed URL: https://example.com");
@@ -97,7 +98,7 @@ TEST_CASE("Basic Crawling", "[Crawler]") {
         limitedConfig.politenessDelay = std::chrono::milliseconds(10);
         limitedConfig.userAgent = "TestBot/1.0";
         limitedConfig.maxDepth = 1; 
-        Crawler limitedCrawler(limitedConfig);
+        Crawler limitedCrawler(limitedConfig, nullptr); // No storage for basic tests
         limitedCrawler.addSeedURL("https://example.com");
         
         // Create a promise and future for synchronization
@@ -138,7 +139,7 @@ TEST_CASE("Seed URLs", "[Crawler]") {
     config.userAgent = "TestBot/1.0";
     config.maxDepth = 1;
     
-    Crawler crawler(config);
+    Crawler crawler(config, nullptr); // No storage for basic tests
     
     SECTION("Processes multiple seed URLs") {
         crawler.addSeedURL("https://example.com");
@@ -227,7 +228,7 @@ TEST_CASE("Robots.txt Compliance", "[Crawler]") {
     config.maxPages = 5;
     config.maxDepth = 1;
     
-    Crawler crawler(config);
+    Crawler crawler(config, nullptr); // No storage for basic tests
     
     SECTION("Respects robots.txt rules") {
         crawler.addSeedURL("http://localhost:8080/private/");
@@ -276,7 +277,7 @@ TEST_CASE("Crawl Results", "[Crawler]") {
     config.userAgent = "TestBot/1.0";
     config.maxDepth = 1;
     
-    Crawler crawler(config);
+    Crawler crawler(config, nullptr); // No storage for basic tests
     
     SECTION("Stores crawl results correctly") {
         std::string seedUrl = "https://example.com";
@@ -332,7 +333,7 @@ TEST_CASE("Error Handling", "[Crawler]") {
     config.maxPages = 5;
     config.maxDepth = 1;
     
-    Crawler crawler(config);
+    Crawler crawler(config, nullptr); // No storage for basic tests
     
     SECTION("Handles invalid URLs") {
         crawler.addSeedURL("not-a-valid-url");
@@ -409,6 +410,220 @@ TEST_CASE("Error Handling", "[Crawler]") {
             }
         }
         REQUIRE(found_unreachable_failed);
+    }
+}
+
+TEST_CASE("Database Storage Integration", "[Crawler][Storage]") {
+    // Skip this test if MongoDB is not available
+    // You can set SKIP_DB_TESTS=1 environment variable to skip database tests
+    const char* skipDbTests = std::getenv("SKIP_DB_TESTS");
+    if (skipDbTests && std::string(skipDbTests) == "1") {
+        SKIP("Database tests skipped by SKIP_DB_TESTS environment variable");
+    }
+    
+    CrawlConfig config;
+    config.maxPages = 1;
+    config.politenessDelay = std::chrono::milliseconds(10);
+    config.userAgent = "TestBot/1.0";
+    config.maxDepth = 1;
+    config.storeRawContent = true;
+    config.extractTextContent = true;
+    
+    // Create a ContentStorage instance for testing
+    auto storage = std::make_shared<search_engine::storage::ContentStorage>(
+        "mongodb://localhost:27017",
+        "search-engine"
+    );
+    
+    // Test connection to MongoDB
+    auto connectionTest = storage->testConnections();
+    if (!connectionTest.success) {
+        SKIP("MongoDB not available for testing: " + connectionTest.message);
+    }
+    
+    SECTION("Saves crawl results to database") {
+        Crawler crawler(config, storage);
+        
+        std::string testUrl = "https://example.com";
+        crawler.addSeedURL(testUrl);
+        
+        // Create a promise and future for synchronization
+        std::promise<void> crawlerPromise;
+        std::future<void> crawlerFuture = crawlerPromise.get_future();
+        
+        std::thread crawlerThread([&crawler, &crawlerPromise]() {
+            crawler.start();
+            
+            // Wait for crawler to finish processing
+            while (crawler.getResults().empty()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            
+            crawlerPromise.set_value(); // Signal that crawler has finished
+        });
+        
+        // Wait for crawler to complete or timeout after 5 seconds
+        if (crawlerFuture.wait_for(std::chrono::seconds(5)) == std::future_status::timeout) {
+            LOG_INFO("Crawler timeout, stopping...");
+            crawler.stop();
+        }
+        
+        crawlerThread.join();
+        
+        auto results = crawler.getResults();
+        REQUIRE_FALSE(results.empty());
+        
+        // Verify that the result was saved to the database
+        auto storedProfile = storage->getSiteProfile(testUrl);
+        REQUIRE(storedProfile.success);
+        REQUIRE(storedProfile.value.url == testUrl);
+        REQUIRE(storedProfile.value.crawlMetadata.lastCrawlStatus == search_engine::storage::CrawlStatus::SUCCESS);
+        
+        LOG_INFO("Successfully verified crawl result saved to database for URL: " + testUrl);
+    }
+    
+    SECTION("Handles database storage failures gracefully") {
+        // Create a crawler with invalid storage connection
+        auto invalidStorage = std::make_shared<search_engine::storage::ContentStorage>(
+            "mongodb://invalid-host:27017",
+            "search-engine"
+        );
+        
+        Crawler crawler(config, invalidStorage);
+        
+        std::string testUrl = "https://example.com";
+        crawler.addSeedURL(testUrl);
+        
+        // Create a promise and future for synchronization
+        std::promise<void> crawlerPromise;
+        std::future<void> crawlerFuture = crawlerPromise.get_future();
+        
+        std::thread crawlerThread([&crawler, &crawlerPromise]() {
+            crawler.start();
+            
+            // Wait for crawler to finish processing
+            while (crawler.getResults().empty()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            
+            crawlerPromise.set_value(); // Signal that crawler has finished
+        });
+        
+        // Wait for crawler to complete or timeout after 5 seconds
+        if (crawlerFuture.wait_for(std::chrono::seconds(5)) == std::future_status::timeout) {
+            LOG_INFO("Crawler timeout, stopping...");
+            crawler.stop();
+        }
+        
+        crawlerThread.join();
+        
+        // Crawler should still work even if database storage fails
+        auto results = crawler.getResults();
+        REQUIRE_FALSE(results.empty());
+        REQUIRE(results[0].success);
+        
+        LOG_INFO("Crawler continued working despite database storage failure");
+    }
+}
+
+TEST_CASE("Parameterized Crawl Test", "[Crawler][Parameterized]") {
+    // Skip this test if MongoDB is not available
+    const char* skipDbTests = std::getenv("SKIP_DB_TESTS");
+    if (skipDbTests && std::string(skipDbTests) == "1") {
+        SKIP("Database tests skipped by SKIP_DB_TESTS environment variable");
+    }
+    
+    // Get parameters from environment variables or use defaults
+    std::string testUrl = "https://www.time.ir";  // Default
+    int maxPages = 1;                             // Default
+    int maxDepth = 1;                             // Default
+    
+    const char* urlEnv = std::getenv("TEST_URL");
+    const char* pagesEnv = std::getenv("TEST_MAX_PAGES");
+    const char* depthEnv = std::getenv("TEST_MAX_DEPTH");
+    
+    if (urlEnv) testUrl = urlEnv;
+    if (pagesEnv) maxPages = std::stoi(pagesEnv);
+    if (depthEnv) maxDepth = std::stoi(depthEnv);
+    
+    LOG_INFO("Running parameterized test with:");
+    LOG_INFO("  URL: " + testUrl);
+    LOG_INFO("  Max Pages: " + std::to_string(maxPages));
+    LOG_INFO("  Max Depth: " + std::to_string(maxDepth));
+    
+    CrawlConfig config;
+    config.maxPages = maxPages;
+    config.politenessDelay = std::chrono::milliseconds(10);
+    config.userAgent = "TestBot/1.0";
+    config.maxDepth = maxDepth;
+    config.storeRawContent = true;
+    config.extractTextContent = true;
+    
+    // Create a ContentStorage instance for testing
+    auto storage = std::make_shared<search_engine::storage::ContentStorage>(
+        "mongodb://localhost:27017",
+        "search-engine"
+    );
+    
+    // Test connection to MongoDB
+    auto connectionTest = storage->testConnections();
+    if (!connectionTest.success) {
+        SKIP("MongoDB not available for testing: " + connectionTest.message);
+    }
+    
+    SECTION("Parameterized crawl with database storage") {
+        Crawler crawler(config, storage);
+        
+        // Disable SSL verification for problematic sites
+        crawler.getPageFetcher()->setVerifySSL(false);
+        
+        crawler.addSeedURL(testUrl);
+        
+        // Create a promise and future for synchronization
+        std::promise<void> crawlerPromise;
+        std::future<void> crawlerFuture = crawlerPromise.get_future();
+        
+        std::thread crawlerThread([&crawler, &crawlerPromise]() {
+            crawler.start();
+            
+            // Wait for crawler to finish processing
+            while (crawler.getResults().empty()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            
+            crawlerPromise.set_value(); // Signal that crawler has finished
+        });
+        
+        // Wait for crawler to complete or timeout after 10 seconds
+        if (crawlerFuture.wait_for(std::chrono::seconds(10)) == std::future_status::timeout) {
+            LOG_INFO("Crawler timeout, stopping...");
+            crawler.stop();
+        }
+        
+        crawlerThread.join();
+        
+        auto results = crawler.getResults();
+        REQUIRE_FALSE(results.empty());
+        
+        // Print results for debugging
+        LOG_INFO("Crawl completed. Results:");
+        for (const auto& result : results) {
+            LOG_INFO("  URL: " + result.url + " - Success: " + (result.success ? "true" : "false"));
+            if (result.success) {
+                LOG_INFO("    Title: " + (result.title.has_value() ? result.title.value() : "N/A"));
+                LOG_INFO("    Content length: " + std::to_string(result.rawContent.has_value() ? result.rawContent.value().length() : 0));
+            } else if (result.errorMessage.has_value()) {
+                LOG_INFO("    Error: " + result.errorMessage.value());
+            }
+        }
+        
+        // Verify that the result was saved to the database
+        auto storedProfile = storage->getSiteProfile(testUrl);
+        REQUIRE(storedProfile.success);
+        REQUIRE(storedProfile.value.url == testUrl);
+        REQUIRE(storedProfile.value.crawlMetadata.lastCrawlStatus == search_engine::storage::CrawlStatus::SUCCESS);
+        
+        LOG_INFO("Successfully verified crawl result saved to database for URL: " + testUrl);
     }
 }
 

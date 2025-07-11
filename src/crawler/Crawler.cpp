@@ -10,8 +10,9 @@
 #include <iomanip>
 #include <iostream>
 
-Crawler::Crawler(const CrawlConfig& config)
-    : config(config)
+Crawler::Crawler(const CrawlConfig& config, std::shared_ptr<search_engine::storage::ContentStorage> storage)
+    : storage(storage)
+    , config(config)
     , isRunning(false) {
     // Initialize logger with INFO level by default
     Logger::getInstance().init(LogLevel::INFO, true);
@@ -96,6 +97,18 @@ void Crawler::crawlLoop() {
             std::lock_guard<std::mutex> lock(resultsMutex);
             results.push_back(result);
             LOG_INFO("Added result for URL: " + url + ", total results: " + std::to_string(results.size()));
+        }
+        
+        // Save to database if storage is available
+        if (storage) {
+            auto storeResult = storage->storeCrawlResult(result);
+            if (storeResult.success) {
+                LOG_INFO("Successfully saved crawl result to database for URL: " + url);
+            } else {
+                LOG_ERROR("Failed to save crawl result to database for URL: " + url + " - " + storeResult.message);
+            }
+        } else {
+            LOG_WARNING("No storage configured, crawl result not saved to database for URL: " + url);
         }
         
         // Then mark URL as visited
@@ -206,4 +219,27 @@ void Crawler::extractAndAddURLs(const std::string& content, const std::string& b
             urlFrontier->addURL(link);
         }
     }
+}
+
+PageFetcher* Crawler::getPageFetcher() {
+    return pageFetcher.get();
+}
+
+void Crawler::setMaxPages(size_t maxPages) {
+    std::lock_guard<std::mutex> lock(resultsMutex);
+    config.maxPages = maxPages;
+    LOG_INFO("Updated maxPages to: " + std::to_string(maxPages));
+}
+
+void Crawler::setMaxDepth(size_t maxDepth) {
+    std::lock_guard<std::mutex> lock(resultsMutex);
+    config.maxDepth = maxDepth;
+    LOG_INFO("Updated maxDepth to: " + std::to_string(maxDepth));
+}
+
+void Crawler::updateConfig(const CrawlConfig& newConfig) {
+    std::lock_guard<std::mutex> lock(resultsMutex);
+    config = newConfig;
+    LOG_INFO("Updated crawler configuration - maxPages: " + std::to_string(config.maxPages) + 
+             ", maxDepth: " + std::to_string(config.maxDepth));
 } 

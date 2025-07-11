@@ -54,6 +54,7 @@ target_include_directories(crawler
 target_link_libraries(crawler
     PUBLIC
         common
+        storage
         ${CURL_LIBRARIES}
         ${GUMBO_LIBRARIES} # Link against system Gumbo found by pkg-config
         Threads::Threads

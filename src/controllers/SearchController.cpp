@@ -1,7 +1,9 @@
 #include "SearchController.h"
 #include "../../include/Logger.h"
 #include "../../src/crawler/Crawler.h"
+#include "../../src/crawler/PageFetcher.h"
 #include "../../src/crawler/models/CrawlConfig.h"
+#include "../../include/search_engine/storage/ContentStorage.h"
 #include <cstdlib>
 #include <chrono>
 #include <iomanip>
@@ -53,11 +55,22 @@ SearchController::SearchController() {
         CrawlConfig config;
         config.maxPages = 1000;  // Default max pages
         config.maxDepth = 3;     // Default max depth
-        config.userAgent = "SearchEngineCrawler/1.0";
+        config.userAgent = "Hatefbot/1.0";
         
         try {
-            g_crawler = std::make_unique<Crawler>(config);
-            LOG_INFO("Crawler initialized successfully");
+            // Create ContentStorage for database persistence
+            auto storage = std::make_shared<search_engine::storage::ContentStorage>(
+                "mongodb://localhost:27017",
+                "search-engine"
+            );
+            
+            // Initialize crawler with database storage
+            g_crawler = std::make_unique<Crawler>(config, storage);
+            
+            // Disable SSL verification for problematic sites (like time.ir)
+            g_crawler->getPageFetcher()->setVerifySSL(false);
+            
+            LOG_INFO("Crawler initialized successfully with database storage and SSL verification disabled");
         } catch (const std::exception& e) {
             LOG_ERROR("Failed to initialize Crawler: " + std::string(e.what()));
             throw;
@@ -103,6 +116,10 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                 
                 // Add URL to crawler
                 if (g_crawler) {
+                    // Update crawler configuration with the provided parameters
+                    g_crawler->setMaxPages(maxPages);
+                    g_crawler->setMaxDepth(maxDepth);
+                    
                     g_crawler->addSeedURL(url);
                     
                     // Start crawling if not already running

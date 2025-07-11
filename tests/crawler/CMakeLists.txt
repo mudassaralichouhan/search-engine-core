@@ -5,15 +5,19 @@ add_executable(crawler_tests
     robots_txt_parser_tests.cpp
     url_frontier_tests.cpp
     page_fetcher_tests.cpp
+    ../../src/storage/ContentStorage.cpp
+    ../../src/storage/MongoDBStorage.cpp
 )
 
 # Add include directories from the crawler library
+# and storage library
+# (storage already includes its own headers)
 target_include_directories(crawler_tests PRIVATE $<TARGET_PROPERTY:crawler,INTERFACE_INCLUDE_DIRECTORIES>)
 
-# Link against the crawler library and Catch2
 target_link_libraries(crawler_tests
     PRIVATE
         crawler
+        storage
         Catch2::Catch2WithMain
 )
 

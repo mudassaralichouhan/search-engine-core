@@ -138,7 +138,7 @@ SiteProfile ContentStorage::crawlResultToSiteProfile(const CrawlResult& crawlRes
     profile.crawlMetadata.lastErrorMessage = crawlResult.errorMessage;
     profile.crawlMetadata.crawlCount = 1; // Will be updated if exists
     profile.crawlMetadata.crawlIntervalHours = 24.0; // Default interval
-    profile.crawlMetadata.userAgent = "SearchEngine-Bot/1.0";
+    profile.crawlMetadata.userAgent = "Hatefbot/1.0";
     profile.crawlMetadata.httpStatusCode = crawlResult.statusCode;
     profile.crawlMetadata.contentSize = crawlResult.contentSize;
     profile.crawlMetadata.contentType = crawlResult.contentType;

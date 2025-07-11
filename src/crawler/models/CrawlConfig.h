@@ -14,7 +14,7 @@ struct CrawlConfig {
     std::chrono::milliseconds politenessDelay{1000};
     
     // User agent string to use in requests
-    std::string userAgent = "SearchEngineCrawler/1.0";
+    std::string userAgent = "Hatefbot/1.0";
     
     // Maximum number of concurrent connections
     size_t maxConcurrentConnections = 10;

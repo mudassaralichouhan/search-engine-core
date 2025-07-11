@@ -1,5 +1,5 @@
 # Build stage
-ARG BASE_IMAGE=mongodb-server
+ARG BASE_IMAGE=mongodb-drivers
 FROM ${BASE_IMAGE} AS builder
 
 #FROM ghcr.io/hatef-ir/mongodb-server:latest as builder
