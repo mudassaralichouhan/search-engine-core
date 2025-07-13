@@ -141,15 +141,13 @@ RUN cmake .. \
 RUN apt install -y libcurl4-openssl-dev
 
 # Set up project build
-WORKDIR /app
-COPY src/ /app/src/
-COPY tests/ /app/tests/
-COPY /CMakeLists.txt /app/
-COPY include/ /app/include/
+WORKDIR /deps
+COPY src/ /deps/src/
+COPY tests/ /deps/tests/
+COPY /CMakeLists.txt /deps/
+COPY include/ /deps/include/
 
 # uWebSockets and uSockets are now installed system-wide, no need to copy
-
-
 
 # Build using CMake
 RUN rm -rf build && \
@@ -176,14 +174,23 @@ COPY public/ /app/public/
 #     echo "Test execution completed"
 
 # Copy the startup script
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
+# COPY start.sh /app/start.sh
+# RUN chmod +x /app/start.sh
 RUN echo "BASE_IMAGE: " ${BASE_IMAGE}
 
 # Runtime stage
 FROM ${BASE_IMAGE} AS runner
 
-# Install MongoDB shell for health checks
+
+RUN apt-get update && apt-get install -y gnupg curl
+RUN curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | \
+    gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg \
+    --dearmor
+
+RUN echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+
+# RUN apt-get update && apt-get install -y mongodb-org-mongos mongodb-org-server mongodb-org-shell mongodb-org-tools
+#Install MongoDB shell for health checks
 RUN apt-get update && apt-get install -y mongodb-mongosh && rm -rf /var/lib/apt/lists/*
 
 # Set default port
@@ -197,13 +204,9 @@ ENV SEARCH_INDEX_NAME=search_index
 WORKDIR /app
 
 # Create necessary directories with proper permissions
-RUN mkdir -p /data/db && \
-    mkdir -p /var/log && \
-    chown -R mongodb:mongodb /data/db && \
-    chown -R mongodb:mongodb /var/log
-
 # Copy the built binary from the builder stage
-COPY --from=builder /app/build/server ./server
+COPY --from=builder /deps/build/server ./server
+RUN chmod +x ./server
 
 # Copy Gumbo library files from builder stage
 COPY --from=builder /usr/local/lib/libgumbo.so* /usr/local/lib/
@@ -219,21 +222,45 @@ COPY --from=builder /usr/local/lib/libredis++.so* /usr/local/lib/
 COPY --from=builder /usr/local/lib/libredis++.a /usr/local/lib/
 COPY --from=builder /usr/local/include/sw/ /usr/local/include/sw/
 
+
+# COPY --from=builder /usr/local/lib/libmongocxx.so* /usr/local/lib/
+# COPY --from=builder /usr/local/lib/libbsoncxx.so* /usr/local/lib/
+# COPY --from=builder /usr/local/lib/libredis++.so* /usr/local/lib/
+# COPY --from=builder /usr/local/lib/libhiredis.so* /usr/local/lib/
+# COPY --from=builder /usr/local/lib/libgumbo.so* /usr/local/lib/
+# COPY --from=builder /usr/local/lib/libuSockets.a /usr/local/lib/
+
+# # Copy headers
+# COPY --from=builder /usr/local/include/mongocxx /usr/local/include/mongocxx
+# COPY --from=builder /usr/local/include/bsoncxx /usr/local/include/bsoncxx
+# COPY --from=builder /usr/local/include/sw /usr/local/include/sw
+# COPY --from=builder /usr/local/include/hiredis /usr/local/include/hiredis
+# COPY --from=builder /usr/local/include/gumbo.h /usr/local/include/
+# COPY --from=builder /usr/local/include/uwebsockets /usr/local/include/uwebsockets
+# COPY --from=builder /usr/local/include/uSockets /usr/local/include/uSockets
+
 # Update library cache
 RUN ldconfig
 
 # Copy public folder from builder stage
-COPY --from=builder /app/public ./public
+COPY public ./public
 
+RUN apt-get update && apt-get install -y redis-tools
+RUN Cha1=1
 # Copy the startup script
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
+RUN dir
 # Expose the port
 EXPOSE ${PORT}
 
 # Set the entrypoint to the startup script
 ENTRYPOINT ["/app/start.sh"]
+# Simple mongosh test to verify MongoDB is available
+# RUN echo "db.runCommand({ ping: 1 })" > /tmp/mongosh_test.js && \
+    # mongosh --file /tmp/mongosh_test.js || (echo "⚠️  mongosh test failed, but continuing build"; exit 0)
 
 # Start MongoDB
-#CMD ["mongod", "--fork", "--logpath", "/var/log/mongodb.log"]
+# CMD ["mongodsh", "--fork", "--logpath", "/var/log/mongodb.log"]
+#  ENTRYPOINT ["/bin/bash", "-c", "echo 'Container started for test'; exec sleep infinity"]

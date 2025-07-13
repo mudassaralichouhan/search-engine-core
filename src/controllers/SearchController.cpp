@@ -58,10 +58,24 @@ SearchController::SearchController() {
         config.userAgent = "Hatefbot/1.0";
         
         try {
+            // Get MongoDB connection string from environment or use default
+            const char* mongoUri = std::getenv("MONGODB_URI");
+            std::string mongoConnectionString = mongoUri ? mongoUri : "mongodb://localhost:27017";
+            
+            LOG_INFO("Using MongoDB connection string: " + mongoConnectionString);
+            
+            // Get Redis connection string from environment or use default
+            const char* redisUri = std::getenv("SEARCH_REDIS_URI");
+            std::string redisConnectionString = redisUri ? redisUri : "tcp://127.0.0.1:6379";
+            
+            LOG_INFO("Using Redis connection string: " + redisConnectionString);
+            
             // Create ContentStorage for database persistence
             auto storage = std::make_shared<search_engine::storage::ContentStorage>(
-                "mongodb://localhost:27017",
-                "search-engine"
+                mongoConnectionString,
+                "search-engine",
+                redisConnectionString,
+                "search_index"
             );
             
             // Initialize crawler with database storage

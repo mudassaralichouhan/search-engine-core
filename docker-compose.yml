@@ -1,19 +1,19 @@
-version: '3.8'
 
 services:
   search-engine:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: search-engine
+    container_name: core
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017
       - SEARCH_REDIS_URI=tcp://redis:6379
       - SEARCH_REDIS_POOL_SIZE=4
       - SEARCH_INDEX_NAME=search_index
+      - MINIFY_JS=false
     depends_on:
       - redis
       - mongodb
@@ -40,6 +40,10 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+    environment:
+      - MONGODB_INITDB_ROOT_USERNAME=admin
+      - MONGODB_INITDB_ROOT_PASSWORD=password123
+    command: mongod --bind_ip_all
     networks:
       - search-network
 

@@ -87,40 +87,75 @@ ContentStorage::ContentStorage(
 #endif
 ) {
     LOG_DEBUG("ContentStorage constructor called");
-    try {
-        LOG_INFO("Initializing ContentStorage with MongoDB and Redis");
-        mongoStorage_ = std::make_unique<MongoDBStorage>(mongoConnectionString, mongoDatabaseName);
-        LOG_DEBUG("MongoDB storage initialized");
-        
+    
+    // Store connection parameters for lazy initialization
+    mongoConnectionString_ = mongoConnectionString;
+    mongoDatabaseName_ = mongoDatabaseName;
 #ifdef REDIS_AVAILABLE
-        redisStorage_ = std::make_unique<RedisSearchStorage>(redisConnectionString, redisIndexName);
-        LOG_DEBUG("Redis search storage initialized");
+    redisConnectionString_ = redisConnectionString;
+    redisIndexName_ = redisIndexName;
 #endif
-        
-        // Test connections
-        auto mongoTest = mongoStorage_->testConnection();
-        if (!mongoTest.success) {
-            LOG_ERROR("MongoDB connection test failed: " + mongoTest.message);
-            throw std::runtime_error("MongoDB connection failed: " + mongoTest.message);
-        }
-        LOG_INFO("MongoDB connection test successful");
-        
+    
+    // Initialize connection state
+    mongoConnected_ = false;
 #ifdef REDIS_AVAILABLE
-        auto redisTest = redisStorage_->testConnection();
-        if (!redisTest.success) {
-            LOG_ERROR("Redis connection test failed: " + redisTest.message);
-            throw std::runtime_error("Redis connection failed: " + redisTest.message);
-        }
-        LOG_INFO("Redis connection test successful");
+    redisConnected_ = false;
 #endif
-        
-        LOG_INFO("ContentStorage initialization completed successfully");
-        
-    } catch (const std::exception& e) {
-        LOG_ERROR("Failed to initialize ContentStorage: " + std::string(e.what()));
-        throw std::runtime_error("Failed to initialize ContentStorage: " + std::string(e.what()));
+    
+    LOG_INFO("ContentStorage initialized with lazy connection handling");
+    LOG_INFO("MongoDB will connect at: " + mongoConnectionString);
+#ifdef REDIS_AVAILABLE
+    LOG_INFO("Redis will connect at: " + redisConnectionString);
+#endif
+}
+
+// Private method to ensure MongoDB connection
+void ContentStorage::ensureMongoConnection() {
+    if (!mongoConnected_ || !mongoStorage_) {
+        try {
+            LOG_DEBUG("Initializing MongoDB connection...");
+            mongoStorage_ = std::make_unique<MongoDBStorage>(mongoConnectionString_, mongoDatabaseName_);
+            
+            // Test connection without blocking startup
+            auto mongoTest = mongoStorage_->testConnection();
+            if (mongoTest.success) {
+                mongoConnected_ = true;
+                LOG_INFO("MongoDB connection established successfully");
+            } else {
+                LOG_WARNING("MongoDB connection test failed: " + mongoTest.message);
+                // Don't throw - allow the service to start without DB
+            }
+        } catch (const std::exception& e) {
+            LOG_ERROR("Failed to initialize MongoDB connection: " + std::string(e.what()));
+            // Don't throw - allow the service to start without DB
+        }
     }
 }
+
+#ifdef REDIS_AVAILABLE
+// Private method to ensure Redis connection
+void ContentStorage::ensureRedisConnection() {
+    if (!redisConnected_ || !redisStorage_) {
+        try {
+            LOG_DEBUG("Initializing Redis connection...");
+            redisStorage_ = std::make_unique<RedisSearchStorage>(redisConnectionString_, redisIndexName_);
+            
+            // Test connection without blocking startup
+            auto redisTest = redisStorage_->testConnection();
+            if (redisTest.success) {
+                redisConnected_ = true;
+                LOG_INFO("Redis connection established successfully");
+            } else {
+                LOG_WARNING("Redis connection test failed: " + redisTest.message);
+                // Don't throw - allow the service to start without Redis
+            }
+        } catch (const std::exception& e) {
+            LOG_ERROR("Failed to initialize Redis connection: " + std::string(e.what()));
+            // Don't throw - allow the service to start without Redis
+        }
+    }
+}
+#endif
 
 SiteProfile ContentStorage::crawlResultToSiteProfile(const CrawlResult& crawlResult) const {
     SiteProfile profile;
@@ -195,6 +230,12 @@ std::string ContentStorage::extractSearchableContent(const CrawlResult& crawlRes
 Result<std::string> ContentStorage::storeCrawlResult(const CrawlResult& crawlResult) {
     LOG_DEBUG("ContentStorage::storeCrawlResult called for URL: " + crawlResult.url);
     try {
+        // Ensure MongoDB connection before proceeding
+        ensureMongoConnection();
+        if (!mongoConnected_ || !mongoStorage_) {
+            return Result<std::string>::Failure("MongoDB not available");
+        }
+        
         // Convert CrawlResult to SiteProfile
         SiteProfile profile = crawlResultToSiteProfile(crawlResult);
         LOG_TRACE("CrawlResult converted to SiteProfile for URL: " + crawlResult.url);
@@ -243,12 +284,19 @@ Result<std::string> ContentStorage::storeCrawlResult(const CrawlResult& crawlRes
 #ifdef REDIS_AVAILABLE
         if (crawlResult.success && crawlResult.textContent) {
             LOG_DEBUG("Indexing content in Redis for URL: " + crawlResult.url);
-            std::string searchableContent = extractSearchableContent(crawlResult);
-            auto redisResult = redisStorage_->indexSiteProfile(profile, searchableContent);
-            if (!redisResult.success) {
-                LOG_WARNING("Failed to index in Redis for URL: " + crawlResult.url + " - " + redisResult.message);
-                // Log warning but don't fail the operation
-                // In a real system, you might want to queue this for retry
+            
+            // Ensure Redis connection before indexing
+            ensureRedisConnection();
+            if (redisConnected_ && redisStorage_) {
+                std::string searchableContent = extractSearchableContent(crawlResult);
+                auto redisResult = redisStorage_->indexSiteProfile(profile, searchableContent);
+                if (!redisResult.success) {
+                    LOG_WARNING("Failed to index in Redis for URL: " + crawlResult.url + " - " + redisResult.message);
+                    // Log warning but don't fail the operation
+                    // In a real system, you might want to queue this for retry
+                }
+            } else {
+                LOG_WARNING("Redis not available for indexing URL: " + crawlResult.url);
             }
         }
 #endif
@@ -272,31 +320,59 @@ Result<bool> ContentStorage::updateCrawlResult(const CrawlResult& crawlResult) {
 }
 
 Result<SiteProfile> ContentStorage::getSiteProfile(const std::string& url) {
+    ensureMongoConnection();
+    if (!mongoConnected_ || !mongoStorage_) {
+        return Result<SiteProfile>::Failure("MongoDB not available");
+    }
     return mongoStorage_->getSiteProfile(url);
 }
 
 Result<std::vector<SiteProfile>> ContentStorage::getSiteProfilesByDomain(const std::string& domain) {
+    ensureMongoConnection();
+    if (!mongoConnected_ || !mongoStorage_) {
+        return Result<std::vector<SiteProfile>>::Failure("MongoDB not available");
+    }
     return mongoStorage_->getSiteProfilesByDomain(domain);
 }
 
 Result<std::vector<SiteProfile>> ContentStorage::getSiteProfilesByCrawlStatus(CrawlStatus status) {
+    ensureMongoConnection();
+    if (!mongoConnected_ || !mongoStorage_) {
+        return Result<std::vector<SiteProfile>>::Failure("MongoDB not available");
+    }
     return mongoStorage_->getSiteProfilesByCrawlStatus(status);
 }
 
 Result<int64_t> ContentStorage::getTotalSiteCount() {
+    ensureMongoConnection();
+    if (!mongoConnected_ || !mongoStorage_) {
+        return Result<int64_t>::Failure("MongoDB not available");
+    }
     return mongoStorage_->getTotalSiteCount();
 }
 
 #ifdef REDIS_AVAILABLE
 Result<SearchResponse> ContentStorage::search(const SearchQuery& query) {
+    ensureRedisConnection();
+    if (!redisConnected_ || !redisStorage_) {
+        return Result<SearchResponse>::Failure("Redis not available");
+    }
     return redisStorage_->search(query);
 }
 
 Result<SearchResponse> ContentStorage::searchSimple(const std::string& query, int limit) {
+    ensureRedisConnection();
+    if (!redisConnected_ || !redisStorage_) {
+        return Result<SearchResponse>::Failure("Redis not available");
+    }
     return redisStorage_->searchSimple(query, limit);
 }
 
 Result<std::vector<std::string>> ContentStorage::suggest(const std::string& prefix, int limit) {
+    ensureRedisConnection();
+    if (!redisConnected_ || !redisStorage_) {
+        return Result<std::vector<std::string>>::Failure("Redis not available");
+    }
     return redisStorage_->suggest(prefix, limit);
 }
 #endif

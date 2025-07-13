@@ -21,9 +21,29 @@ private:
     std::unique_ptr<RedisSearchStorage> redisStorage_;
 #endif
     
+    // Connection parameters for lazy initialization
+    std::string mongoConnectionString_;
+    std::string mongoDatabaseName_;
+#ifdef REDIS_AVAILABLE
+    std::string redisConnectionString_;
+    std::string redisIndexName_;
+#endif
+    
+    // Connection state tracking
+    bool mongoConnected_;
+#ifdef REDIS_AVAILABLE
+    bool redisConnected_;
+#endif
+    
     // Helper methods
     SiteProfile crawlResultToSiteProfile(const CrawlResult& crawlResult) const;
     std::string extractSearchableContent(const CrawlResult& crawlResult) const;
+    
+    // Lazy connection methods
+    void ensureMongoConnection();
+#ifdef REDIS_AVAILABLE
+    void ensureRedisConnection();
+#endif
     
 public:
     // Constructor
