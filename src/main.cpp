@@ -15,6 +15,11 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <thread>
+#include <atomic>
+#include <unordered_set>
+#include "websocket/WebSocketRegistry.h"
+#include "websocket/DateTimeWebSocketHandler.h"
 
 using namespace std;
 
@@ -75,8 +80,12 @@ int main() {
 
     // Create app and apply all registered routes
     auto app = uWS::App();
-    
 
+    // WebSocket registry and handler injection
+    WebSocketRegistry wsRegistry;
+    wsRegistry.addHandler(std::make_shared<DateTimeWebSocketHandler>());
+    wsRegistry.registerAll(app);
+    
     // Add request tracing middleware wrapper
     routing::RouteRegistry::getInstance().applyRoutes(app);
     

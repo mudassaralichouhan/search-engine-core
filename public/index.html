@@ -185,6 +185,24 @@
                 </div>
             </section>
 
+            <div id="datetimeDisplay" style="text-align:center;font-size:1.5em;color:#0074d9;margin:24px 0;"></div>
+
+            <script>
+            (function() {
+                let ws;
+                function connectWS() {
+                    ws = new WebSocket('ws://' + window.location.hostname + ':3000/datetime');
+                    ws.onmessage = function(event) {
+                        document.getElementById('datetimeDisplay').textContent = 'Server Time: ' + event.data;
+                    };
+                    ws.onclose = function() {
+                        setTimeout(connectWS, 2000); // Reconnect after 2s
+                    };
+                }
+                connectWS();
+            })();
+            </script>
+
             <section class="stats-section">
                 <h2>Why Choose Our Search?</h2>
                 <div class="stats-grid">
