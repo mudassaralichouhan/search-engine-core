@@ -13,45 +13,64 @@ URLFrontier::~URLFrontier() {
     LOG_DEBUG("URLFrontier destructor called");
 }
 
-void URLFrontier::addURL(const std::string& url) {
-    LOG_DEBUG("URLFrontier::addURL called with: " + url);
+void URLFrontier::addURL(const std::string& url, bool force) {
+    LOG_DEBUG("URLFrontier::addURL called with: " + url + (force ? " (force)" : ""));
     std::string normalizedURL = normalizeURL(url);
     std::string domain = extractDomain(normalizedURL);
-    
-    // Check both visited URLs and queue for duplicates
-    {
-    std::lock_guard<std::mutex> visitedLock(visitedMutex);
-    if (visitedURLs.find(normalizedURL) != visitedURLs.end()) {
-            LOG_DEBUG("URL already visited, skipping: " + normalizedURL);
-        return;
+    if (force) {
+        // Remove from visited set if present
+        {
+            std::lock_guard<std::mutex> visitedLock(visitedMutex);
+            visitedURLs.erase(normalizedURL);
+        }
+        // Remove from queue if present
+        {
+            std::lock_guard<std::mutex> queueLock(queueMutex);
+            std::queue<std::string> tempQueue;
+            while (!urlQueue.empty()) {
+                std::string current = urlQueue.front();
+                urlQueue.pop();
+                if (current != normalizedURL) {
+                    tempQueue.push(current);
+                }
+            }
+            while (!tempQueue.empty()) {
+                urlQueue.push(tempQueue.front());
+                tempQueue.pop();
+            }
         }
     }
-    
+    // Check both visited URLs and queue for duplicates
     {
-    std::lock_guard<std::mutex> queueLock(queueMutex);
-        // Check if URL is already in queue
-        std::queue<std::string> tempQueue;
-        bool found = false;
-        while (!urlQueue.empty()) {
-            std::string current = urlQueue.front();
-            urlQueue.pop();
-            if (current == normalizedURL) {
-                found = true;
-            }
-            tempQueue.push(current);
-        }
-        // Restore queue
-        while (!tempQueue.empty()) {
-            urlQueue.push(tempQueue.front());
-            tempQueue.pop();
-        }
-        
-        if (found) {
-            LOG_DEBUG("URL already in queue, skipping: " + normalizedURL);
+        std::lock_guard<std::mutex> visitedLock(visitedMutex);
+        if (!force && visitedURLs.find(normalizedURL) != visitedURLs.end()) {
+            LOG_DEBUG("URL already visited, skipping: " + normalizedURL);
             return;
         }
-        
-    urlQueue.push(normalizedURL);
+    }
+    {
+        std::lock_guard<std::mutex> queueLock(queueMutex);
+        if (!force) {
+            std::queue<std::string> tempQueue;
+            bool found = false;
+            while (!urlQueue.empty()) {
+                std::string current = urlQueue.front();
+                urlQueue.pop();
+                if (current == normalizedURL) {
+                    found = true;
+                }
+                tempQueue.push(current);
+            }
+            while (!tempQueue.empty()) {
+                urlQueue.push(tempQueue.front());
+                tempQueue.pop();
+            }
+            if (found) {
+                LOG_DEBUG("URL already in queue, skipping: " + normalizedURL);
+                return;
+            }
+        }
+        urlQueue.push(normalizedURL);
         LOG_DEBUG("Added URL to queue: " + normalizedURL + ", queue size: " + std::to_string(urlQueue.size()));
     }
 }
@@ -134,15 +153,30 @@ std::string URLFrontier::normalizeURL(const std::string& url) const {
     // Convert to lowercase
     std::transform(normalized.begin(), normalized.end(), normalized.begin(), ::tolower);
     
-    // Remove trailing slash
-    if (!normalized.empty() && normalized.back() == '/') {
-        normalized.pop_back();
-    }
-    
     // Remove fragment
     size_t hashPos = normalized.find('#');
     if (hashPos != std::string::npos) {
         normalized = normalized.substr(0, hashPos);
+    }
+    
+    // Handle trailing slash more intelligently
+    // Only remove trailing slash if it's not a root URL (has path after domain)
+    if (!normalized.empty() && normalized.back() == '/') {
+        // Check if this is a root URL (no path after domain)
+        size_t protocolEnd = normalized.find("://");
+        if (protocolEnd != std::string::npos) {
+            size_t domainEnd = normalized.find('/', protocolEnd + 3);
+            if (domainEnd != std::string::npos && domainEnd == normalized.length() - 1) {
+                // This is a root URL with trailing slash, keep it to avoid redirect loops
+                LOG_TRACE("URLFrontier::normalizeURL - Keeping trailing slash for root URL: " + normalized);
+            } else {
+                // This has a path, remove trailing slash
+                normalized.pop_back();
+            }
+        } else {
+            // No protocol found, remove trailing slash
+            normalized.pop_back();
+        }
     }
     
     LOG_TRACE("URLFrontier::normalizeURL - Original: " + url + " Normalized: " + normalized);

@@ -7,6 +7,9 @@
 #include <cstdlib>
 #include <chrono>
 #include <iomanip>
+#include <map>
+#include <mutex>
+#include <numeric>
 
 using namespace hatef::search;
 
@@ -116,6 +119,10 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                 // Optional parameters
                 int maxPages = jsonBody.value("maxPages", 1000);
                 int maxDepth = jsonBody.value("maxDepth", 3);
+                bool restrictToSeedDomain = jsonBody.value("restrictToSeedDomain", true);
+                bool followRedirects = jsonBody.value("followRedirects", true);  // Default to true for cookie handling
+                int maxRedirects = jsonBody.value("maxRedirects", 10);  // Increase default to handle cookie redirects
+                bool force = jsonBody.value("force", false);
                 
                 // Validate parameters
                 if (maxPages < 1 || maxPages > 10000) {
@@ -128,19 +135,34 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                     return;
                 }
                 
+                if (maxRedirects < 0 || maxRedirects > 20) {
+                    badRequest(res, "maxRedirects must be between 0 and 20");
+                    return;
+                }
+                
                 // Add URL to crawler
                 if (g_crawler) {
                     // Update crawler configuration with the provided parameters
                     g_crawler->setMaxPages(maxPages);
                     g_crawler->setMaxDepth(maxDepth);
                     
-                    g_crawler->addSeedURL(url);
+                    // Update domain restriction setting
+                    CrawlConfig currentConfig = g_crawler->getConfig();
+                    currentConfig.restrictToSeedDomain = restrictToSeedDomain;
+                    currentConfig.followRedirects = followRedirects;
+                    currentConfig.maxRedirects = maxRedirects;
+                    g_crawler->updateConfig(currentConfig);
+                    
+                    g_crawler->addSeedURL(url, force);
                     
                     // Start crawling if not already running
                     g_crawler->start();
                     
                     LOG_INFO("Added site to crawl: " + url + " (maxPages: " + std::to_string(maxPages) + 
-                             ", maxDepth: " + std::to_string(maxDepth) + ")");
+                             ", maxDepth: " + std::to_string(maxDepth) + 
+                             ", restrictToSeedDomain: " + (restrictToSeedDomain ? "true" : "false") + 
+                             ", followRedirects: " + (followRedirects ? "true" : "false") + 
+                             ", maxRedirects: " + std::to_string(maxRedirects) + ")");
                     
                     // Return success response
                     nlohmann::json response = {
@@ -150,6 +172,9 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                             {"url", url},
                             {"maxPages", maxPages},
                             {"maxDepth", maxDepth},
+                            {"restrictToSeedDomain", restrictToSeedDomain},
+                            {"followRedirects", followRedirects},
+                            {"maxRedirects", maxRedirects},
                             {"status", "queued"}
                         }}
                     };
@@ -407,6 +432,96 @@ void SearchController::getCrawlStatus(uWS::HttpResponse<false>* res, uWS::HttpRe
     } catch (const std::exception& e) {
         LOG_ERROR("Error in getCrawlStatus: " + std::string(e.what()));
         serverError(res, "Failed to get crawl status");
+    }
+}
+
+void SearchController::getCrawlDetails(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
+    LOG_INFO("SearchController::getCrawlDetails called");
+    // Parse query parameters
+    auto params = parseQuery(req);
+    std::string domainFilter;
+    std::string urlFilter;
+    auto it = params.find("domain");
+    if (it != params.end()) {
+        domainFilter = it->second;
+    }
+    auto itUrl = params.find("url");
+    if (itUrl != params.end()) {
+        urlFilter = itUrl->second;
+    }
+
+    nlohmann::json response;
+    // Access ContentStorage from the crawler
+    auto storage = g_crawler ? g_crawler->getStorage() : nullptr;
+    if (!storage) {
+        serverError(res, "Database storage not available");
+        return;
+    }
+
+    try {
+        if (!urlFilter.empty()) {
+            // Fetch logs for a specific URL
+            auto logsResult = storage->getCrawlLogsByUrl(urlFilter, 100, 0);
+            if (!logsResult.success) {
+                serverError(res, logsResult.message);
+                return;
+            }
+            nlohmann::json logsJson = nlohmann::json::array();
+            for (const auto& log : logsResult.value) {
+                nlohmann::json logJson = {
+                    {"id", log.id.value_or("")},
+                    {"url", log.url},
+                    {"domain", log.domain},
+                    {"crawlTime", std::chrono::duration_cast<std::chrono::seconds>(log.crawlTime.time_since_epoch()).count()},
+                    {"status", log.status},
+                    {"httpStatusCode", log.httpStatusCode},
+                    {"contentSize", log.contentSize},
+                    {"contentType", log.contentType},
+                    {"links", log.links},
+                };
+                if (log.errorMessage) logJson["errorMessage"] = *log.errorMessage;
+                if (log.title) logJson["title"] = *log.title;
+                if (log.description) logJson["description"] = *log.description;
+                logsJson.push_back(logJson);
+            }
+            response["url"] = urlFilter;
+            response["logs"] = logsJson;
+        } else if (!domainFilter.empty()) {
+            // Fetch logs for a domain
+            auto logsResult = storage->getCrawlLogsByDomain(domainFilter, 100, 0);
+            if (!logsResult.success) {
+                serverError(res, logsResult.message);
+                return;
+            }
+            nlohmann::json logsJson = nlohmann::json::array();
+            for (const auto& log : logsResult.value) {
+                nlohmann::json logJson = {
+                    {"id", log.id.value_or("")},
+                    {"url", log.url},
+                    {"domain", log.domain},
+                    {"crawlTime", std::chrono::duration_cast<std::chrono::seconds>(log.crawlTime.time_since_epoch()).count()},
+                    {"status", log.status},
+                    {"httpStatusCode", log.httpStatusCode},
+                    {"contentSize", log.contentSize},
+                    {"contentType", log.contentType},
+                    {"links", log.links},
+                };
+                if (log.errorMessage) logJson["errorMessage"] = *log.errorMessage;
+                if (log.title) logJson["title"] = *log.title;
+                if (log.description) logJson["description"] = *log.description;
+                logsJson.push_back(logJson);
+            }
+            response["domain"] = domainFilter;
+            response["logs"] = logsJson;
+        } else {
+            // No filter: return a summary (list of domains with log counts)
+            // For simplicity, not implemented here. You can extend this to aggregate domains from crawl_logs.
+            response["message"] = "Please provide a 'domain' or 'url' query parameter to fetch crawl details.";
+        }
+        json(res, response);
+    } catch (const std::exception& e) {
+        LOG_ERROR(std::string("Error in getCrawlDetails: ") + e.what());
+        serverError(res, "Failed to get crawl details");
     }
 }
 

@@ -5,6 +5,7 @@
 #include "RedisSearchStorage.h"
 #endif
 #include "SiteProfile.h"
+#include "CrawlLog.h"
 #include "../../infrastructure.h"
 #include "../../../src/crawler/models/CrawlResult.h"
 #include <memory>
@@ -99,6 +100,11 @@ public:
     // Utility methods
     Result<bool> deleteSiteData(const std::string& url);
     Result<bool> deleteDomainData(const std::string& domain);
+    
+    // CrawlLog operations
+    Result<std::string> storeCrawlLog(const CrawlLog& log) { ensureMongoConnection(); return mongoStorage_->storeCrawlLog(log); }
+    Result<std::vector<CrawlLog>> getCrawlLogsByDomain(const std::string& domain, int limit = 100, int skip = 0) { ensureMongoConnection(); return mongoStorage_->getCrawlLogsByDomain(domain, limit, skip); }
+    Result<std::vector<CrawlLog>> getCrawlLogsByUrl(const std::string& url, int limit = 100, int skip = 0) { ensureMongoConnection(); return mongoStorage_->getCrawlLogsByUrl(url, limit, skip); }
     
     // Get direct access to storage layers (for advanced operations)
     MongoDBStorage* getMongoStorage() const { return mongoStorage_.get(); }

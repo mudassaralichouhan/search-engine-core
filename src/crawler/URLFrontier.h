@@ -13,7 +13,7 @@ public:
     ~URLFrontier();
 
     // Add a URL to the frontier
-    void addURL(const std::string& url);
+    void addURL(const std::string& url, bool force = false);
     
     // Get the next URL to crawl
     std::string getNextURL();

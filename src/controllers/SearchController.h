@@ -12,8 +12,9 @@ public:
     void search(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
     
     // Crawl management
-    void addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
+    void addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRequest* req); // Supports 'force' parameter
     void getCrawlStatus(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
+    void getCrawlDetails(uWS::HttpResponse<false>* res, uWS::HttpRequest* req); // New endpoint
 
 private:
     nlohmann::json parseRedisSearchResponse(const std::string& rawResponse, int page, int limit);
@@ -25,4 +26,5 @@ ROUTE_CONTROLLER(SearchController) {
     REGISTER_ROUTE(HttpMethod::GET, "/api/search", search, SearchController);
     REGISTER_ROUTE(HttpMethod::POST, "/api/crawl/add-site", addSiteToCrawl, SearchController);
     REGISTER_ROUTE(HttpMethod::GET, "/api/crawl/status", getCrawlStatus, SearchController);
+    REGISTER_ROUTE(HttpMethod::GET, "/api/crawl/details", getCrawlDetails, SearchController); // New endpoint
 } 

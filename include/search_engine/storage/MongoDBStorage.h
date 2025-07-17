@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SiteProfile.h"
+#include "CrawlLog.h"
 #include "../../infrastructure.h"
 #include <mongocxx/client.hpp>
 #include <mongocxx/database.hpp>
@@ -28,6 +29,10 @@ private:
     // Helper methods for BSON conversion
     bsoncxx::document::value crawlMetadataToBson(const CrawlMetadata& metadata) const;
     CrawlMetadata bsonToCrawlMetadata(const bsoncxx::document::view& doc) const;
+    
+    // CrawlLog BSON helpers
+    bsoncxx::document::value crawlLogToBson(const CrawlLog& log) const;
+    CrawlLog bsonToCrawlLog(const bsoncxx::document::view& doc) const;
     
     static std::string crawlStatusToString(CrawlStatus status);
     static CrawlStatus stringToCrawlStatus(const std::string& status);
@@ -69,6 +74,11 @@ public:
     Result<int64_t> getTotalSiteCount();
     Result<int64_t> getSiteCountByStatus(CrawlStatus status);
     Result<bool> createIndexes();
+    
+    // CrawlLog operations
+    Result<std::string> storeCrawlLog(const CrawlLog& log);
+    Result<std::vector<CrawlLog>> getCrawlLogsByDomain(const std::string& domain, int limit = 100, int skip = 0);
+    Result<std::vector<CrawlLog>> getCrawlLogsByUrl(const std::string& url, int limit = 100, int skip = 0);
     
     // Connection management
     Result<bool> testConnection();

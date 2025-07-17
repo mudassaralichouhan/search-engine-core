@@ -3,6 +3,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <algorithm>
+#include <thread>
+#include <filesystem>
 
 PageFetcher::PageFetcher(const std::string& userAgent,
                          std::chrono::milliseconds timeout,
@@ -14,12 +16,29 @@ PageFetcher::PageFetcher(const std::string& userAgent,
     , maxRedirects(maxRedirects)
     , verifySSL(true) {
     LOG_DEBUG("PageFetcher constructor called with userAgent: " + userAgent);
+    
+    // Create a unique cookie jar file for this instance
+    cookieJarPath = "/tmp/crawler_cookies_" + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())) + ".txt";
+    LOG_DEBUG("Cookie jar path: " + cookieJarPath);
+    
     initCurl();
 }
 
 PageFetcher::~PageFetcher() {
     LOG_DEBUG("PageFetcher destructor called");
     cleanupCurl();
+    
+    // Clean up cookie jar file
+    if (!cookieJarPath.empty()) {
+        try {
+            if (std::filesystem::exists(cookieJarPath)) {
+                std::filesystem::remove(cookieJarPath);
+                LOG_DEBUG("Removed cookie jar file: " + cookieJarPath);
+            }
+        } catch (const std::exception& e) {
+            LOG_WARNING("Failed to remove cookie jar file: " + std::string(e.what()));
+        }
+    }
 }
 
 void PageFetcher::initCurl() {
@@ -135,6 +154,11 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
         curl_easy_setopt(localCurl, CURLOPT_XFERINFOFUNCTION, progressCallback);
         curl_easy_setopt(localCurl, CURLOPT_XFERINFODATA, &userProgressCallback);
     }
+
+    // Set cookie handling
+    LOG_DEBUG("Setting cookie handling");
+    curl_easy_setopt(localCurl, CURLOPT_COOKIEFILE, cookieJarPath.c_str());
+    curl_easy_setopt(localCurl, CURLOPT_COOKIEJAR, cookieJarPath.c_str());
     
     // Perform the request
     LOG_INFO("Performing CURL request");

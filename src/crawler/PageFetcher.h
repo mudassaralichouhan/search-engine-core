@@ -26,6 +26,9 @@ public:
     // Fetch a page from a URL
     PageFetchResult fetch(const std::string& url);
     
+    // Fetch a page, following redirects only if the new URL is on the same domain as the seed domain
+    PageFetchResult fetchWithDomainRestriction(const std::string& url, const std::string& seedDomain, std::function<std::string(const std::string&)> extractDomainFn, size_t maxRedirects = 5);
+    
     // Set a callback for progress updates
     void setProgressCallback(std::function<void(size_t, size_t)> callback);
     
@@ -60,4 +63,5 @@ private:
     std::vector<std::pair<std::string, std::string>> customHeaders;
     std::string proxy;
     bool verifySSL;
+    std::string cookieJarPath;  // Path to cookie jar file
 }; 

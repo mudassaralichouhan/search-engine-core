@@ -28,10 +28,15 @@ public:
     void stop();
     
     // Add a seed URL to start crawling from
-    void addSeedURL(const std::string& url);
+    void addSeedURL(const std::string& url, bool force = false);
     
     // Get the current crawl results
     std::vector<CrawlResult> getResults();
+    const std::vector<CrawlResult>& getResults() const { return results; }
+    std::vector<CrawlResult> getResultsCopy() const {
+        std::lock_guard<std::mutex> lock(resultsMutex);
+        return results;
+    }
     
     // Get access to the PageFetcher for configuration
     PageFetcher* getPageFetcher();
@@ -40,6 +45,11 @@ public:
     void setMaxPages(size_t maxPages);
     void setMaxDepth(size_t maxDepth);
     void updateConfig(const CrawlConfig& newConfig);
+
+    // Get current crawler configuration
+    CrawlConfig getConfig() const;
+
+    std::shared_ptr<search_engine::storage::ContentStorage> getStorage() const { return storage; }
 
 private:
     // Main crawling loop
@@ -50,6 +60,12 @@ private:
     
     // Extract and add new URLs from the page content
     void extractAndAddURLs(const std::string& content, const std::string& baseURL);
+    
+    // Check if URL belongs to the seed domain
+    bool isSameDomain(const std::string& url) const;
+    
+    // Update PageFetcher configuration
+    void updatePageFetcherConfig();
 
     std::unique_ptr<URLFrontier> urlFrontier;
     std::unique_ptr<RobotsTxtParser> robotsParser;
@@ -59,7 +75,8 @@ private:
     
     CrawlConfig config;
     std::atomic<bool> isRunning;
-    std::mutex resultsMutex;
+    mutable std::mutex resultsMutex;
     std::vector<CrawlResult> results;
     std::unordered_set<std::string> visitedURLs;
+    std::string seedDomain;  // Domain of the first seed URL
 }; 

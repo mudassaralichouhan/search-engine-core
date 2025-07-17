@@ -36,4 +36,7 @@ struct CrawlConfig {
     
     // Whether to extract and store text content
     bool extractTextContent = true;
+    
+    // Whether to restrict crawling to the same domain as seed URL
+    bool restrictToSeedDomain = true;
 }; 

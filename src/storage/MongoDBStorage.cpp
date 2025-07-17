@@ -492,3 +492,107 @@ Result<bool> MongoDBStorage::ensureIndexes() {
         return Result<bool>::Failure("Failed to create indexes: " + std::string(e.what()));
     }
 } 
+
+// CrawlLog BSON helpers
+bsoncxx::document::value MongoDBStorage::crawlLogToBson(const CrawlLog& log) const {
+    using namespace bsoncxx::builder::stream;
+    auto builder = document{};
+    if (log.id) builder << "_id" << bsoncxx::oid{*log.id};
+    builder << "url" << log.url
+            << "domain" << log.domain
+            << "crawlTime" << timePointToBsonDate(log.crawlTime)
+            << "status" << log.status
+            << "httpStatusCode" << log.httpStatusCode
+            << "contentSize" << static_cast<int64_t>(log.contentSize)
+            << "contentType" << log.contentType;
+    if (log.errorMessage) builder << "errorMessage" << *log.errorMessage;
+    if (log.title) builder << "title" << *log.title;
+    if (log.description) builder << "description" << *log.description;
+    auto linksArray = array{};
+    for (const auto& link : log.links) linksArray << link;
+    builder << "links" << linksArray;
+    return builder << finalize;
+}
+
+CrawlLog MongoDBStorage::bsonToCrawlLog(const bsoncxx::document::view& doc) const {
+    CrawlLog log;
+    if (doc["_id"]) log.id = std::string(doc["_id"].get_oid().value.to_string());
+    log.url = std::string(doc["url"].get_string().value);
+    log.domain = std::string(doc["domain"].get_string().value);
+    log.crawlTime = bsonDateToTimePoint(doc["crawlTime"].get_date());
+    log.status = std::string(doc["status"].get_string().value);
+    log.httpStatusCode = doc["httpStatusCode"].get_int32().value;
+    log.contentSize = static_cast<size_t>(doc["contentSize"].get_int64().value);
+    log.contentType = std::string(doc["contentType"].get_string().value);
+    if (doc["errorMessage"]) log.errorMessage = std::string(doc["errorMessage"].get_string().value);
+    if (doc["title"]) log.title = std::string(doc["title"].get_string().value);
+    if (doc["description"]) log.description = std::string(doc["description"].get_string().value);
+    if (doc["links"]) {
+        for (const auto& link : doc["links"].get_array().value) {
+            log.links.push_back(std::string(link.get_string().value));
+        }
+    }
+    return log;
+}
+
+Result<std::string> MongoDBStorage::storeCrawlLog(const CrawlLog& log) {
+    LOG_DEBUG("MongoDBStorage::storeCrawlLog called for URL: " + log.url);
+    try {
+        auto doc = crawlLogToBson(log);
+        auto crawlLogsCollection = database_["crawl_logs"];
+        auto result = crawlLogsCollection.insert_one(doc.view());
+        if (result) {
+            std::string id = result->inserted_id().get_oid().value.to_string();
+            LOG_INFO("Crawl log stored successfully with ID: " + id + " for URL: " + log.url);
+            return Result<std::string>::Success(id, "Crawl log stored successfully");
+        } else {
+            LOG_ERROR("Failed to insert crawl log for URL: " + log.url);
+            return Result<std::string>::Failure("Failed to insert crawl log");
+        }
+    } catch (const mongocxx::exception& e) {
+        LOG_ERROR("MongoDB error storing crawl log for URL: " + log.url + " - " + std::string(e.what()));
+        return Result<std::string>::Failure("MongoDB error: " + std::string(e.what()));
+    }
+}
+
+Result<std::vector<CrawlLog>> MongoDBStorage::getCrawlLogsByDomain(const std::string& domain, int limit, int skip) {
+    LOG_DEBUG("MongoDBStorage::getCrawlLogsByDomain called for domain: " + domain);
+    try {
+        using namespace bsoncxx::builder::stream;
+        auto crawlLogsCollection = database_["crawl_logs"];
+        auto filter = document{} << "domain" << domain << finalize;
+        mongocxx::options::find opts;
+        opts.limit(limit);
+        opts.skip(skip);
+        opts.sort(document{} << "crawlTime" << -1 << finalize); // newest first
+        auto cursor = crawlLogsCollection.find(filter.view(), opts);
+        std::vector<CrawlLog> logs;
+        for (const auto& doc : cursor) logs.push_back(bsonToCrawlLog(doc));
+        LOG_INFO("Retrieved " + std::to_string(logs.size()) + " crawl logs for domain: " + domain);
+        return Result<std::vector<CrawlLog>>::Success(std::move(logs), "Crawl logs retrieved successfully");
+    } catch (const mongocxx::exception& e) {
+        LOG_ERROR("MongoDB error retrieving crawl logs for domain: " + domain + " - " + std::string(e.what()));
+        return Result<std::vector<CrawlLog>>::Failure("MongoDB error: " + std::string(e.what()));
+    }
+}
+
+Result<std::vector<CrawlLog>> MongoDBStorage::getCrawlLogsByUrl(const std::string& url, int limit, int skip) {
+    LOG_DEBUG("MongoDBStorage::getCrawlLogsByUrl called for URL: " + url);
+    try {
+        using namespace bsoncxx::builder::stream;
+        auto crawlLogsCollection = database_["crawl_logs"];
+        auto filter = document{} << "url" << url << finalize;
+        mongocxx::options::find opts;
+        opts.limit(limit);
+        opts.skip(skip);
+        opts.sort(document{} << "crawlTime" << -1 << finalize); // newest first
+        auto cursor = crawlLogsCollection.find(filter.view(), opts);
+        std::vector<CrawlLog> logs;
+        for (const auto& doc : cursor) logs.push_back(bsonToCrawlLog(doc));
+        LOG_INFO("Retrieved " + std::to_string(logs.size()) + " crawl logs for URL: " + url);
+        return Result<std::vector<CrawlLog>>::Success(std::move(logs), "Crawl logs retrieved successfully");
+    } catch (const mongocxx::exception& e) {
+        LOG_ERROR("MongoDB error retrieving crawl logs for URL: " + url + " - " + std::string(e.what()));
+        return Result<std::vector<CrawlLog>>::Failure("MongoDB error: " + std::string(e.what()));
+    }
+} 

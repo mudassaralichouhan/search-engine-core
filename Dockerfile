@@ -137,8 +137,19 @@ RUN cmake .. \
     make install && \
     ldconfig
 
+RUN apt-get update && apt-get install -y gnupg curl
+RUN curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | \
+    gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg \
+    --dearmor
 
-RUN apt install -y libcurl4-openssl-dev
+RUN echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+
+# RUN apt-get update && apt-get install -y mongodb-org-mongos mongodb-org-server mongodb-org-shell mongodb-org-tools
+#Install MongoDB shell for health checks
+RUN apt-get update && apt-get install -y mongodb-mongosh
+
+RUN apt install -y libcurl4-openssl-dev redis-tools
+
 
 # Set up project build
 WORKDIR /deps
@@ -182,16 +193,7 @@ RUN echo "BASE_IMAGE: " ${BASE_IMAGE}
 FROM ${BASE_IMAGE} AS runner
 
 
-RUN apt-get update && apt-get install -y gnupg curl
-RUN curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | \
-    gpg -o /usr/share/keyrings/mongodb-server-8.0.gpg \
-    --dearmor
 
-RUN echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-8.0.list
-
-# RUN apt-get update && apt-get install -y mongodb-org-mongos mongodb-org-server mongodb-org-shell mongodb-org-tools
-#Install MongoDB shell for health checks
-RUN apt-get update && apt-get install -y mongodb-mongosh && rm -rf /var/lib/apt/lists/*
 
 # Set default port
 ENV PORT=3000
@@ -245,8 +247,8 @@ RUN ldconfig
 # Copy public folder from builder stage
 COPY public ./public
 
-RUN apt-get update && apt-get install -y redis-tools
-RUN Cha1=1
+
+
 # Copy the startup script
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
