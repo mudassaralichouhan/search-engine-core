@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPA Detection Tester</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 5px;
+            display: none;
+        }
+        .result.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .result.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .spa-detected {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .spa-not-detected {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .indicator {
+            display: inline-block;
+            background-color: #e9ecef;
+            padding: 4px 8px;
+            margin: 2px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .confidence-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);
+            transition: width 0.3s ease;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+        }
+        .preview {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 SPA Detection Tester</h1>
+        
+        <form id="spaForm">
+            <div class="form-group">
+                <label for="url">Website URL:</label>
+                <input type="text" id="url" name="url" placeholder="https://example.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="timeout">Timeout (ms):</label>
+                <input type="number" id="timeout" name="timeout" value="30000" min="1000" max="120000">
+            </div>
+            
+            <div class="form-group">
+                <label for="userAgent">User Agent:</label>
+                <input type="text" id="userAgent" name="userAgent" value="Hatefbot/1.0">
+            </div>
+            
+            <button type="submit" id="submitBtn">Detect SPA</button>
+        </form>
+        
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('spaForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const resultDiv = document.getElementById('result');
+            
+            // Get form data
+            const url = document.getElementById('url').value;
+            const timeout = parseInt(document.getElementById('timeout').value);
+            const userAgent = document.getElementById('userAgent').value;
+            
+            // Show loading
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Detecting...';
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.innerHTML = '<div>🔍 Analyzing website...</div>';
+            
+            try {
+                const response = await fetch('/api/spa/detect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        url: url,
+                        timeout: timeout,
+                        userAgent: userAgent
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const isSpa = data.spaDetection.isSpa;
+                    const confidence = data.spaDetection.confidence;
+                    const indicators = data.spaDetection.indicators;
+                    
+                    let resultClass = 'result success';
+                    if (isSpa) {
+                        resultClass += ' spa-detected';
+                    } else {
+                        resultClass += ' spa-not-detected';
+                    }
+                    
+                    let indicatorsHtml = '';
+                    if (indicators && indicators.length > 0) {
+                        indicatorsHtml = '<div><strong>Indicators:</strong><br>';
+                        indicators.forEach(indicator => {
+                            indicatorsHtml += `<span class="indicator">${indicator}</span>`;
+                        });
+                        indicatorsHtml += '</div>';
+                    } else {
+                        indicatorsHtml = '<div><strong>Indicators:</strong> None detected</div>';
+                    }
+                    
+                    const confidenceBarWidth = Math.min(100, confidence);
+                    const confidenceColor = confidence < 30 ? '#dc3545' : confidence < 70 ? '#ffc107' : '#28a745';
+                    
+                    resultDiv.className = resultClass;
+                    resultDiv.innerHTML = `
+                        <h3>${isSpa ? '🎯 SPA Detected!' : '📄 Traditional Website'}</h3>
+                        <div><strong>URL:</strong> ${data.url}</div>
+                        <div><strong>HTTP Status:</strong> ${data.httpStatusCode}</div>
+                        <div><strong>Content Size:</strong> ${data.contentSize.toLocaleString()} bytes</div>
+                        <div><strong>Fetch Duration:</strong> ${data.fetchDuration}ms</div>
+                        <div><strong>Confidence:</strong> ${confidence}%</div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${confidenceBarWidth}%; background-color: ${confidenceColor};"></div>
+                        </div>
+                        ${indicatorsHtml}
+                        <div><strong>Content Preview:</strong></div>
+                        <div class="preview">${data.contentPreview}</div>
+                    `;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+                        <h3>❌ Error</h3>
+                        <div><strong>URL:</strong> ${data.url}</div>
+                        <div><strong>Error:</strong> ${data.error || 'Unknown error'}</div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Network Error</h3>
+                    <div>Failed to connect to the API: ${error.message}</div>
+                `;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Detect SPA';
+            }
+        });
+        
+        // Add some example URLs
+        const exampleUrls = [
+            'https://reactjs.org',
+            'https://vuejs.org',
+            'https://angular.io',
+            'https://digikala.com',
+            'https://example.com',
+            'https://github.com'
+        ];
+        
+        const urlInput = document.getElementById('url');
+        urlInput.addEventListener('focus', function() {
+            if (!this.value) {
+                this.placeholder = 'Try: ' + exampleUrls[Math.floor(Math.random() * exampleUrls.length)];
+            }
+        });
+    </script>
+</body>
+</html> 

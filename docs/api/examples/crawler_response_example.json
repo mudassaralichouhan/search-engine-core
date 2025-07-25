@@ -1,0 +1,101 @@
+{
+  "addSiteResponse": {
+    "success": true,
+    "message": "Site added to crawl queue successfully",
+    "data": {
+      "url": "https://www.digikala.com",
+      "maxPages": 100,
+      "maxDepth": 2,
+      "restrictToSeedDomain": true,
+      "followRedirects": true,
+      "maxRedirects": 10,
+      "spaRenderingEnabled": true,
+      "includeFullContent": true,
+      "browserlessUrl": "http://browserless:3000",
+      "status": "queued"
+    }
+  },
+  "crawlStatusResponse": {
+    "statistics": {
+      "failedCrawls": 1,
+      "successRate": 85,
+      "successfulCrawls": 12,
+      "totalLinksFound": 234
+    },
+    "status": {
+      "isRunning": true,
+      "lastUpdate": 1753444512,
+      "totalCrawled": 13
+    }
+  },
+  "crawlDetailsResponse": {
+    "url": "https://www.digikala.com",
+    "logs": [
+      {
+        "contentSize": 583940,
+        "contentType": "text/html; charset=UTF-8",
+        "crawlTime": 1753444482,
+        "description": "فروشگاه اینترنتی دیجی‌کالا - بزرگترین فروشگاه آنلاین ایران",
+        "domain": "www.digikala.com",
+        "httpStatusCode": 200,
+        "id": "68837083d12f118e6d03eca3",
+        "links": [
+          "https://www.digikala.com/product/123456",
+          "https://www.digikala.com/category/mobile",
+          "https://www.digikala.com/category/laptop"
+        ],
+        "status": "SUCCESS",
+        "title": "فروشگاه اینترنتی دیجی‌کالا",
+        "url": "https://www.digikala.com",
+        "renderingMethod": "headless_browser",
+        "spaDetected": true,
+        "fetchDuration": 28450
+      }
+    ]
+  },
+  "spaRenderResponse": {
+    "success": true,
+    "url": "https://www.digikala.com",
+    "fetchDuration": 28450,
+    "httpStatusCode": 200,
+    "contentType": "text/html; charset=UTF-8",
+    "contentSize": 589000,
+    "contentPreview": "<!DOCTYPE html><html lang=\"fa\" dir=\"rtl\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width\"/><title>فروشگاه اینترنتی دیجی‌کالا</title>...",
+    "isSpa": true,
+    "renderingMethod": "headless_browser"
+  },
+  "spaDetectResponse": {
+    "success": true,
+    "url": "https://www.digikala.com",
+    "isSpa": true,
+    "detectionReasons": [
+      "Framework detected: Next.js/React",
+      "High script-to-content ratio: 0.85",
+      "State object found: __NEXT_DATA__",
+      "DOM attribute found: data-reactroot"
+    ],
+    "framework": "Next.js/React",
+    "confidence": 0.95,
+    "scriptToContentRatio": 0.85,
+    "hasStateObjects": true,
+    "detectedPatterns": [
+      "__NEXT_DATA__",
+      "data-reactroot",
+      "_app-",
+      "react"
+    ]
+  },
+  "errorResponses": {
+    "badRequest": {
+      "error": "URL is required",
+      "success": false
+    },
+    "serverError": {
+      "error": "Crawler not initialized",
+      "success": false
+    },
+    "missingParameter": {
+      "message": "Please provide a 'domain' or 'url' query parameter to fetch crawl details."
+    }
+  }
+} 

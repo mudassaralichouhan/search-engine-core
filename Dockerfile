@@ -149,7 +149,12 @@ RUN echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.
 RUN apt-get update && apt-get install -y mongodb-mongosh
 
 RUN apt install -y libcurl4-openssl-dev redis-tools
-
+RUN apt install -y \
+    libwebsocketpp-dev \
+    libboost-system-dev \
+    libboost-thread-dev \
+    libssl-dev \
+    libasio-dev
 
 # Set up project build
 WORKDIR /deps

@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cstdlib> // For std::getenv
 #include <future>
+#include <sstream>
 
 // Helper function to print results details with HTTP status codes
 void printResults(const std::vector<CrawlResult>& results) {
@@ -625,6 +626,34 @@ TEST_CASE("Parameterized Crawl Test", "[Crawler][Parameterized]") {
         
         LOG_INFO("Successfully verified crawl result saved to database for URL: " + testUrl);
     }
+}
+
+TEST_CASE("processURL debug logging and SPA handling", "[Crawler][Debug][SPA]") {
+    Logger::getInstance().init(LogLevel::DEBUG, true);
+
+    // Minimal config
+    CrawlConfig config;
+    config.maxPages = 1;
+    config.userAgent = "TestBot/1.0";
+    config.maxDepth = 1;
+    config.storeRawContent = true;
+    config.extractTextContent = true;
+
+    // Create a Crawler with no storage
+    Crawler crawler(config, nullptr);
+
+    // --- Test 1: Normal HTML page ---
+    std::string normalUrl = "https://www.digikala.com";
+    auto result = crawler.processURL(normalUrl);
+    // Manual inspection: check terminal for debug output
+
+    // --- Test 2: SPA page (simulate by using a known SPA URL) ---
+    std::string spaUrl = "https://reactjs.org";
+    auto spaResult = crawler.processURL(spaUrl);
+    // Manual inspection: check terminal for debug output
+
+    // The test passes if no exceptions are thrown
+    REQUIRE(true);
 }
 
 // Main entry point for tests

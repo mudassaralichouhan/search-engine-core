@@ -51,12 +51,12 @@ public:
 
     std::shared_ptr<search_engine::storage::ContentStorage> getStorage() const { return storage; }
 
+    // Process a single URL
+    CrawlResult processURL(const std::string& url);
+    
 private:
     // Main crawling loop
     void crawlLoop();
-    
-    // Process a single URL
-    CrawlResult processURL(const std::string& url);
     
     // Extract and add new URLs from the page content
     void extractAndAddURLs(const std::string& content, const std::string& baseURL);

@@ -15,6 +15,10 @@ public:
     void addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRequest* req); // Supports 'force' parameter
     void getCrawlStatus(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
     void getCrawlDetails(uWS::HttpResponse<false>* res, uWS::HttpRequest* req); // New endpoint
+    
+    // SPA detection
+    void detectSpa(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
+    void renderPage(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
 
 private:
     nlohmann::json parseRedisSearchResponse(const std::string& rawResponse, int page, int limit);
@@ -27,4 +31,5 @@ ROUTE_CONTROLLER(SearchController) {
     REGISTER_ROUTE(HttpMethod::POST, "/api/crawl/add-site", addSiteToCrawl, SearchController);
     REGISTER_ROUTE(HttpMethod::GET, "/api/crawl/status", getCrawlStatus, SearchController);
     REGISTER_ROUTE(HttpMethod::GET, "/api/crawl/details", getCrawlDetails, SearchController); // New endpoint
+    REGISTER_ROUTE(HttpMethod::POST, "/api/spa/detect", detectSpa, SearchController);
 } 

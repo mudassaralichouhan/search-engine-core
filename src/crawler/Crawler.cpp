@@ -180,15 +180,18 @@ void Crawler::crawlLoop() {
 }
 
 CrawlResult Crawler::processURL(const std::string& url) {
+    LOG_DEBUG("[processURL] Called with url: " + url);
     CrawlResult result;
     result.url = url;
     result.crawlTime = std::chrono::system_clock::now();
+    LOG_DEBUG("[processURL] Initialized CrawlResult");
     
     LOG_INFO("Processing URL: " + url);
     
     // Check if URL is allowed by robots.txt
     if (config.respectRobotsTxt) {
         std::string domain = urlFrontier->extractDomain(url);
+        LOG_DEBUG("[processURL] Extracted domain: " + domain);
         if (!robotsParser->isAllowed(url, config.userAgent)) {
             result.success = false;
             result.errorMessage = "URL not allowed by robots.txt";
@@ -200,7 +203,7 @@ CrawlResult Crawler::processURL(const std::string& url) {
         auto lastVisit = urlFrontier->getLastVisitTime(domain);
         auto crawlDelay = robotsParser->getCrawlDelay(domain, config.userAgent);
         auto timeSinceLastVisit = std::chrono::system_clock::now() - lastVisit;
-        
+        LOG_DEBUG("[processURL] lastVisit: " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(lastVisit.time_since_epoch()).count()) + ", crawlDelay: " + std::to_string(crawlDelay.count()) + ", timeSinceLastVisit: " + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(timeSinceLastVisit).count()));
         // For testing purposes, completely disable crawl delay
         LOG_DEBUG("NOTE: Crawl delay disabled for testing");
         // Only sleep for a very short time for testing purposes
@@ -210,16 +213,47 @@ CrawlResult Crawler::processURL(const std::string& url) {
     // Fetch the page
     LOG_INFO("Fetching page: " + url);
     auto fetchResult = pageFetcher->fetch(url);
+    LOG_DEBUG("[processURL] fetchResult.statusCode: " + std::to_string(fetchResult.statusCode));
+    LOG_DEBUG("[processURL] fetchResult.contentType: " + fetchResult.contentType);
+    LOG_DEBUG("[processURL] fetchResult.content (first 200): " + (fetchResult.content.size() > 200 ? fetchResult.content.substr(0, 200) + "..." : fetchResult.content));
+
+    // If SPA rendering is enabled and the page is detected as SPA, fetch again with headless browser
+    if (pageFetcher->isSpaPage(fetchResult.content, url)) {
+        LOG_INFO("SPA detected for URL: " + url + ". Fetching with headless browser...");
+        // Ensure SPA rendering is enabled (should be, but double-check)
+        pageFetcher->setSpaRendering(true, "http://browserless:3000");
+        auto spaFetchResult = pageFetcher->fetch(url);
+        LOG_DEBUG("[processURL] spaFetchResult.statusCode: " + std::to_string(spaFetchResult.statusCode));
+        LOG_DEBUG("[processURL] spaFetchResult.contentType: " + spaFetchResult.contentType);
+        LOG_DEBUG("[processURL] spaFetchResult.content (first 200): " + (spaFetchResult.content.size() > 200 ? spaFetchResult.content.substr(0, 200) + "..." : spaFetchResult.content));
+        if (spaFetchResult.success && !spaFetchResult.content.empty()) {
+            LOG_INFO("Successfully fetched SPA-rendered HTML for URL: " + url);
+            fetchResult = spaFetchResult;
+        } else {
+            LOG_WARNING("Failed to fetch SPA-rendered HTML for URL: " + url + ". Using original content.");
+        }
+    }
     
     // Always store the result data, regardless of status code
     result.statusCode = fetchResult.statusCode;
     result.contentType = fetchResult.contentType;
     result.contentSize = fetchResult.content.size();
     result.finalUrl = fetchResult.finalUrl;  // Store the final URL after redirects
+    LOG_DEBUG("[processURL] Stored result status, contentType, contentSize, finalUrl");
     
-    // Always store raw content if configured, regardless of status
+    // Store raw content based on includeFullContent setting (similar to SPA render API)
     if (config.storeRawContent) {
-        result.rawContent = fetchResult.content;
+        if (config.includeFullContent) {
+            // Store full content when includeFullContent is enabled
+            result.rawContent = fetchResult.content;
+            LOG_DEBUG("[processURL] Stored full rawContent (includeFullContent=true)");
+        } else {
+            // Store only a preview when includeFullContent is disabled (like SPA render API)
+            std::string preview = fetchResult.content.substr(0, 500);
+            if (fetchResult.content.size() > 500) preview += "...";
+            result.rawContent = preview;
+            LOG_DEBUG("[processURL] Stored rawContent preview (includeFullContent=false)");
+        }
     }
     
     LOG_INFO("=== HTTP STATUS: " + std::to_string(fetchResult.statusCode) + " === for URL: " + url);
@@ -251,16 +285,19 @@ CrawlResult Crawler::processURL(const std::string& url) {
     if (fetchResult.contentType.find("text/html") != std::string::npos && !fetchResult.content.empty()) {
         LOG_DEBUG("Content is HTML, parsing...");
         auto parsedContent = contentParser->parse(fetchResult.content, url);
-        
+        LOG_DEBUG("[processURL] Parsed title: " + parsedContent.title);
+        LOG_DEBUG("[processURL] Parsed metaDescription: " + parsedContent.metaDescription);
+        LOG_DEBUG("[processURL] Parsed textContent (first 200): " + (parsedContent.textContent.size() > 200 ? parsedContent.textContent.substr(0, 200) + "..." : parsedContent.textContent));
         if (config.extractTextContent) {
             result.textContent = parsedContent.textContent;
+            LOG_DEBUG("[processURL] Stored textContent");
         }
-        
         result.title = parsedContent.title;
         result.metaDescription = parsedContent.metaDescription;
-        
+        LOG_DEBUG("[processURL] Stored title and metaDescription");
         // Add new URLs to the frontier
         extractAndAddURLs(fetchResult.content, url);
+        LOG_DEBUG("[processURL] Called extractAndAddURLs");
     } else {
         LOG_DEBUG("Content is not HTML, skipping parsing. Content-Type: " + fetchResult.contentType);
     }
@@ -349,6 +386,16 @@ void Crawler::updatePageFetcherConfig() {
             config.followRedirects,
             config.maxRedirects
         );
+        
+        // Preserve SPA rendering settings from config
+        if (config.spaRenderingEnabled) {
+            pageFetcher->setSpaRendering(true, config.browserlessUrl);
+            LOG_INFO("Enabled SPA rendering with browserless URL: " + config.browserlessUrl);
+        }
+        
+        // Preserve SSL verification settings (typically disabled for problematic sites)
+        pageFetcher->setVerifySSL(false);
+        
         LOG_INFO("Updated PageFetcher configuration");
     }
 }

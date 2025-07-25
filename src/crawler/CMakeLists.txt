@@ -27,17 +27,9 @@ set(CRAWLER_SOURCES
     ContentParser.cpp
 )
 
-# Add header files
-set(CRAWLER_HEADERS
-    Crawler.h
-    URLFrontier.h
-    RobotsTxtParser.h
-    PageFetcher.h
-    ContentParser.h
-    models/CrawlResult.h
-    models/CrawlConfig.h
-    ../../include/Logger.h
-)
+# Always add BrowserlessClient.cpp and header
+list(APPEND CRAWLER_SOURCES BrowserlessClient.cpp)
+list(APPEND CRAWLER_HEADERS ../../include/BrowserlessClient.h)
 
 # Create crawler library
 add_library(crawler STATIC ${CRAWLER_SOURCES} ${CRAWLER_HEADERS})

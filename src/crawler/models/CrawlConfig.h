@@ -19,8 +19,8 @@ struct CrawlConfig {
     // Maximum number of concurrent connections
     size_t maxConcurrentConnections = 10;
     
-    // Timeout for HTTP requests (in milliseconds)
-    std::chrono::milliseconds requestTimeout{5000};
+    // Timeout for HTTP requests (in milliseconds) - increased for SPA rendering
+    std::chrono::milliseconds requestTimeout{30000};
     
     // Whether to respect robots.txt
     bool respectRobotsTxt = true;
@@ -39,4 +39,13 @@ struct CrawlConfig {
     
     // Whether to restrict crawling to the same domain as seed URL
     bool restrictToSeedDomain = true;
+    
+    // Whether to enable SPA rendering with headless browser
+    bool spaRenderingEnabled = true;
+    
+    // Browserless service URL for SPA rendering
+    std::string browserlessUrl = "http://browserless:3000";
+    
+    // Whether to include full content in results (similar to SPA render API)
+    bool includeFullContent = false;
 }; 

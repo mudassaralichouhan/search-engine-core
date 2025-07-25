@@ -47,6 +47,18 @@ services:
     networks:
       - search-network
 
+  browserless:
+    image: browserless/chrome:latest
+    container_name: browserless
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - "MAX_CONCURRENT_SESSIONS=10"
+      - "PREBOOT_CHROME=true"
+    networks:
+      - search-network
+
   # mongodb-test:
   #   build:
   #     context: .

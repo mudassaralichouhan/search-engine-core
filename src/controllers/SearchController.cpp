@@ -10,6 +10,7 @@
 #include <map>
 #include <mutex>
 #include <numeric>
+#include <regex>
 
 using namespace hatef::search;
 
@@ -86,8 +87,11 @@ SearchController::SearchController() {
             
             // Disable SSL verification for problematic sites (like time.ir)
             g_crawler->getPageFetcher()->setVerifySSL(false);
-            
-            LOG_INFO("Crawler initialized successfully with database storage and SSL verification disabled");
+
+            // Enable SPA rendering with browserless
+            g_crawler->getPageFetcher()->setSpaRendering(true, "http://browserless:3000");
+
+            LOG_INFO("Crawler initialized successfully with database storage, SSL verification disabled, and SPA rendering enabled");
         } catch (const std::exception& e) {
             LOG_ERROR("Failed to initialize Crawler: " + std::string(e.what()));
             throw;
@@ -123,6 +127,9 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                 bool followRedirects = jsonBody.value("followRedirects", true);  // Default to true for cookie handling
                 int maxRedirects = jsonBody.value("maxRedirects", 10);  // Increase default to handle cookie redirects
                 bool force = jsonBody.value("force", false);
+                bool spaRenderingEnabled = jsonBody.value("spaRenderingEnabled", true);  // Default to enabled
+                bool includeFullContent = jsonBody.value("includeFullContent", false);
+                std::string browserlessUrl = jsonBody.value("browserlessUrl", "http://browserless:3000");
                 
                 // Validate parameters
                 if (maxPages < 1 || maxPages > 10000) {
@@ -151,6 +158,9 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                     currentConfig.restrictToSeedDomain = restrictToSeedDomain;
                     currentConfig.followRedirects = followRedirects;
                     currentConfig.maxRedirects = maxRedirects;
+                    currentConfig.spaRenderingEnabled = spaRenderingEnabled;
+                    currentConfig.includeFullContent = includeFullContent;
+                    currentConfig.browserlessUrl = browserlessUrl;
                     g_crawler->updateConfig(currentConfig);
                     
                     g_crawler->addSeedURL(url, force);
@@ -162,7 +172,9 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                              ", maxDepth: " + std::to_string(maxDepth) + 
                              ", restrictToSeedDomain: " + (restrictToSeedDomain ? "true" : "false") + 
                              ", followRedirects: " + (followRedirects ? "true" : "false") + 
-                             ", maxRedirects: " + std::to_string(maxRedirects) + ")");
+                             ", maxRedirects: " + std::to_string(maxRedirects) + 
+                             ", spaRenderingEnabled: " + (spaRenderingEnabled ? "true" : "false") + 
+                             ", includeFullContent: " + (includeFullContent ? "true" : "false") + ")");
                     
                     // Return success response
                     nlohmann::json response = {
@@ -175,6 +187,9 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                             {"restrictToSeedDomain", restrictToSeedDomain},
                             {"followRedirects", followRedirects},
                             {"maxRedirects", maxRedirects},
+                            {"spaRenderingEnabled", spaRenderingEnabled},
+                            {"includeFullContent", includeFullContent},
+                            {"browserlessUrl", browserlessUrl},
                             {"status", "queued"}
                         }}
                     };
@@ -525,6 +540,296 @@ void SearchController::getCrawlDetails(uWS::HttpResponse<false>* res, uWS::HttpR
     }
 }
 
+void SearchController::detectSpa(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
+    LOG_INFO("SearchController::detectSpa called");
+    
+    // Read the request body
+    std::string buffer;
+    res->onData([this, res, buffer = std::move(buffer)](std::string_view data, bool last) mutable {
+        buffer.append(data.data(), data.length());
+        
+        if (last) {
+            try {
+                // Parse JSON body
+                auto jsonBody = nlohmann::json::parse(buffer);
+                
+                // Validate required fields
+                if (!jsonBody.contains("url") || jsonBody["url"].empty()) {
+                    badRequest(res, "URL is required");
+                    return;
+                }
+                
+                std::string url = jsonBody["url"];
+                
+                // Optional parameters
+                int timeout = jsonBody.value("timeout", 30000); // 30 seconds default
+                std::string userAgent = jsonBody.value("userAgent", "Hatefbot/1.0");
+                
+                // Validate parameters
+                if (timeout < 1000 || timeout > 120000) {
+                    badRequest(res, "timeout must be between 1000 and 120000 milliseconds");
+                    return;
+                }
+                
+                LOG_INFO("Detecting SPA for URL: " + url);
+                
+                // Create a temporary PageFetcher for SPA detection
+                PageFetcher fetcher(
+                    userAgent,
+                    std::chrono::milliseconds(timeout),
+                    true,  // follow redirects
+                    5      // max redirects
+                );
+                
+                // Fetch the page
+                auto startTime = std::chrono::steady_clock::now();
+                auto result = fetcher.fetch(url);
+                auto endTime = std::chrono::steady_clock::now();
+                auto fetchDuration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+                
+                // Prepare response
+                nlohmann::json response = {
+                    {"success", result.success},
+                    {"url", url},
+                    {"fetchDuration", fetchDuration.count()},
+                    {"httpStatusCode", result.statusCode},
+                    {"contentType", result.contentType},
+                    {"contentSize", result.content.size()},
+                    {"spaDetection", {
+                        {"isSpa", false},
+                        {"indicators", nlohmann::json::array()},
+                        {"confidence", 0.0}
+                    }}
+                };
+                
+                if (!result.success) {
+                    response["error"] = result.errorMessage;
+                    json(res, response);
+                    return;
+                }
+                
+                // Detect SPA
+                bool isSpa = fetcher.isSpaPage(result.content, url);
+                response["spaDetection"]["isSpa"] = isSpa;
+                
+                // Analyze SPA indicators
+                std::vector<std::string> indicators;
+                std::string lowerHtml = result.content;
+                std::transform(lowerHtml.begin(), lowerHtml.end(), lowerHtml.begin(), ::tolower);
+                
+                // Framework detection with better pattern matching
+                std::vector<std::pair<std::string, std::string>> frameworks = {
+                    {"react", "React"},
+                    {"vue", "Vue.js"},
+                    {"angular", "Angular"},
+                    {"ember", "Ember"},
+                    {"backbone", "Backbone"},
+                    {"svelte", "Svelte"},
+                    {"single-page", "Single Page Application"},
+                    {"client-side", "Client-side Rendering"},
+                    // Next.js and modern frameworks
+                    {"next-head-count", "Next.js"},
+                    {"data-n-g", "Next.js"},
+                    {"data-n-p", "Next.js"},
+                    {"_next/static", "Next.js"},
+                    {"next.js", "Next.js"},
+                    {"nextjs", "Next.js"},
+                    {"nuxt", "Nuxt.js"},
+                    {"nuxtjs", "Nuxt.js"},
+                    {"_nuxt", "Nuxt.js"},
+                    {"gatsby", "Gatsby"},
+                    {"gatsbyjs", "Gatsby"},
+                    {"___gatsby", "Gatsby"},
+                    {"remix", "Remix"},
+                    {"sveltekit", "SvelteKit"},
+                    {"astro", "Astro"},
+                    {"qwik", "Qwik"},
+                    // State management
+                    {"redux", "Redux"},
+                    {"mobx", "MobX"},
+                    {"zustand", "Zustand"},
+                    {"recoil", "Recoil"},
+                    {"jotai", "Jotai"},
+                    // Build tools
+                    {"webpack", "Webpack"},
+                    {"vite", "Vite"},
+                    {"parcel", "Parcel"},
+                    {"rollup", "Rollup"},
+                    {"esbuild", "esbuild"}
+                };
+                
+                for (const auto& [pattern, name] : frameworks) {
+                    if (lowerHtml.find(pattern) != std::string::npos) {
+                        indicators.push_back(name);
+                    }
+                }
+                
+                // Special handling for problematic patterns that cause false positives
+                // SPA - only if it's actually SPA framework related
+                if (lowerHtml.find("single-page application") != std::string::npos ||
+                    lowerHtml.find("spa framework") != std::string::npos ||
+                    lowerHtml.find("spa.js") != std::string::npos ||
+                    lowerHtml.find("spa/") != std::string::npos) {
+                    indicators.push_back("SPA Framework");
+                }
+                
+                // SolidJS - only if it's actually SolidJS, not just "solid"
+                if (lowerHtml.find("solidjs") != std::string::npos ||
+                    lowerHtml.find("solid-") != std::string::npos ||
+                    lowerHtml.find("solid.js") != std::string::npos) {
+                    indicators.push_back("SolidJS");
+                }
+                
+                // Pattern matching with better specificity
+                std::vector<std::pair<std::string, std::string>> patterns = {
+                    {"data-reactroot", "React Root Element"},
+                                {"ember-", "Ember.js Directive"},
+                    {"svelte-", "Svelte Directive"},
+                    {"window.__initial_state__", "Initial State Object"},
+                    {"window.__preloaded_state__", "Preloaded State"},
+                    {"window.__data__", "Data Object"},
+                    {"window.__props__", "Props Object"},
+                    // Modern SPA patterns
+                    {"data-n-g", "Next.js Generated"},
+                    {"data-n-p", "Next.js Preloaded"},
+                    {"next-head-count", "Next.js Head Count"},
+                    {"id=\"app\"", "App Root Element"},
+                    {"id=\"root\"", "Root Element"},
+                    {"id=\"main\"", "Main Element"}
+                };
+                
+                for (const auto& [pattern, name] : patterns) {
+                    if (lowerHtml.find(pattern) != std::string::npos) {
+                        indicators.push_back(name);
+                    }
+                }
+                
+                // Special handling for hydration patterns to avoid false positives
+                if (lowerHtml.find("hydration") != std::string::npos) {
+                    // Only if it's actually about JavaScript hydration, not just the word
+                    if (lowerHtml.find("hydrate") != std::string::npos ||
+                        lowerHtml.find("client-side") != std::string::npos) {
+                        indicators.push_back("Hydration Pattern");
+                    }
+                }
+                
+                // Angular directive - be more specific
+                if (lowerHtml.find("ng-") != std::string::npos) {
+                    // Check if it's actually an Angular directive, not just a word containing "ng-"
+                    std::regex ngPattern("\\bng-[a-zA-Z-]+\\b", std::regex_constants::icase);
+                    if (std::regex_search(lowerHtml, ngPattern)) {
+                        indicators.push_back("Angular Directive");
+                    }
+                }
+                
+                // Content analysis
+                std::regex scriptRegex(R"(<script[^>]*src[^>]*>)");
+                auto scriptMatches = std::distance(std::sregex_iterator(lowerHtml.begin(), lowerHtml.end(), scriptRegex), std::sregex_iterator());
+                
+                if (scriptMatches > 2) {
+                    indicators.push_back("Multiple Script Tags (" + std::to_string(scriptMatches) + ")");
+                }
+                
+                // Calculate confidence based on indicators
+                double confidence = 0.0;
+                if (isSpa) {
+                    confidence = std::min(100.0, static_cast<double>(indicators.size()) * 25.0);
+                    if (scriptMatches > 5) confidence += 20.0;
+                    if (result.content.size() < 10000) confidence += 15.0; // Small initial HTML
+                }
+                
+                response["spaDetection"]["indicators"] = indicators;
+                response["spaDetection"]["confidence"] = std::min(100.0, confidence);
+                
+                // Add content preview
+                std::string preview = result.content.substr(0, 500);
+                if (result.content.length() > 500) {
+                    preview += "...";
+                }
+                response["contentPreview"] = preview;
+                
+                json(res, response);
+                
+            } catch (const nlohmann::json::parse_error& e) {
+                LOG_ERROR("Failed to parse JSON: " + std::string(e.what()));
+                badRequest(res, "Invalid JSON format");
+            } catch (const std::exception& e) {
+                LOG_ERROR("Unexpected error in detectSpa: " + std::string(e.what()));
+                serverError(res, "An unexpected error occurred");
+            }
+        }
+    });
+    
+    res->onAborted([]() {
+        LOG_WARNING("SPA detection request aborted");
+    });
+}
+
+void SearchController::renderPage(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
+    LOG_INFO("SearchController::renderPage called");
+    std::string buffer;
+    res->onData([this, res, buffer = std::move(buffer)](std::string_view data, bool last) mutable {
+        buffer.append(data.data(), data.length());
+        if (!last) return;
+        try {
+            nlohmann::json requestJson = nlohmann::json::parse(buffer);
+            if (!requestJson.contains("url") || !requestJson["url"].is_string()) {
+                res->writeStatus("400 Bad Request");
+                res->writeHeader("Content-Type", "application/json");
+                res->end(R"({"error": "URL is required and must be a string", "success": false})");
+                return;
+            }
+            std::string url = requestJson["url"];
+            int timeout = requestJson.value("timeout", 30000); // ms
+            // Create PageFetcher with SPA rendering enabled
+            PageFetcher fetcher("Hatefbot/1.0", std::chrono::milliseconds(timeout), true, 5);
+            fetcher.setSpaRendering(true, "http://browserless:3000");
+            auto startTime = std::chrono::high_resolution_clock::now();
+            auto result = fetcher.fetch(url);
+            auto endTime = std::chrono::high_resolution_clock::now();
+            auto fetchDuration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+            nlohmann::json response;
+            response["success"] = result.success;
+            response["url"] = url;
+            response["fetchDuration"] = fetchDuration.count();
+            if (result.success) {
+                response["httpStatusCode"] = result.statusCode;
+                response["contentType"] = result.contentType;
+                response["contentSize"] = result.content.size();
+                std::string preview = result.content.substr(0, 500);
+                if (result.content.size() > 500) preview += "...";
+                response["contentPreview"] = preview;
+                if (requestJson.value("includeFullContent", false)) {
+                    response["content"] = result.content;
+                }
+                bool isSpa = fetcher.isSpaPage(result.content, url);
+                response["isSpa"] = isSpa;
+                response["renderingMethod"] = isSpa ? "headless_browser" : "direct_fetch";
+                LOG_INFO("Successfully rendered page: " + url + ", size: " + std::to_string(result.content.size()) + " bytes");
+            } else {
+                response["error"] = result.errorMessage;
+                response["httpStatusCode"] = result.statusCode;
+                LOG_ERROR("Failed to render page: " + url + ", error: " + result.errorMessage);
+            }
+            res->writeStatus("200 OK");
+            res->writeHeader("Content-Type", "application/json");
+            res->end(response.dump());
+        } catch (const nlohmann::json::exception& e) {
+            res->writeStatus("400 Bad Request");
+            res->writeHeader("Content-Type", "application/json");
+            res->end(R"({"error": "Invalid JSON format", "success": false})");
+        } catch (const std::exception& e) {
+            LOG_ERROR("Exception in renderPage: " + std::string(e.what()));
+            res->writeStatus("500 Internal Server Error");
+            res->writeHeader("Content-Type", "application/json");
+            res->end(R"({"error": "Internal server error", "success": false})");
+        }
+    });
+    res->onAborted([]() {
+        LOG_WARNING("Render page request aborted");
+    });
+}
+
 nlohmann::json SearchController::parseRedisSearchResponse(const std::string& rawResponse, int page, int limit) {
     nlohmann::json response;
     response["meta"] = nlohmann::json::object();
@@ -604,4 +909,23 @@ nlohmann::json SearchController::parseRedisSearchResponse(const std::string& raw
     }
     
     return response;
+} 
+
+// Register the renderPage endpoint
+namespace {
+    struct RenderPageRouteRegister {
+        RenderPageRouteRegister() {
+            routing::RouteRegistry::getInstance().registerRoute({
+                routing::HttpMethod::POST,
+                "/api/spa/render",
+                [](uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
+                    static SearchController controller;
+                    controller.renderPage(res, req);
+                },
+                "SearchController",
+                "renderPage"
+            });
+        }
+    };
+    static RenderPageRouteRegister _renderPageRouteRegisterInstance;
 } 

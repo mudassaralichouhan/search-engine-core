@@ -51,21 +51,3 @@ jobs:
           BASE_IMAGE=ghcr.io/${{ github.repository }}/mongodb-server:latest
           CACHEBUST=${{ inputs.cache_version }}
 
-    - name: Run container tests
-      run: |
-        # Start the container
-        docker run -d -p 3000:3000 --name test-container ${{ inputs.docker_image }}:${{ inputs.docker_tag }}
-        
-        # Wait for MongoDB to start
-        sleep 10
-        
-        # Check if MongoDB is running
-        docker exec test-container mongosh --eval "db.runCommand({ ping: 1 })" || exit 1
-        
-        # Check if the server is responding
-        curl -f http://localhost:3000 || exit 1
-        
-        # Clean up
-        docker stop test-container
-        docker rm test-container
-

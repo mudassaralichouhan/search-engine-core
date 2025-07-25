@@ -21,6 +21,13 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GUMBO REQUIRED gumbo)
 find_package(Threads REQUIRED)
 
+# Find WebSocket++ and nlohmann/json
+find_path(WEBSOCKETPP_INCLUDE_DIR NAMES websocketpp/endpoint.hpp PATHS /usr/include /usr/local/include)
+find_path(NLOHMANN_JSON_INCLUDE_DIR NAMES nlohmann/json.hpp PATHS /usr/include /usr/local/include)
+
+# Remove WebSocket++ and nlohmann/json checks for browserless
+# Always build BrowserlessClient if referenced
+
 # Redis and redis-plus-plus detection
 find_path(HIREDIS_INCLUDE_DIR NAMES hiredis/hiredis.h PATHS /usr/include /usr/local/include)
 find_library(HIREDIS_LIBRARY NAMES hiredis PATHS /usr/lib /usr/local/lib)
@@ -53,6 +60,10 @@ include_directories(
     /usr/local/include/usockets
     ${GUMBO_INCLUDE_DIRS}
 )
+
+# Add WebSocket include directories if available
+# Always include BrowserlessClient if referenced
+include_directories(${WEBSOCKETPP_INCLUDE_DIR} ${NLOHMANN_JSON_INCLUDE_DIR})
 
 # Add Redis include directories if available
 if(REDIS_AVAILABLE)
