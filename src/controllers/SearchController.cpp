@@ -116,9 +116,11 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                 bool restrictToSeedDomain = jsonBody.value("restrictToSeedDomain", true);
                 bool followRedirects = jsonBody.value("followRedirects", true);  // Default to true for cookie handling
                 int maxRedirects = jsonBody.value("maxRedirects", 10);  // Increase default to handle cookie redirects
-                bool force = jsonBody.value("force", false);
+                bool force = jsonBody.value("force", true);  // Default to true for re-crawling
+                bool extractTextContent = jsonBody.value("extractTextContent", true);  // Default to true for text extraction
                 bool spaRenderingEnabled = jsonBody.value("spaRenderingEnabled", true);  // Default to enabled
                 bool includeFullContent = jsonBody.value("includeFullContent", false);
+                bool stopPreviousSessions = jsonBody.value("stopPreviousSessions", false);  // Default to false for concurrent crawling
                 std::string browserlessUrl = jsonBody.value("browserlessUrl", "http://browserless:3000");
                 
                 // Validate parameters
@@ -139,12 +141,21 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                 
                 // Start new crawl session
                 if (g_crawlerManager) {
+                    // Stop previous sessions if requested
+                    if (stopPreviousSessions) {
+                        auto activeSessions = g_crawlerManager->getActiveSessions();
+                        LOG_INFO("Stopping " + std::to_string(activeSessions.size()) + " active sessions before starting new crawl");
+                        for (const auto& activeSessionId : activeSessions) {
+                            g_crawlerManager->stopCrawl(activeSessionId);
+                        }
+                    }
+                    
                     // Create crawler configuration
                     CrawlConfig config;
                     config.maxPages = maxPages;
                     config.maxDepth = maxDepth;
                     config.userAgent = "Hatefbot/1.0";
-                    config.extractTextContent = true;
+                    config.extractTextContent = extractTextContent;
                     config.restrictToSeedDomain = restrictToSeedDomain;
                     config.followRedirects = followRedirects;
                     config.maxRedirects = maxRedirects;
@@ -161,8 +172,11 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                              ", restrictToSeedDomain: " + (restrictToSeedDomain ? "true" : "false") + 
                              ", followRedirects: " + (followRedirects ? "true" : "false") + 
                              ", maxRedirects: " + std::to_string(maxRedirects) + 
+                             ", force: " + (force ? "true" : "false") + 
+                             ", extractTextContent: " + (extractTextContent ? "true" : "false") + 
                              ", spaRenderingEnabled: " + (spaRenderingEnabled ? "true" : "false") + 
-                             ", includeFullContent: " + (includeFullContent ? "true" : "false") + ")");
+                             ", includeFullContent: " + (includeFullContent ? "true" : "false") + 
+                             ", stopPreviousSessions: " + (stopPreviousSessions ? "true" : "false") + ")");
                     
                     // Return success response with session ID
                     nlohmann::json response = {
@@ -176,8 +190,11 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                             {"restrictToSeedDomain", restrictToSeedDomain},
                             {"followRedirects", followRedirects},
                             {"maxRedirects", maxRedirects},
+                            {"force", force},
+                            {"extractTextContent", extractTextContent},
                             {"spaRenderingEnabled", spaRenderingEnabled},
                             {"includeFullContent", includeFullContent},
+                            {"stopPreviousSessions", stopPreviousSessions},
                             {"browserlessUrl", browserlessUrl},
                             {"status", "starting"}
                         }}
