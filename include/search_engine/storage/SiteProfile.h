@@ -43,6 +43,7 @@ struct SiteProfile {
     std::string url;                  // Full URL that was crawled
     std::string title;                // Page title
     std::optional<std::string> description;  // Meta description or extracted summary
+    std::optional<std::string> textContent;  // Full extracted body text from the page
     
     // Content categorization
     std::vector<std::string> keywords;       // Extracted keywords

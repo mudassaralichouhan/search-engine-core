@@ -60,6 +60,7 @@ SearchController::SearchController() {
         config.maxPages = 1000;  // Default max pages
         config.maxDepth = 3;     // Default max depth
         config.userAgent = "Hatefbot/1.0";
+        config.extractTextContent = true;  // Enable text content extraction for full body text storage
         
         try {
             // Get MongoDB connection string from environment or use default
@@ -162,6 +163,11 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                     currentConfig.includeFullContent = includeFullContent;
                     currentConfig.browserlessUrl = browserlessUrl;
                     g_crawler->updateConfig(currentConfig);
+                    
+                    // Reset crawler state if force is true to allow crawling different domains
+                    if (force) {
+                        g_crawler->reset();
+                    }
                     
                     g_crawler->addSeedURL(url, force);
                     
@@ -614,132 +620,151 @@ void SearchController::detectSpa(uWS::HttpResponse<false>* res, uWS::HttpRequest
                 
                 // Analyze SPA indicators
                 std::vector<std::string> indicators;
-                std::string lowerHtml = result.content;
-                std::transform(lowerHtml.begin(), lowerHtml.end(), lowerHtml.begin(), ::tolower);
                 
-                // Framework detection with better pattern matching
-                std::vector<std::pair<std::string, std::string>> frameworks = {
-                    {"react", "React"},
-                    {"vue", "Vue.js"},
-                    {"angular", "Angular"},
-                    {"ember", "Ember"},
-                    {"backbone", "Backbone"},
-                    {"svelte", "Svelte"},
-                    {"single-page", "Single Page Application"},
-                    {"client-side", "Client-side Rendering"},
-                    // Next.js and modern frameworks
-                    {"next-head-count", "Next.js"},
-                    {"data-n-g", "Next.js"},
-                    {"data-n-p", "Next.js"},
-                    {"_next/static", "Next.js"},
-                    {"next.js", "Next.js"},
-                    {"nextjs", "Next.js"},
-                    {"nuxt", "Nuxt.js"},
-                    {"nuxtjs", "Nuxt.js"},
-                    {"_nuxt", "Nuxt.js"},
-                    {"gatsby", "Gatsby"},
-                    {"gatsbyjs", "Gatsby"},
-                    {"___gatsby", "Gatsby"},
-                    {"remix", "Remix"},
-                    {"sveltekit", "SvelteKit"},
-                    {"astro", "Astro"},
-                    {"qwik", "Qwik"},
-                    // State management
-                    {"redux", "Redux"},
-                    {"mobx", "MobX"},
-                    {"zustand", "Zustand"},
-                    {"recoil", "Recoil"},
-                    {"jotai", "Jotai"},
-                    // Build tools
-                    {"webpack", "Webpack"},
-                    {"vite", "Vite"},
-                    {"parcel", "Parcel"},
-                    {"rollup", "Rollup"},
-                    {"esbuild", "esbuild"}
-                };
-                
-                for (const auto& [pattern, name] : frameworks) {
-                    if (lowerHtml.find(pattern) != std::string::npos) {
-                        indicators.push_back(name);
+                // Only analyze indicators if the main SPA detection thinks it's a SPA
+                if (!isSpa) {
+                    // If PageFetcher doesn't think it's a SPA, don't show any indicators
+                    response["spaDetection"]["indicators"] = nlohmann::json::array();
+                    response["spaDetection"]["confidence"] = 0.0;
+                } else {
+                    // Framework detection with case-sensitive word boundary matching
+                    std::vector<std::pair<std::string, std::string>> frameworkPatterns = {
+                        {"\\bReact\\b", "React"},
+                        {"\\breact\\b", "React"},
+                        {"\\bVue\\b", "Vue.js"},
+                        {"\\bvue\\b", "Vue.js"},
+                        {"\\bAngular\\b", "Angular"},
+                        {"\\bangular\\b", "Angular"},
+                        {"\\bEmber\\b", "Ember"},
+                        {"\\bember\\b", "Ember"},
+                        {"\\bBackbone\\b", "Backbone"},
+                        {"\\bbackbone\\b", "Backbone"},
+                        {"\\bSvelte\\b", "Svelte"},
+                        {"\\bsvelte\\b", "Svelte"}
+                    };
+                    
+                    // Check framework patterns with regex word boundaries
+                    for (const auto& [pattern, name] : frameworkPatterns) {
+                        std::regex frameworkRegex(pattern);
+                        if (std::regex_search(result.content, frameworkRegex)) {
+                            indicators.push_back(name);
+                        }
                     }
-                }
-                
-                // Special handling for problematic patterns that cause false positives
-                // SPA - only if it's actually SPA framework related
-                if (lowerHtml.find("single-page application") != std::string::npos ||
-                    lowerHtml.find("spa framework") != std::string::npos ||
-                    lowerHtml.find("spa.js") != std::string::npos ||
-                    lowerHtml.find("spa/") != std::string::npos) {
-                    indicators.push_back("SPA Framework");
-                }
-                
-                // SolidJS - only if it's actually SolidJS, not just "solid"
-                if (lowerHtml.find("solidjs") != std::string::npos ||
-                    lowerHtml.find("solid-") != std::string::npos ||
-                    lowerHtml.find("solid.js") != std::string::npos) {
-                    indicators.push_back("SolidJS");
-                }
-                
-                // Pattern matching with better specificity
-                std::vector<std::pair<std::string, std::string>> patterns = {
-                    {"data-reactroot", "React Root Element"},
-                                {"ember-", "Ember.js Directive"},
-                    {"svelte-", "Svelte Directive"},
-                    {"window.__initial_state__", "Initial State Object"},
-                    {"window.__preloaded_state__", "Preloaded State"},
-                    {"window.__data__", "Data Object"},
-                    {"window.__props__", "Props Object"},
-                    // Modern SPA patterns
-                    {"data-n-g", "Next.js Generated"},
-                    {"data-n-p", "Next.js Preloaded"},
-                    {"next-head-count", "Next.js Head Count"},
-                    {"id=\"app\"", "App Root Element"},
-                    {"id=\"root\"", "Root Element"},
-                    {"id=\"main\"", "Main Element"}
-                };
-                
-                for (const auto& [pattern, name] : patterns) {
-                    if (lowerHtml.find(pattern) != std::string::npos) {
-                        indicators.push_back(name);
+                    
+                    // Convert to lowercase only for specific patterns that are typically lowercase
+                    std::string lowerHtml = result.content;
+                    std::transform(lowerHtml.begin(), lowerHtml.end(), lowerHtml.begin(), ::tolower);
+                    
+                    // Check for very specific SPA framework patterns only
+                    std::vector<std::pair<std::string, std::string>> strongPatterns = {
+                        // Next.js specific patterns
+                        {"next-head-count", "Next.js"},
+                        {"data-n-g", "Next.js"},
+                        {"data-n-p", "Next.js"},
+                        {"_next/static", "Next.js"},
+                        {"__next__", "Next.js"},
+                        {"__next_data__", "Next.js"},
+                        // Nuxt.js patterns
+                        {"_nuxt", "Nuxt.js"},
+                        {"data-nuxt-", "Nuxt.js"},
+                        {"__nuxt__", "Nuxt.js"},
+                        // Gatsby patterns
+                        {"___gatsby", "Gatsby"},
+                        {"gatsby-", "Gatsby"},
+                        {"__gatsby", "Gatsby"},
+                        // React specific patterns
+                        {"data-reactroot", "React"},
+                        {"react-dom", "React DOM"},
+                        {"reactdom", "React DOM"},
+                        // Vue specific patterns
+                        {"vue-router", "Vue Router"},
+                        {"vuex", "Vuex"},
+                        // AngularJS (1.x) patterns
+                        {"angularjs", "AngularJS"},
+                        // Modern Angular (2+) patterns
+                        {"<app-root>", "Angular"},
+                        {"<app-root ", "Angular"},
+                        {"</app-root>", "Angular"},
+                        {"runtime.", "Angular CLI"},
+                        {"polyfills.", "Angular CLI"},
+                        {"main.", "Angular CLI"},
+                        {"ng-version", "Angular"},
+                        {"ng-reflect-", "Angular"},
+                        // State management (only if very specific)
+                        {"redux-", "Redux"},
+                        {"mobx-", "MobX"}
+                    };
+
+                    for (const auto& [pattern, name] : strongPatterns) {
+                        if (lowerHtml.find(pattern) != std::string::npos) {
+                            indicators.push_back(name);
+                        }
                     }
-                }
-                
-                // Special handling for hydration patterns to avoid false positives
-                if (lowerHtml.find("hydration") != std::string::npos) {
-                    // Only if it's actually about JavaScript hydration, not just the word
-                    if (lowerHtml.find("hydrate") != std::string::npos ||
-                        lowerHtml.find("client-side") != std::string::npos) {
-                        indicators.push_back("Hydration Pattern");
+                    
+                    // Check for build tools only with specific context
+                    if (lowerHtml.find("webpack") != std::string::npos && 
+                        (lowerHtml.find("bundle") != std::string::npos || lowerHtml.find("chunk") != std::string::npos)) {
+                        indicators.push_back("Webpack");
                     }
-                }
-                
-                // Angular directive - be more specific
-                if (lowerHtml.find("ng-") != std::string::npos) {
-                    // Check if it's actually an Angular directive, not just a word containing "ng-"
+                    
+                    if (lowerHtml.find("vite") != std::string::npos && 
+                        (lowerHtml.find("hmr") != std::string::npos || lowerHtml.find("@vite") != std::string::npos)) {
+                        indicators.push_back("Vite");
+                    }
+
+                    // Pattern matching with better specificity
+                    std::vector<std::pair<std::string, std::string>> patterns = {
+                        {"data-reactroot", "React Root Element"},
+                        {"ember-", "Ember.js Directive"},
+                        {"svelte-", "Svelte Directive"},
+                        {"window.__initial_state__", "Initial State Object"},
+                        {"window.__preloaded_state__", "Preloaded State"},
+                        {"window.__data__", "Data Object"},
+                        {"window.__props__", "Props Object"},
+                        // Modern SPA patterns
+                        {"data-n-g", "Next.js Generated"},
+                        {"data-n-p", "Next.js Preloaded"},
+                        {"next-head-count", "Next.js Head Count"},
+                        {"id=\"app\"", "App Root Element"},
+                        {"id=\"root\"", "Root Element"},
+                        {"id=\"main\"", "Main Element"}
+                    };
+
+                    for (const auto& [pattern, name] : patterns) {
+                        if (lowerHtml.find(pattern) != std::string::npos) {
+                            indicators.push_back(name);
+                        }
+                    }
+
+                    // Angular directive - be more specific with regex
                     std::regex ngPattern("\\bng-[a-zA-Z-]+\\b", std::regex_constants::icase);
-                    if (std::regex_search(lowerHtml, ngPattern)) {
+                    if (std::regex_search(result.content, ngPattern)) {
                         indicators.push_back("Angular Directive");
                     }
+                    
+                    // Vue directives
+                    std::regex vuePattern("\\bv-[a-zA-Z-]+\\b", std::regex_constants::icase);
+                    if (std::regex_search(result.content, vuePattern)) {
+                        indicators.push_back("Vue Directive");
+                    }
+                    
+                    // Content analysis
+                    std::regex scriptRegex(R"(<script[^>]*src[^>]*>)");
+                    auto scriptMatches = std::distance(std::sregex_iterator(lowerHtml.begin(), lowerHtml.end(), scriptRegex), std::sregex_iterator());
+                    
+                    if (scriptMatches > 5) {
+                        indicators.push_back("Multiple Script Tags (" + std::to_string(scriptMatches) + ")");
+                    }
+                    
+                    // Calculate confidence based on indicators
+                    double confidence = 0.0;
+                    confidence = std::min(100.0, static_cast<double>(indicators.size()) * 20.0);
+                    if (scriptMatches > 8) confidence += 15.0;
+                    if (result.content.size() < 5000) confidence += 10.0; // Small initial HTML
+                    
+                    response["spaDetection"]["indicators"] = indicators;
+                    response["spaDetection"]["confidence"] = std::min(100.0, confidence);
                 }
-                
-                // Content analysis
-                std::regex scriptRegex(R"(<script[^>]*src[^>]*>)");
-                auto scriptMatches = std::distance(std::sregex_iterator(lowerHtml.begin(), lowerHtml.end(), scriptRegex), std::sregex_iterator());
-                
-                if (scriptMatches > 2) {
-                    indicators.push_back("Multiple Script Tags (" + std::to_string(scriptMatches) + ")");
-                }
-                
-                // Calculate confidence based on indicators
-                double confidence = 0.0;
-                if (isSpa) {
-                    confidence = std::min(100.0, static_cast<double>(indicators.size()) * 25.0);
-                    if (scriptMatches > 5) confidence += 20.0;
-                    if (result.content.size() < 10000) confidence += 15.0; // Small initial HTML
-                }
-                
-                response["spaDetection"]["indicators"] = indicators;
-                response["spaDetection"]["confidence"] = std::min(100.0, confidence);
                 
                 // Add content preview
                 std::string preview = result.content.substr(0, 500);

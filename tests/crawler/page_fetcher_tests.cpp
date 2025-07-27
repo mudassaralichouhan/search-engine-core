@@ -2,6 +2,7 @@
 #include "PageFetcher.h"
 #include <thread>
 #include <chrono>
+#include <iostream> // Added for std::cout
 
 TEST_CASE("PageFetcher handles basic page fetching", "[PageFetcher]") {
     PageFetcher fetcher("TestBot/1.0", std::chrono::seconds(10));
@@ -142,6 +143,308 @@ TEST_CASE("PageFetcher handles proxy settings", "[PageFetcher]") {
         // In a real test environment, you might want to use a mock proxy
         if (!result.success) {
             REQUIRE(result.errorMessage.find("proxy") != std::string::npos);
+        }
+    }
+} 
+
+TEST_CASE("PageFetcher SPA Detection", "[PageFetcher][SPA]") {
+    PageFetcher fetcher("TestBot/1.0", std::chrono::seconds(30));
+    
+    SECTION("Detects React SPAs correctly") {
+        // Test with mock React HTML content
+        std::string reactHtml = R"(
+            <!DOCTYPE html>
+            <html>
+            <head><title>React App</title></head>
+            <body>
+                <div id="root"></div>
+                <script>
+                    ReactDOM.render(<App />, document.getElementById('root'));
+                </script>
+            </body>
+            </html>
+        )";
+        
+        bool result = fetcher.isSpaPage(reactHtml, "https://example.com");
+        REQUIRE(result == true);
+    }
+    
+    SECTION("Detects Next.js SPAs correctly") {
+        std::string nextjsHtml = R"(
+            <!DOCTYPE html>
+            <html>
+            <head><title>Next.js App</title></head>
+            <body>
+                <div id="__next"></div>
+                <script id="__NEXT_DATA__" type="application/json">{"props":{}}</script>
+            </body>
+            </html>
+        )";
+        
+        bool result = fetcher.isSpaPage(nextjsHtml, "https://example.com");
+        REQUIRE(result == true);
+    }
+    
+    SECTION("Detects Vue SPAs correctly") {
+        std::string vueHtml = R"(
+            <!DOCTYPE html>
+            <html>
+            <head><title>Vue App</title></head>
+            <body>
+                <div id="app" v-if="true">
+                    <h1>{{ title }}</h1>
+                </div>
+                <script>
+                    new Vue({ el: '#app', data: { title: 'Hello Vue' } });
+                </script>
+            </body>
+            </html>
+        )";
+        
+        bool result = fetcher.isSpaPage(vueHtml, "https://example.com");
+        REQUIRE(result == true);
+    }
+    
+    SECTION("Detects Angular SPAs correctly") {
+        std::string angularHtml = R"(
+            <!DOCTYPE html>
+            <html>
+            <head><title>Angular App</title></head>
+            <body ng-app="myApp">
+                <div ng-controller="MainController">
+                    <h1>{{title}}</h1>
+                </div>
+            </body>
+            </html>
+        )";
+        
+        bool result = fetcher.isSpaPage(angularHtml, "https://example.com");
+        REQUIRE(result == true);
+    }
+    
+    SECTION("Rejects traditional HTML pages") {
+        std::string traditionalHtml = R"(
+            <!DOCTYPE html>
+            <html>
+            <head><title>Traditional Website</title></head>
+            <body>
+                <h1>Welcome to our website</h1>
+                <p>This is a traditional multi-page website.</p>
+                <nav>
+                    <a href="/about">About</a>
+                    <a href="/contact">Contact</a>
+                </nav>
+            </body>
+            </html>
+        )";
+        
+        bool result = fetcher.isSpaPage(traditionalHtml, "https://example.com");
+        REQUIRE(result == false);
+    }
+    
+    SECTION("Rejects Alpine.js pages (false positive prevention)") {
+        std::string alpineHtml = R"(
+            <!DOCTYPE html>
+            <html>
+            <head><title>Alpine.js Website</title></head>
+            <body>
+                <div x-data="{ open: false }">
+                    <button @click="open = !open">Toggle</button>
+                    <div x-show="open">Content</div>
+                </div>
+                <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+            </body>
+            </html>
+        )";
+        
+        bool result = fetcher.isSpaPage(alpineHtml, "https://example.com");
+        REQUIRE(result == false); // Should NOT detect as SPA
+    }
+    
+    SECTION("Rejects pages with framework names in content") {
+        std::string contentWithFrameworkNames = R"(
+            <!DOCTYPE html>
+            <html>
+            <head><title>Blog Post</title></head>
+            <body>
+                <h1>Learning React in 2024</h1>
+                <p>React is a popular JavaScript library. Many developers love Vue.js and Angular too.</p>
+                <p>This catastrophic situation requires immediate action.</p>
+            </body>
+            </html>
+        )";
+        
+        bool result = fetcher.isSpaPage(contentWithFrameworkNames, "https://example.com");
+        REQUIRE(result == false); // Should NOT detect as SPA
+    }
+}
+
+TEST_CASE("PageFetcher SPA Detection with Real URLs", "[PageFetcher][SPA][Integration]") {
+    PageFetcher fetcher("TestBot/1.0", std::chrono::seconds(30));
+    
+    SECTION("Test with parameterized URL - httpbin.org/html (should be false)") {
+        auto fetchResult = fetcher.fetch("http://httpbin.org/html");
+        if (fetchResult.success) {
+            bool isSpa = fetcher.isSpaPage(fetchResult.content, "http://httpbin.org/html");
+            REQUIRE(isSpa == false);
+            INFO("httpbin.org/html correctly identified as NOT a SPA");
+        } else {
+            WARN("Could not fetch httpbin.org/html - skipping test");
+        }
+    }
+    
+    SECTION("Test with parameterized URL - example.com (should be false)") {  
+        auto fetchResult = fetcher.fetch("https://example.com");
+        if (fetchResult.success) {
+            bool isSpa = fetcher.isSpaPage(fetchResult.content, "https://example.com");
+            REQUIRE(isSpa == false);
+            INFO("example.com correctly identified as NOT a SPA");
+        } else {
+            WARN("Could not fetch example.com - skipping test");
+        }
+    }
+}
+
+// Parameterized test helper function
+void testUrlSpaDetection(const std::string& url, bool expectedResult, const std::string& description) {
+    PageFetcher fetcher("TestBot/1.0", std::chrono::seconds(30));
+    
+    INFO("Testing URL: " + url + " - " + description);
+    auto fetchResult = fetcher.fetch(url);
+    
+    if (fetchResult.success) {
+        bool isSpa = fetcher.isSpaPage(fetchResult.content, url);
+        INFO("SPA Detection Result: " + std::string(isSpa ? "true" : "false") + 
+             " (expected: " + std::string(expectedResult ? "true" : "false") + ")");
+        REQUIRE(isSpa == expectedResult);
+    } else {
+        WARN("Could not fetch " + url + " - skipping test. Error: " + fetchResult.errorMessage);
+    }
+}
+
+// Helper function to test URL without expected result (for exploratory testing)
+void testUrlSpaDetectionExplore(const std::string& url, const std::string& description = "") {
+    PageFetcher fetcher("TestBot/1.0", std::chrono::seconds(30));
+    
+    std::string testDesc = description.empty() ? ("Testing " + url) : description;
+    INFO("🔍 " + testDesc);
+    
+    auto fetchResult = fetcher.fetch(url);
+    
+    if (fetchResult.success) {
+        bool isSpa = fetcher.isSpaPage(fetchResult.content, url);
+        
+        // Check if HTML should be shown (default: false)
+        const char* showHtmlEnv = std::getenv("showhtml");
+        bool showHtml = (showHtmlEnv != nullptr && std::string(showHtmlEnv) == "true");
+        
+        std::cout << "\n=== SPA Detection Results ===" << std::endl;
+        std::cout << "URL: " << url << std::endl;
+        std::cout << "Is SPA: " << (isSpa ? "✅ TRUE" : "❌ FALSE") << std::endl;
+        std::cout << "Content Size: " << fetchResult.content.size() << " bytes" << std::endl;
+        std::cout << "HTTP Status: " << fetchResult.statusCode << std::endl;
+        std::cout << "Content Type: " << fetchResult.contentType << std::endl;
+        std::cout << "Final URL: " << fetchResult.finalUrl << std::endl;
+        
+        if (showHtml) {
+            std::cout << "\n=== FULL HTML CONTENT ===" << std::endl;
+            std::cout << fetchResult.content << std::endl;
+            std::cout << "=== END HTML CONTENT ===\n" << std::endl;
+        } else {
+            // Show first 200 characters as preview when HTML is hidden
+            std::string preview = fetchResult.content.substr(0, 200);
+            if (fetchResult.content.length() > 200) preview += "...";
+            std::cout << "\nContent Preview (first 200 chars): " << preview << std::endl;
+            std::cout << "💡 Use 'showhtml=true' to see full HTML content\n" << std::endl;
+        }
+        
+        INFO("SPA Detection Result: " + std::string(isSpa ? "✅ TRUE (SPA detected)" : "❌ FALSE (Not a SPA)"));
+        
+        // Test always passes - this is exploratory
+        REQUIRE(true);
+    } else {
+        std::cout << "\n❌ Failed to fetch: " << url << std::endl;
+        std::cout << "Error: " << fetchResult.errorMessage << std::endl;
+        std::cout << "HTTP Status: " << fetchResult.statusCode << std::endl;
+        
+        WARN("Could not fetch " + url + " - Error: " + fetchResult.errorMessage);
+        REQUIRE(true); // Don't fail the test for network issues
+    }
+}
+
+TEST_CASE("PageFetcher SPA Detection - Parameterized URL Tests", "[PageFetcher][SPA][Parameterized]") {
+    
+    // Check if custom URLs are provided via environment variable
+    const char* cmdLineUrls = std::getenv("CMD_LINE_TEST_URL");
+    bool hasCustomUrls = (cmdLineUrls != nullptr && strlen(cmdLineUrls) > 0);
+    
+    SECTION("Built-in Non-SPA websites") {
+        // Only run built-in tests if no custom URLs are provided
+        if (!hasCustomUrls) {
+            testUrlSpaDetection("http://httpbin.org/html", false, "HTTPBin HTML page");
+            testUrlSpaDetection("https://example.com", false, "Example.com simple page");
+        } else {
+            INFO("Skipping built-in tests - custom URLs provided");
+        }
+    }
+    
+    // Test custom URL from environment variables
+    SECTION("Test custom URL from environment") {
+        const char* testUrl = std::getenv("SPA_TEST_URL");
+        const char* expectedResultStr = std::getenv("SPA_TEST_EXPECTED");
+        
+        if (testUrl && expectedResultStr) {
+            bool expectedResult = (std::string(expectedResultStr) == "true");
+            testUrlSpaDetection(testUrl, expectedResult, "Custom test URL from environment");
+        } else if (!hasCustomUrls) {
+            INFO("No SPA_TEST_URL environment variable set - skipping custom URL test");
+        }
+    }
+    
+    // Test URL from command line arguments
+    SECTION("Test URL from command line arguments") {
+        if (cmdLineUrls) {
+            std::cout << "\n🎯 TESTING ONLY PROVIDED URLs (skipping built-in tests)\n" << std::endl;
+            
+            std::string urlsStr(cmdLineUrls);
+            std::vector<std::string> urls;
+            
+            // Parse comma-separated URLs
+            size_t pos = 0;
+            std::string token;
+            std::string delimiter = ",";
+            
+            while ((pos = urlsStr.find(delimiter)) != std::string::npos) {
+                token = urlsStr.substr(0, pos);
+                if (!token.empty()) {
+                    urls.push_back(token);
+                }
+                urlsStr.erase(0, pos + delimiter.length());
+            }
+            if (!urlsStr.empty()) {
+                urls.push_back(urlsStr);
+            }
+            
+            // Test each URL
+            if (urls.empty()) {
+                INFO("No valid URLs found in CMD_LINE_TEST_URL");
+            } else {
+                for (auto& url : urls) {
+                    // Trim whitespace
+                    url.erase(0, url.find_first_not_of(" \t"));
+                    url.erase(url.find_last_not_of(" \t") + 1);
+                    
+                    // Add protocol if missing
+                    if (url.find("http://") != 0 && url.find("https://") != 0) {
+                        url = "https://" + url;
+                    }
+                    
+                    testUrlSpaDetectionExplore(url, "🎯 Testing: " + url);
+                }
+            }
+        } else {
+            INFO("No CMD_LINE_TEST_URL environment variable set");
+            INFO("Usage: CMD_LINE_TEST_URL=\"digikala.com,reactjs.org\" ./crawler_tests \"[PageFetcher][SPA][Parameterized]\"");
         }
     }
 } 

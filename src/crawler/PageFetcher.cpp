@@ -66,6 +66,7 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
     LOG_INFO("PageFetcher::fetch called for URL: " + url);
     PageFetchResult result;
     result.success = false;
+    result.statusCode = 0;  // Initialize status code to prevent garbage data
     
     if (!curl) {
         result.errorMessage = "CURL not initialized";
@@ -106,14 +107,14 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
     LOG_DEBUG("Setting timeout: " + std::to_string(timeoutMs) + "ms");
     curl_easy_setopt(localCurl, CURLOPT_TIMEOUT_MS, timeoutMs);
     
-    // Set connection timeout to 1 second
-    LOG_DEBUG("Setting connection timeout: 1000ms");
-    curl_easy_setopt(localCurl, CURLOPT_CONNECTTIMEOUT_MS, 1000L);
+    // Set connection timeout to 10 seconds (increased for container environments)
+    LOG_DEBUG("Setting connection timeout: 10000ms");
+    curl_easy_setopt(localCurl, CURLOPT_CONNECTTIMEOUT_MS, 10000L);
     
     // Set low-speed time and limit to abort slow connections
-    LOG_DEBUG("Setting low speed time: 2 seconds");
-    curl_easy_setopt(localCurl, CURLOPT_LOW_SPEED_TIME, 2L);
-    curl_easy_setopt(localCurl, CURLOPT_LOW_SPEED_LIMIT, 1L);
+    LOG_DEBUG("Setting low speed time: 10 seconds");
+    curl_easy_setopt(localCurl, CURLOPT_LOW_SPEED_TIME, 10L);
+    curl_easy_setopt(localCurl, CURLOPT_LOW_SPEED_LIMIT, 100L);
     
     // Set redirect options
     LOG_TRACE("Setting follow location: " + std::string(followRedirects ? "true" : "false"));
@@ -308,111 +309,55 @@ void PageFetcher::setSpaRendering(bool enable, const std::string& browserless_ur
 }
 
 bool PageFetcher::isSpaPage(const std::string& html, const std::string& url) {
-    // Convert to lowercase for case-insensitive matching
-    std::string lowerHtml = html;
-    std::transform(lowerHtml.begin(), lowerHtml.end(), lowerHtml.begin(), ::tolower);
-    
-    // Common SPA indicators
-    std::vector<std::string> spaIndicators = {
-        "react", "vue", "angular", "ember", "backbone", "svelte",
-        "single-page", "client-side", "javascript framework",
-        "data-reactroot", "ember-", "svelte-",
-        "window.__initial_state__", "window.__preloaded_state__",
-        "window.__data__", "window.__props__",
-        // Next.js indicators
-        "next-head-count", "data-n-g", "data-n-p", "/_next/static/",
-        "next.js", "nextjs", "next/", "__next__",
-        // Nuxt.js indicators
-        "nuxt", "nuxtjs", "_nuxt/", "data-nuxt-",
-        // Gatsby indicators
-        "gatsby", "gatsbyjs", "___gatsby", "gatsby-",
-        // Modern SSR/SPA frameworks
-        "remix", "sveltekit", "astro", "qwik",
-        // React patterns
-        "react-", "reactjs", "react-dom", "react/",
-        // Vue patterns
-        "vue-", "vuejs", "vue-router", "vuex",
-        // Angular patterns
-        "angular-", "angularjs", "angular/",
-        // State management
-        "redux", "mobx", "zustand", "recoil", "jotai",
-        // Build tools that indicate SPAs
-        "webpack", "vite", "parcel", "rollup", "esbuild"
+    // Only check for VERY specific SPA framework patterns that are DEFINITIVE and UNAMBIGUOUS
+    std::vector<std::string> definiteSpaIndicators = {
+        // React specific - these are only found in actual React SPAs
+        "data-reactroot", "ReactDOM.render", "ReactDOM.createRoot", "ReactDOM.hydrate",
+        "window.React", "window.ReactDOM",
+        
+        // Next.js specific - these are definitive Next.js patterns
+        "__NEXT_DATA__", "window.__NEXT_DATA__", "_next/static/chunks/", 
+        "next-head-count", "_next/static/css/",
+        
+        // Nuxt.js specific - these are definitive Nuxt.js patterns
+        "__NUXT__", "window.__NUXT__", "_nuxt/static/", "window.$nuxt",
+        
+        // Gatsby specific - these are definitive Gatsby patterns
+        "___gatsby", "window.___gatsby", "__GATSBY", "window.___loader",
+        
+        // AngularJS (1.x) specific - legacy Angular patterns
+        "ng-app=\"", "ng-controller=\"", "[ng-app]", "[ng-controller]", 
+        "window.angular", "angular.module",
+        
+        // Modern Angular (2+) specific - these are definitive modern Angular patterns
+        "<app-root>", "<app-root ", "</app-root>",
+        "runtime.", "polyfills.", "main.", // Angular CLI build artifacts
+        "ng-version", "ng-reflect-", 
+        
+        // Vue specific - must have Vue-specific patterns, not just @click (which Alpine.js also uses)
+        "window.Vue", "Vue.createApp", "Vue.component", "new Vue(",
+        "v-if=\"", "v-for=\"", "v-model=\"", "{{", "v-bind:", "v-on:",
+        
+        // Ember specific 
+        "ember-application", "window.Ember", "Ember.Application",
+        
+        // State management objects that are SPA-specific
+        "window.__REDUX_DEVTOOLS_EXTENSION__", "window.__PRELOADED_STATE__",
+        "window.store", "window.__STATE__", "window.__INITIAL_STATE__"
     };
     
-    // Check for SPA frameworks and patterns with more precise matching
-    for (const auto& indicator : spaIndicators) {
-        // Skip very short patterns that might cause false positives
-        if (indicator.length() < 3) continue;
-        
-        // Use more specific patterns for common false positives
-        if (indicator == "angular" && lowerHtml.find("angular") != std::string::npos) {
-            // Check if it's actually Angular framework, not just the word "angular"
-            if (lowerHtml.find("angularjs") != std::string::npos || 
-                lowerHtml.find("angular/") != std::string::npos) {
-                LOG_DEBUG("SPA detected by Angular indicator in URL: " + url);
-                return true;
-            }
-        } else if (indicator == "solid" && lowerHtml.find("solid") != std::string::npos) {
-            // Check if it's actually SolidJS, not just the word "solid"
-            if (lowerHtml.find("solidjs") != std::string::npos ||
-                lowerHtml.find("solid-") != std::string::npos) {
-                LOG_DEBUG("SPA detected by SolidJS indicator in URL: " + url);
-                return true;
-            }
-        } else if (indicator == "spa" && lowerHtml.find("spa") != std::string::npos) {
-            // Check if it's actually SPA framework, not just the word "spa"
-            if (lowerHtml.find("single-page") != std::string::npos ||
-                lowerHtml.find("spa framework") != std::string::npos) {
-                LOG_DEBUG("SPA detected by SPA framework indicator in URL: " + url);
-                return true;
-            }
-        } else if (lowerHtml.find(indicator) != std::string::npos) {
-            LOG_DEBUG("SPA detected by indicator: " + indicator + " in URL: " + url);
-            return true;
+    // Count definitive indicators
+    int definitiveCount = 0;
+    for (const auto& indicator : definiteSpaIndicators) {
+        if (html.find(indicator) != std::string::npos) {
+            definitiveCount++;
+            LOG_DEBUG("Definitive SPA indicator found: " + indicator + " in URL: " + url);
         }
     }
     
-    // Check for modern SPA patterns
-    std::regex scriptRegex(R"(<script[^>]*src[^>]*>)");
-    std::regex bodyContentRegex(R"(<body[^>]*>.*?</body>)", std::regex_constants::icase);
-    std::regex divRegex(R"(<div[^>]*id[^>]*>)");
-    std::regex appRegex(R"(<div[^>]*id\s*=\s*["'](app|root|main|#app|#root|#main)["'][^>]*>)", std::regex_constants::icase);
-    
-    auto scriptMatches = std::distance(std::sregex_iterator(lowerHtml.begin(), lowerHtml.end(), scriptRegex), std::sregex_iterator());
-    auto bodyMatch = std::regex_search(lowerHtml, bodyContentRegex);
-    auto appMatches = std::distance(std::sregex_iterator(lowerHtml.begin(), lowerHtml.end(), appRegex), std::sregex_iterator());
-    
-    // Modern SPA detection logic
-    bool hasAppRoot = appMatches > 0;
-    bool hasMultipleScripts = scriptMatches > 3;
-    bool hasMinimalContent = false;
-    
-    // Check for minimal body content (common in SPAs)
-    if (bodyMatch) {
-        std::smatch bodyMatchResult;
-        if (std::regex_search(lowerHtml, bodyMatchResult, bodyContentRegex)) {
-            std::string bodyContent = bodyMatchResult.str();
-            // Remove script tags from body content for length check
-            std::regex scriptTagRegex(R"(<script[^>]*>.*?</script>)", std::regex_constants::icase);
-            bodyContent = std::regex_replace(bodyContent, scriptTagRegex, "");
-            
-            // If body content is minimal, likely SPA
-            hasMinimalContent = bodyContent.length() < 1000;
-        }
-    }
-    
-    // Check for modern SPA characteristics
-    if (hasAppRoot || (hasMultipleScripts && hasMinimalContent) || scriptMatches > 8) {
-        LOG_DEBUG("SPA detected by modern patterns in URL: " + url);
-        return true;
-    }
-    
-    // Check for hydration patterns (common in SSR SPAs)
-    if (lowerHtml.find("hydration") != std::string::npos || 
-        lowerHtml.find("hydrate") != std::string::npos ||
-        lowerHtml.find("client-side") != std::string::npos) {
-        LOG_DEBUG("SPA detected by hydration patterns in URL: " + url);
+    // Only return true if we have DEFINITIVE proof it's a SPA
+    if (definitiveCount > 0) {
+        LOG_DEBUG("SPA detected by " + std::to_string(definitiveCount) + " definitive indicators in URL: " + url);
         return true;
     }
     

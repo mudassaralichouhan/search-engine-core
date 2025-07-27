@@ -14,8 +14,8 @@ Crawler::Crawler(const CrawlConfig& config, std::shared_ptr<search_engine::stora
     : storage(storage)
     , config(config)
     , isRunning(false) {
-    // Initialize logger with INFO level by default
-    Logger::getInstance().init(LogLevel::INFO, true);
+    // Initialize logger with DEBUG level to troubleshoot textContent issue
+    Logger::getInstance().init(LogLevel::DEBUG, true);
     LOG_DEBUG("Crawler constructor called");
     
     urlFrontier = std::make_unique<URLFrontier>();
@@ -58,6 +58,29 @@ void Crawler::stop() {
         std::lock_guard<std::mutex> lock(resultsMutex);
         LOG_INFO("Final results count: " + std::to_string(results.size()));
     }
+}
+
+void Crawler::reset() {
+    LOG_INFO("Resetting crawler state");
+    
+    // Stop crawling if it's running
+    if (isRunning) {
+        stop();
+    }
+    
+    // Clear all state
+    {
+        std::lock_guard<std::mutex> lock(resultsMutex);
+        results.clear();
+        seedDomain.clear();
+    }
+    
+    // Reset URL frontier
+    if (urlFrontier) {
+        urlFrontier = std::make_unique<URLFrontier>();
+    }
+    
+    LOG_INFO("Crawler state reset completed");
 }
 
 void Crawler::addSeedURL(const std::string& url, bool force) {
@@ -180,6 +203,7 @@ void Crawler::crawlLoop() {
 }
 
 CrawlResult Crawler::processURL(const std::string& url) {
+    LOG_INFO("🚀🚀🚀 BINARY UPDATE TEST - NEW VERSION LOADED 🚀🚀🚀");
     LOG_DEBUG("[processURL] Called with url: " + url);
     CrawlResult result;
     result.url = url;
@@ -283,24 +307,29 @@ CrawlResult Crawler::processURL(const std::string& url) {
     
     // Parse the content if it's HTML, regardless of status code
     if (fetchResult.contentType.find("text/html") != std::string::npos && !fetchResult.content.empty()) {
-        LOG_DEBUG("Content is HTML, parsing...");
+        LOG_INFO("🔍 TEXTCONTENT DEBUG: Content is HTML, parsing... Content-Type: " + fetchResult.contentType);
         auto parsedContent = contentParser->parse(fetchResult.content, url);
-        LOG_DEBUG("[processURL] Parsed title: " + parsedContent.title);
-        LOG_DEBUG("[processURL] Parsed metaDescription: " + parsedContent.metaDescription);
-        LOG_DEBUG("[processURL] Parsed textContent (first 200): " + (parsedContent.textContent.size() > 200 ? parsedContent.textContent.substr(0, 200) + "..." : parsedContent.textContent));
+        LOG_INFO("🔍 TEXTCONTENT DEBUG: Parsed title: " + parsedContent.title);
+        LOG_INFO("🔍 TEXTCONTENT DEBUG: Parsed textContent length: " + std::to_string(parsedContent.textContent.size()));
+        LOG_INFO("🔍 TEXTCONTENT DEBUG: extractTextContent config: " + std::string(config.extractTextContent ? "true" : "false"));
         if (config.extractTextContent) {
             result.textContent = parsedContent.textContent;
-            LOG_DEBUG("[processURL] Stored textContent");
+            LOG_INFO("🔍 TEXTCONTENT DEBUG: ✅ STORED textContent with length: " + std::to_string(result.textContent ? result.textContent->size() : 0));
+        } else {
+            LOG_INFO("🔍 TEXTCONTENT DEBUG: ❌ NOT storing textContent - config disabled");
         }
         result.title = parsedContent.title;
         result.metaDescription = parsedContent.metaDescription;
-        LOG_DEBUG("[processURL] Stored title and metaDescription");
         // Add new URLs to the frontier
         extractAndAddURLs(fetchResult.content, url);
-        LOG_DEBUG("[processURL] Called extractAndAddURLs");
     } else {
-        LOG_DEBUG("Content is not HTML, skipping parsing. Content-Type: " + fetchResult.contentType);
+        LOG_INFO("🔍 TEXTCONTENT DEBUG: ❌ Content is NOT HTML, skipping parsing. Content-Type: " + fetchResult.contentType);
     }
+    
+    // CRITICAL DEBUG: Log the contentType to see why HTML parsing is skipped
+    LOG_INFO("🔍 CONTENTTYPE DEBUG: fetchResult.contentType = '" + fetchResult.contentType + "'");
+    LOG_INFO("🔍 CONTENTTYPE DEBUG: content.empty() = " + std::string(fetchResult.content.empty() ? "true" : "false"));
+    LOG_INFO("🔍 CONTENTTYPE DEBUG: content.size() = " + std::to_string(fetchResult.content.size()));
     
     LOG_INFO("URL processed successfully: " + url);
     return result;

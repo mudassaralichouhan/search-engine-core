@@ -160,6 +160,9 @@ bsoncxx::document::value MongoDBStorage::siteProfileToBson(const SiteProfile& pr
     if (profile.description) {
         builder << "description" << *profile.description;
     }
+    if (profile.textContent) {
+        builder << "textContent" << *profile.textContent;
+    }
     if (profile.language) {
         builder << "language" << *profile.language;
     }
@@ -230,6 +233,9 @@ SiteProfile MongoDBStorage::bsonToSiteProfile(const bsoncxx::document::view& doc
     // Optional fields
     if (doc["description"]) {
         profile.description = std::string(doc["description"].get_string().value);
+    }
+    if (doc["textContent"]) {
+        profile.textContent = std::string(doc["textContent"].get_string().value);
     }
     if (doc["language"]) {
         profile.language = std::string(doc["language"].get_string().value);

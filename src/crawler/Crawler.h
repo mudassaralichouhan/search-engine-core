@@ -27,6 +27,9 @@ public:
     // Stop the crawling process
     void stop();
     
+    // Reset crawler state (clear results, visited URLs, and seed domain)
+    void reset();
+    
     // Add a seed URL to start crawling from
     void addSeedURL(const std::string& url, bool force = false);
     

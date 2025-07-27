@@ -165,6 +165,7 @@ SiteProfile ContentStorage::crawlResultToSiteProfile(const CrawlResult& crawlRes
     profile.domain = extractDomain(crawlResult.url);
     profile.title = crawlResult.title.value_or("");
     profile.description = crawlResult.metaDescription;
+    profile.textContent = crawlResult.textContent;
     
     // Technical metadata
     profile.crawlMetadata.lastCrawlTime = crawlResult.crawlTime;
