@@ -111,6 +111,14 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
     LOG_DEBUG("Setting connection timeout: 10000ms");
     curl_easy_setopt(localCurl, CURLOPT_CONNECTTIMEOUT_MS, 10000L);
     
+    // Enhanced DNS resolution settings for container environments
+    LOG_DEBUG("Setting DNS timeout: 30 seconds");
+    curl_easy_setopt(localCurl, CURLOPT_DNS_CACHE_TIMEOUT, 300L);  // Cache DNS for 5 minutes
+    curl_easy_setopt(localCurl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_WHATEVER);  // Allow both IPv4 and IPv6
+    
+    // Set custom DNS servers for better resolution in container environments
+    curl_easy_setopt(localCurl, CURLOPT_DNS_SERVERS, "8.8.8.8,8.8.4.4,1.1.1.1");
+    
     // Set low-speed time and limit to abort slow connections
     LOG_DEBUG("Setting low speed time: 10 seconds");
     curl_easy_setopt(localCurl, CURLOPT_LOW_SPEED_TIME, 10L);

@@ -1,6 +1,7 @@
 #include "SearchController.h"
 #include "../../include/Logger.h"
 #include "../../src/crawler/Crawler.h"
+#include "../../src/crawler/CrawlerManager.h"
 #include "../../src/crawler/PageFetcher.h"
 #include "../../src/crawler/models/CrawlConfig.h"
 #include "../../include/search_engine/storage/ContentStorage.h"
@@ -18,9 +19,9 @@ using namespace hatef::search;
 static std::unique_ptr<SearchClient> g_searchClient;
 static std::once_flag g_initFlag;
 
-// Static Crawler instance
-static std::unique_ptr<Crawler> g_crawler;
-static std::once_flag g_crawlerInitFlag;
+// Static CrawlerManager instance
+static std::unique_ptr<CrawlerManager> g_crawlerManager;
+static std::once_flag g_crawlerManagerInitFlag;
 
 SearchController::SearchController() {
     // Initialize SearchClient once
@@ -54,14 +55,8 @@ SearchController::SearchController() {
         }
     });
     
-    // Initialize Crawler once
-    std::call_once(g_crawlerInitFlag, []() {
-        CrawlConfig config;
-        config.maxPages = 1000;  // Default max pages
-        config.maxDepth = 3;     // Default max depth
-        config.userAgent = "Hatefbot/1.0";
-        config.extractTextContent = true;  // Enable text content extraction for full body text storage
-        
+    // Initialize CrawlerManager once
+    std::call_once(g_crawlerManagerInitFlag, []() {
         try {
             // Get MongoDB connection string from environment or use default
             const char* mongoUri = std::getenv("MONGODB_URI");
@@ -83,18 +78,12 @@ SearchController::SearchController() {
                 "search_index"
             );
             
-            // Initialize crawler with database storage
-            g_crawler = std::make_unique<Crawler>(config, storage);
-            
-            // Disable SSL verification for problematic sites (like time.ir)
-            g_crawler->getPageFetcher()->setVerifySSL(false);
+            // Initialize crawler manager with database storage
+            g_crawlerManager = std::make_unique<CrawlerManager>(storage);
 
-            // Enable SPA rendering with browserless
-            g_crawler->getPageFetcher()->setSpaRendering(true, "http://browserless:3000");
-
-            LOG_INFO("Crawler initialized successfully with database storage, SSL verification disabled, and SPA rendering enabled");
+            LOG_INFO("CrawlerManager initialized successfully with database storage");
         } catch (const std::exception& e) {
-            LOG_ERROR("Failed to initialize Crawler: " + std::string(e.what()));
+            LOG_ERROR("Failed to initialize CrawlerManager: " + std::string(e.what()));
             throw;
         }
     });
@@ -148,33 +137,26 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                     return;
                 }
                 
-                // Add URL to crawler
-                if (g_crawler) {
-                    // Update crawler configuration with the provided parameters
-                    g_crawler->setMaxPages(maxPages);
-                    g_crawler->setMaxDepth(maxDepth);
+                // Start new crawl session
+                if (g_crawlerManager) {
+                    // Create crawler configuration
+                    CrawlConfig config;
+                    config.maxPages = maxPages;
+                    config.maxDepth = maxDepth;
+                    config.userAgent = "Hatefbot/1.0";
+                    config.extractTextContent = true;
+                    config.restrictToSeedDomain = restrictToSeedDomain;
+                    config.followRedirects = followRedirects;
+                    config.maxRedirects = maxRedirects;
+                    config.spaRenderingEnabled = spaRenderingEnabled;
+                    config.includeFullContent = includeFullContent;
+                    config.browserlessUrl = browserlessUrl;
                     
-                    // Update domain restriction setting
-                    CrawlConfig currentConfig = g_crawler->getConfig();
-                    currentConfig.restrictToSeedDomain = restrictToSeedDomain;
-                    currentConfig.followRedirects = followRedirects;
-                    currentConfig.maxRedirects = maxRedirects;
-                    currentConfig.spaRenderingEnabled = spaRenderingEnabled;
-                    currentConfig.includeFullContent = includeFullContent;
-                    currentConfig.browserlessUrl = browserlessUrl;
-                    g_crawler->updateConfig(currentConfig);
+                    // Start new crawl session
+                    std::string sessionId = g_crawlerManager->startCrawl(url, config, force);
                     
-                    // Reset crawler state if force is true to allow crawling different domains
-                    if (force) {
-                        g_crawler->reset();
-                    }
-                    
-                    g_crawler->addSeedURL(url, force);
-                    
-                    // Start crawling if not already running
-                    g_crawler->start();
-                    
-                    LOG_INFO("Added site to crawl: " + url + " (maxPages: " + std::to_string(maxPages) + 
+                    LOG_INFO("Started new crawl session: " + sessionId + " for URL: " + url + 
+                             " (maxPages: " + std::to_string(maxPages) + 
                              ", maxDepth: " + std::to_string(maxDepth) + 
                              ", restrictToSeedDomain: " + (restrictToSeedDomain ? "true" : "false") + 
                              ", followRedirects: " + (followRedirects ? "true" : "false") + 
@@ -182,11 +164,12 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                              ", spaRenderingEnabled: " + (spaRenderingEnabled ? "true" : "false") + 
                              ", includeFullContent: " + (includeFullContent ? "true" : "false") + ")");
                     
-                    // Return success response
+                    // Return success response with session ID
                     nlohmann::json response = {
                         {"success", true},
-                        {"message", "Site added to crawl queue successfully"},
+                        {"message", "Crawl session started successfully"},
                         {"data", {
+                            {"sessionId", sessionId},
                             {"url", url},
                             {"maxPages", maxPages},
                             {"maxDepth", maxDepth},
@@ -196,13 +179,13 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                             {"spaRenderingEnabled", spaRenderingEnabled},
                             {"includeFullContent", includeFullContent},
                             {"browserlessUrl", browserlessUrl},
-                            {"status", "queued"}
+                            {"status", "starting"}
                         }}
                     };
                     
                     json(res, response);
                 } else {
-                    serverError(res, "Crawler not initialized");
+                    serverError(res, "CrawlerManager not initialized");
                 }
                 
             } catch (const nlohmann::json::parse_error& e) {
@@ -340,8 +323,10 @@ void SearchController::getCrawlStatus(uWS::HttpResponse<false>* res, uWS::HttpRe
         // Parse query parameters
         auto params = parseQuery(req);
         
+        // Get sessionId parameter
+        auto sessionIdIt = params.find("sessionId");
+        
         // Get optional parameters
-        bool includeLogs = params.find("logs") != params.end() && params["logs"] == "true";
         bool includeResults = params.find("results") != params.end() && params["results"] == "true";
         int maxResults = 50; // Default limit
         
@@ -359,93 +344,81 @@ void SearchController::getCrawlStatus(uWS::HttpResponse<false>* res, uWS::HttpRe
         
         nlohmann::json response;
         
-        if (g_crawler) {
-            // Get crawl results
-            auto results = g_crawler->getResults();
-            
-            // Basic status information
-            response["status"] = {
-                {"isRunning", true}, // We'll need to add a method to check this
-                {"totalCrawled", static_cast<int>(results.size())},
-                {"lastUpdate", std::chrono::duration_cast<std::chrono::seconds>(
-                    std::chrono::system_clock::now().time_since_epoch()).count()}
-            };
-            
-            // Include crawl results if requested
-            if (includeResults) {
-                nlohmann::json resultsArray = nlohmann::json::array();
+        if (g_crawlerManager) {
+            if (sessionIdIt != params.end()) {
+                // Get status for specific session
+                std::string sessionId = sessionIdIt->second;
+                std::string status = g_crawlerManager->getCrawlStatus(sessionId);
                 
-                // Get the most recent results (up to maxResults)
-                int startIndex = std::max(0, static_cast<int>(results.size()) - maxResults);
-                for (size_t i = startIndex; i < results.size(); ++i) {
-                    const auto& result = results[i];
+                if (status == "not_found") {
+                    badRequest(res, "Session not found");
+                    return;
+                }
+                
+                response["sessionId"] = sessionId;
+                response["status"] = status;
+                
+                if (includeResults) {
+                    auto results = g_crawlerManager->getCrawlResults(sessionId);
+                    nlohmann::json resultsArray = nlohmann::json::array();
                     
-                    nlohmann::json resultJson = {
-                        {"url", result.url},
-                        {"statusCode", result.statusCode},
-                        {"status", result.success ? "success" : "failed"},
-                        {"crawlTime", std::chrono::duration_cast<std::chrono::seconds>(
-                            result.crawlTime.time_since_epoch()).count()},
-                        {"contentSize", static_cast<int>(result.contentSize)},
-                        {"linksFound", static_cast<int>(result.links.size())}
+                    // Get the most recent results (up to maxResults)
+                    int startIndex = std::max(0, static_cast<int>(results.size()) - maxResults);
+                    for (size_t i = startIndex; i < results.size(); ++i) {
+                        const auto& result = results[i];
+                        
+                        nlohmann::json resultJson = {
+                            {"url", result.url},
+                            {"statusCode", result.statusCode},
+                            {"status", result.success ? "success" : "failed"},
+                            {"crawlTime", std::chrono::duration_cast<std::chrono::seconds>(
+                                result.crawlTime.time_since_epoch()).count()},
+                            {"contentSize", static_cast<int>(result.contentSize)},
+                            {"linksFound", static_cast<int>(result.links.size())}
+                        };
+                        
+                        if (result.title.has_value()) {
+                            resultJson["title"] = result.title.value();
+                        }
+                        
+                        if (!result.success && result.errorMessage.has_value()) {
+                            resultJson["error"] = result.errorMessage.value();
+                        }
+                        
+                        resultsArray.push_back(resultJson);
+                    }
+                    
+                    response["results"] = resultsArray;
+                    response["totalCrawled"] = static_cast<int>(results.size());
+                }
+            } else {
+                // Get status for all active sessions
+                auto activeSessions = g_crawlerManager->getActiveSessions();
+                
+                response["activeSessions"] = activeSessions.size();
+                response["lastUpdate"] = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::system_clock::now().time_since_epoch()).count();
+                
+                nlohmann::json sessionsArray = nlohmann::json::array();
+                for (const auto& sessionId : activeSessions) {
+                    nlohmann::json sessionJson = {
+                        {"sessionId", sessionId},
+                        {"status", g_crawlerManager->getCrawlStatus(sessionId)}
                     };
                     
-                    // Add optional fields if they exist
-                    if (result.title.has_value()) {
-                        resultJson["title"] = result.title.value();
+                    if (includeResults) {
+                        auto results = g_crawlerManager->getCrawlResults(sessionId);
+                        sessionJson["totalCrawled"] = static_cast<int>(results.size());
                     }
                     
-                    if (result.rawContent.has_value()) {
-                        resultJson["contentLength"] = static_cast<int>(result.rawContent.value().length());
-                    }
-                    
-                    if (!result.success && result.errorMessage.has_value()) {
-                        resultJson["error"] = result.errorMessage.value();
-                    }
-                    
-                    resultsArray.push_back(resultJson);
+                    sessionsArray.push_back(sessionJson);
                 }
                 
-                response["results"] = resultsArray;
+                response["sessions"] = sessionsArray;
             }
-            
-            // Include recent logs if requested
-            if (includeLogs) {
-                // For now, we'll return a placeholder for logs
-                // In a real implementation, you'd want to capture logs from the crawler
-                response["logs"] = {
-                    {"message", "Log collection not yet implemented"},
-                    {"note", "Consider implementing a log collector in the Crawler class"}
-                };
-            }
-            
-            // Crawl statistics
-            int successfulCrawls = 0;
-            int failedCrawls = 0;
-            int totalLinks = 0;
-            
-            for (const auto& result : results) {
-                if (result.success) {
-                    successfulCrawls++;
-                    totalLinks += result.links.size();
-                } else {
-                    failedCrawls++;
-                }
-            }
-            
-            response["statistics"] = {
-                {"successfulCrawls", successfulCrawls},
-                {"failedCrawls", failedCrawls},
-                {"totalLinksFound", totalLinks},
-                {"successRate", results.empty() ? 0.0 : (double)successfulCrawls / results.size() * 100.0}
-            };
-            
         } else {
-            response["status"] = {
-                {"isRunning", false},
-                {"message", "Crawler not initialized"},
-                {"totalCrawled", 0}
-            };
+            serverError(res, "CrawlerManager not initialized");
+            return;
         }
         
         json(res, response);
@@ -472,9 +445,26 @@ void SearchController::getCrawlDetails(uWS::HttpResponse<false>* res, uWS::HttpR
     }
 
     nlohmann::json response;
-    // Access ContentStorage from the crawler
-    auto storage = g_crawler ? g_crawler->getStorage() : nullptr;
-    if (!storage) {
+    // Access ContentStorage from the crawler manager
+    // We'll need to access storage through a different approach since we have multiple crawlers
+    // For now, we'll create a direct storage connection similar to the crawler manager
+    std::shared_ptr<search_engine::storage::ContentStorage> storage;
+    
+    try {
+        const char* mongoUri = std::getenv("MONGODB_URI");
+        std::string mongoConnectionString = mongoUri ? mongoUri : "mongodb://localhost:27017";
+        
+        const char* redisUri = std::getenv("SEARCH_REDIS_URI");
+        std::string redisConnectionString = redisUri ? redisUri : "tcp://127.0.0.1:6379";
+        
+        storage = std::make_shared<search_engine::storage::ContentStorage>(
+            mongoConnectionString,
+            "search-engine",
+            redisConnectionString,
+            "search_index"
+        );
+    } catch (const std::exception& e) {
+        LOG_ERROR("Failed to create storage connection: " + std::string(e.what()));
         serverError(res, "Database storage not available");
         return;
     }

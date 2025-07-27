@@ -9,6 +9,7 @@
 #include <sstream>
 #include <iomanip>
 #include <iostream>
+#include <algorithm>
 
 Crawler::Crawler(const CrawlConfig& config, std::shared_ptr<search_engine::storage::ContentStorage> storage)
     : storage(storage)
@@ -369,10 +370,27 @@ bool Crawler::isSameDomain(const std::string& url) const {
     }
     
     std::string urlDomain = urlFrontier->extractDomain(url);
-    bool isSame = (urlDomain == seedDomain);
+    
+    // Enhanced domain matching - handle www prefix and subdomain variations
+    auto normalizeForComparison = [](const std::string& domain) -> std::string {
+        std::string normalized = domain;
+        // Convert to lowercase
+        std::transform(normalized.begin(), normalized.end(), normalized.begin(), ::tolower);
+        // Remove www. prefix for comparison
+        if (normalized.substr(0, 4) == "www.") {
+            normalized = normalized.substr(4);
+        }
+        return normalized;
+    };
+    
+    std::string normalizedUrlDomain = normalizeForComparison(urlDomain);
+    std::string normalizedSeedDomain = normalizeForComparison(seedDomain);
+    
+    bool isSame = (normalizedUrlDomain == normalizedSeedDomain);
     
     LOG_DEBUG("Domain check - URL: " + url + ", URL domain: " + urlDomain + 
-              ", Seed domain: " + seedDomain + ", Same domain: " + (isSame ? "yes" : "no"));
+              " (normalized: " + normalizedUrlDomain + "), Seed domain: " + seedDomain + 
+              " (normalized: " + normalizedSeedDomain + "), Same domain: " + (isSame ? "yes" : "no"));
     
     return isSame;
 }

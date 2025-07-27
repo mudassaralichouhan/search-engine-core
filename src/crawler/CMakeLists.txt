@@ -21,6 +21,7 @@ find_package(Threads REQUIRED)
 # Add source files
 set(CRAWLER_SOURCES
     Crawler.cpp
+    CrawlerManager.cpp
     URLFrontier.cpp
     RobotsTxtParser.cpp
     PageFetcher.cpp
