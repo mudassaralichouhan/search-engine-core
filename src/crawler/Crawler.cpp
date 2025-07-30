@@ -4,6 +4,7 @@
 #include "PageFetcher.h"
 #include "ContentParser.h"
 #include "../../include/Logger.h"
+#include "../../include/crawler/CrawlLogger.h"
 #include <thread>
 #include <chrono>
 #include <sstream>
@@ -42,6 +43,7 @@ void Crawler::start() {
     }
     
     LOG_INFO("Starting crawler");
+    CrawlLogger::broadcastLog("Starting crawler", "info");
     isRunning = true;
     std::thread crawlerThread(&Crawler::crawlLoop, this);
     crawlerThread.detach();
@@ -86,11 +88,13 @@ void Crawler::reset() {
 
 void Crawler::addSeedURL(const std::string& url, bool force) {
     LOG_INFO("Adding seed URL: " + url + (force ? " (force)" : ""));
+    CrawlLogger::broadcastLog("Adding seed URL: " + url + (force ? " (force)" : ""), "info");
     
     // Set seed domain if this is the first URL and domain restriction is enabled
     if (config.restrictToSeedDomain && seedDomain.empty()) {
         seedDomain = urlFrontier->extractDomain(url);
         LOG_INFO("Set seed domain to: " + seedDomain);
+        CrawlLogger::broadcastLog("Set seed domain to: " + seedDomain, "info");
     }
     
     urlFrontier->addURL(url, force);
@@ -118,6 +122,7 @@ void Crawler::crawlLoop() {
         std::string url = urlFrontier->getNextURL();
         if (url.empty()) {
             LOG_INFO("No more URLs to crawl, exiting crawl loop");
+            CrawlLogger::broadcastLog("No more URLs to crawl, exiting crawl loop", "info");
             isRunning = false;
             break;
         }
@@ -134,6 +139,7 @@ void Crawler::crawlLoop() {
                 if (r.url == url && r.crawlStatus == "queued") {
                     r.crawlStatus = "downloading";
                     r.startedAt = std::chrono::system_clock::now();
+                    CrawlLogger::broadcastLog("Started downloading: " + url, "info");
                 }
             }
         }
@@ -145,8 +151,10 @@ void Crawler::crawlLoop() {
         // Set crawlStatus based on result.success
         if (result.success) {
             result.crawlStatus = "downloaded";
+            CrawlLogger::broadcastLog("Successfully downloaded: " + url + " (Status: " + std::to_string(result.statusCode) + ")", "info");
         } else {
             result.crawlStatus = "failed";
+            CrawlLogger::broadcastLog("Failed to download: " + url + " - " + (result.errorMessage.has_value() ? result.errorMessage.value() : "Unknown error"), "error");
         }
         
         // Store the result (replace the old one for this URL)
@@ -165,8 +173,10 @@ void Crawler::crawlLoop() {
             auto storeResult = storage->storeCrawlResult(result);
             if (storeResult.success) {
                 LOG_INFO("Successfully saved crawl result to database for URL: " + url);
+                CrawlLogger::broadcastLog("Saved to database: " + url, "info");
             } else {
                 LOG_ERROR("Failed to save crawl result to database for URL: " + url + " - " + storeResult.message);
+                CrawlLogger::broadcastLog("Database save failed for: " + url + " - " + storeResult.message, "error");
             }
             // Store crawl log for history
             search_engine::storage::CrawlLog log;
@@ -195,6 +205,7 @@ void Crawler::crawlLoop() {
         
         if (results.size() >= config.maxPages) {
             LOG_INFO("Reached maximum pages limit (" + std::to_string(config.maxPages) + "), stopping crawler");
+            CrawlLogger::broadcastLog("Reached maximum pages limit (" + std::to_string(config.maxPages) + "), stopping crawler", "warning");
             isRunning = false;
             break;
         }

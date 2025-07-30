@@ -22,6 +22,7 @@ find_package(Threads REQUIRED)
 set(CRAWLER_SOURCES
     Crawler.cpp
     CrawlerManager.cpp
+    CrawlLogger.cpp
     URLFrontier.cpp
     RobotsTxtParser.cpp
     PageFetcher.cpp

@@ -20,6 +20,8 @@
 #include <unordered_set>
 #include "websocket/WebSocketRegistry.h"
 #include "websocket/DateTimeWebSocketHandler.h"
+#include "websocket/CrawlLogsWebSocketHandler.h"
+#include "../include/crawler/CrawlLogger.h"
 
 using namespace std;
 
@@ -84,7 +86,16 @@ int main() {
     // WebSocket registry and handler injection
     WebSocketRegistry wsRegistry;
     wsRegistry.addHandler(std::make_shared<DateTimeWebSocketHandler>());
+    
+    // Create and register crawl logs WebSocket handler
+    auto crawlLogsHandler = std::make_shared<CrawlLogsWebSocketHandler>();
+    wsRegistry.addHandler(crawlLogsHandler);
     wsRegistry.registerAll(app);
+    
+    // Connect CrawlLogger to WebSocket handler for real-time logging
+    CrawlLogger::setLogBroadcastFunction([](const std::string& message, const std::string& level) {
+        CrawlLogsWebSocketHandler::broadcastLog(message, level);
+    });
     
     // Add request tracing middleware wrapper
     routing::RouteRegistry::getInstance().applyRoutes(app);

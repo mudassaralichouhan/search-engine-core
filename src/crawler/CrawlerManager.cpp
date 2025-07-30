@@ -1,9 +1,11 @@
 #include "CrawlerManager.h"
 #include "../../include/Logger.h"
+#include "../../include/crawler/CrawlLogger.h"
 #include "PageFetcher.h"
 #include <sstream>
 #include <iomanip>
-#include <algorithm>
+#include <chrono>
+#include <thread>
 
 CrawlerManager::CrawlerManager(std::shared_ptr<search_engine::storage::ContentStorage> storage)
     : storage_(storage) {
@@ -43,6 +45,7 @@ std::string CrawlerManager::startCrawl(const std::string& url, const CrawlConfig
     std::string sessionId = generateSessionId();
     
     LOG_INFO("Starting new crawl session: " + sessionId + " for URL: " + url);
+    CrawlLogger::broadcastLog("Starting new crawl session: " + sessionId + " for URL: " + url, "info");
     
     try {
         // Create new crawler instance with the provided configuration
@@ -69,6 +72,7 @@ std::string CrawlerManager::startCrawl(const std::string& url, const CrawlConfig
             
             try {
                 LOG_INFO("Starting crawler for session: " + sessionId);
+                CrawlLogger::broadcastLog("Starting crawler for session: " + sessionId, "info");
                 crawler->start();
                 
                 // Wait for crawling to complete
@@ -96,6 +100,7 @@ std::string CrawlerManager::startCrawl(const std::string& url, const CrawlConfig
                     
                     if (!hasActiveDownloads && !results.empty()) {
                         LOG_INFO("No more active downloads for session: " + sessionId);
+                        CrawlLogger::broadcastLog("No more active downloads for session: " + sessionId, "info");
                         break;
                     }
                     
@@ -106,9 +111,11 @@ std::string CrawlerManager::startCrawl(const std::string& url, const CrawlConfig
                 }
                 
                 LOG_INFO("Crawl completed for session: " + sessionId);
+                CrawlLogger::broadcastLog("Crawl completed for session: " + sessionId, "info");
                 
             } catch (const std::exception& e) {
                 LOG_ERROR("Error in crawl thread for session " + sessionId + ": " + e.what());
+                CrawlLogger::broadcastLog("Error in crawl thread for session " + sessionId + ": " + e.what(), "error");
             }
             
             // Mark session as completed
@@ -288,6 +295,7 @@ std::unique_ptr<Crawler> CrawlerManager::createCrawler(const CrawlConfig& config
         // Enable SPA rendering if configured
         if (config.spaRenderingEnabled) {
             crawler->getPageFetcher()->setSpaRendering(true, config.browserlessUrl);
+            CrawlLogger::broadcastLog("🤖 SPA rendering enabled for session with browserless URL: " + config.browserlessUrl, "info");
         }
     }
     

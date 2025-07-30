@@ -1,5 +1,6 @@
 #include "BrowserlessClient.h"
 #include "../../include/Logger.h"
+#include "../../include/crawler/CrawlLogger.h"
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
 #include <sstream>
@@ -35,6 +36,9 @@ public:
         result.status_code = 0;
         
         auto start_time = std::chrono::steady_clock::now();
+        
+        LOG_INFO("Starting headless browser rendering for: " + url);
+        CrawlLogger::broadcastLog("🤖 Starting headless browser rendering for: " + url, "info");
         
         try {
             if (!curl_) {
@@ -101,14 +105,17 @@ public:
                 result.html = response;
                 result.success = true;
                 LOG_INFO("Successfully rendered page via browserless: " + url + ", size: " + std::to_string(response.size()) + " bytes");
+                CrawlLogger::broadcastLog("✅ Headless browser rendering completed for: " + url + " (Size: " + std::to_string(response.size()) + " bytes)", "info");
             } else {
                 result.error = "Browserless returned HTTP " + std::to_string(http_code) + ": " + response;
                 LOG_ERROR("Browserless error: " + result.error);
+                CrawlLogger::broadcastLog("❌ Headless browser rendering failed for: " + url + " - HTTP " + std::to_string(http_code), "error");
             }
             
         } catch (const std::exception& e) {
             result.error = "Exception during rendering: " + std::string(e.what());
             LOG_ERROR("Exception in BrowserlessClient::renderUrl: " + result.error);
+            CrawlLogger::broadcastLog("❌ Headless browser rendering exception for: " + url + " - " + std::string(e.what()), "error");
         }
         
         auto end_time = std::chrono::steady_clock::now();

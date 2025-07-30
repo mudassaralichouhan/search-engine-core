@@ -1,5 +1,6 @@
 #include "PageFetcher.h"
 #include "../../include/Logger.h"
+#include "../../include/crawler/CrawlLogger.h"
 #include <sstream>
 #include <stdexcept>
 #include <algorithm>
@@ -240,22 +241,27 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
     // Check if this is a SPA and render if enabled
     if (result.success && spaRenderingEnabled && isSpaPage(result.content, url)) {
         LOG_INFO("SPA detected, attempting to render with browserless: " + url);
+        CrawlLogger::broadcastLog("🕷️ SPA detected for: " + url + " - switching to headless browser", "info");
         
         if (browserlessClient) {
             try {
                 auto renderResult = browserlessClient->renderUrl(url, static_cast<int>(timeout.count()));
                 if (renderResult.success) {
                     LOG_INFO("Successfully rendered SPA, content size: " + std::to_string(renderResult.html.size()) + " bytes");
+                    CrawlLogger::broadcastLog("✅ SPA successfully rendered for: " + url + " (Size: " + std::to_string(renderResult.html.size()) + " bytes)", "info");
                     result.content = renderResult.html;
                     result.statusCode = renderResult.status_code;
                 } else {
                     LOG_WARNING("Failed to render SPA: " + renderResult.error + ", using original content");
+                    CrawlLogger::broadcastLog("⚠️ SPA rendering failed for: " + url + " - " + renderResult.error + " (using original content)", "warning");
                 }
             } catch (const std::exception& e) {
                 LOG_ERROR("Exception during SPA rendering: " + std::string(e.what()) + ", using original content");
+                CrawlLogger::broadcastLog("❌ SPA rendering exception for: " + url + " - " + std::string(e.what()), "error");
             }
         } else {
             LOG_WARNING("BrowserlessClient not available for SPA rendering");
+            CrawlLogger::broadcastLog("⚠️ BrowserlessClient not available for SPA: " + url, "warning");
         }
     }
     
@@ -310,9 +316,11 @@ void PageFetcher::setSpaRendering(bool enable, const std::string& browserless_ur
     if (enable) {
         browserlessClient = std::make_unique<BrowserlessClient>(browserless_url);
         LOG_INFO("BrowserlessClient initialized for SPA rendering");
+        CrawlLogger::broadcastLog("🤖 Headless browser enabled for SPA rendering (URL: " + browserless_url + ")", "info");
     } else {
         browserlessClient.reset();
         LOG_INFO("BrowserlessClient disabled");
+        CrawlLogger::broadcastLog("🚫 Headless browser disabled", "info");
     }
 }
 
