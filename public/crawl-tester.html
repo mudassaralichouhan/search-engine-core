@@ -154,6 +154,7 @@
         </h2>
         <button onclick="connectWebSocket()" id="connect-btn">Connect to Logs</button>
         <button onclick="disconnectWebSocket()" id="disconnect-btn" disabled>Disconnect</button>
+        <button onclick="togglePauseLogs()" id="pause-btn">Pause Logs</button>
         
         <div id="logs" class="logs-container">
             <div class="log-entry log-info">WebSocket logs will appear here...</div>
@@ -163,6 +164,7 @@
     <script>
         let websocket = null;
         let isConnected = false;
+        let isLogsPaused = false;
 
         function updateConnectionStatus(status) {
             const statusElement = document.getElementById('ws-status');
@@ -243,6 +245,11 @@
         }
 
         function addLogEntry(message, level = 'info') {
+            // Don't add log entries if logs are paused
+            if (isLogsPaused) {
+                return;
+            }
+            
             const logsContainer = document.getElementById('logs');
             const timestamp = new Date().toLocaleTimeString();
             
@@ -252,6 +259,20 @@
             
             logsContainer.appendChild(logEntry);
             logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        function togglePauseLogs() {
+            const pauseBtn = document.getElementById('pause-btn');
+            
+            isLogsPaused = !isLogsPaused;
+            
+            if (isLogsPaused) {
+                pauseBtn.textContent = 'Continue Logs';
+                pauseBtn.style.backgroundColor = '#FF9800';
+            } else {
+                pauseBtn.textContent = 'Pause Logs';
+                pauseBtn.style.backgroundColor = '#007bff';
+            }
         }
 
         function clearLogs() {
