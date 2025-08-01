@@ -4,6 +4,8 @@
 #include <vector>
 #include <chrono>
 #include <optional>
+#include <curl/curl.h>
+#include "../FailureClassifier.h"
 
 struct CrawlResult {
     // The URL that was crawled
@@ -57,4 +59,21 @@ struct CrawlResult {
     
     // Error message if the crawl failed
     std::optional<std::string> errorMessage;
+    
+    // === RETRY-RELATED FIELDS ===
+    
+    // CURL error code (for retry classification)
+    CURLcode curlErrorCode = CURLE_OK;
+    
+    // Type of failure (for retry logic)
+    FailureType failureType = FailureType::UNKNOWN;
+    
+    // Number of retry attempts made for this URL
+    int retryCount = 0;
+    
+    // Whether this result is from a retry attempt
+    bool isRetryAttempt = false;
+    
+    // Total time spent on this URL including retries
+    std::chrono::milliseconds totalRetryTime{0};
 }; 

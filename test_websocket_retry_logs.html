@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retry System WebSocket Logs Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: #fff; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .controls { background: #2a2a2a; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .log-container { background: #000; border: 1px solid #333; border-radius: 8px; height: 500px; overflow-y: auto; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px; }
+        .log-entry { margin: 2px 0; padding: 5px; border-radius: 3px; }
+        .log-info { background: rgba(0, 123, 255, 0.1); border-left: 3px solid #007bff; }
+        .log-warning { background: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107; }
+        .log-error { background: rgba(220, 53, 69, 0.1); border-left: 3px solid #dc3545; }
+        .log-success { background: rgba(40, 167, 69, 0.1); border-left: 3px solid #28a745; }
+        .timestamp { color: #666; }
+        .retry-icon { color: #ffc107; }
+        .success-icon { color: #28a745; }
+        .error-icon { color: #dc3545; }
+        .circuit-breaker-icon { color: #dc3545; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .status { padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .status.connected { background: rgba(40, 167, 69, 0.2); border: 1px solid #28a745; }
+        .status.disconnected { background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; }
+        .clear-btn { background: #6c757d; }
+        .clear-btn:hover { background: #545b62; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Retry System WebSocket Logs</h1>
+        
+        <div class="controls">
+            <div id="connectionStatus" class="status disconnected">
+                ❌ Disconnected from WebSocket
+            </div>
+            
+            <button onclick="connectWebSocket()">Connect to Logs</button>
+            <button onclick="testRetryURLs()" id="testBtn">Test Retry System</button>
+            <button onclick="clearLogs()" class="clear-btn">Clear Logs</button>
+            
+            <p><strong>Enhanced Retry Features:</strong></p>
+            <ul>
+                <li>🔄 Shows HTTP status codes (503, 429, 408, etc.)</li>
+                <li>🏷️ Failure type classification (TEMPORARY, RATE_LIMITED, PERMANENT)</li>
+                <li>⏱️ Exponential backoff delays</li>
+                <li>🚨 Circuit breaker notifications</li>
+                <li>📊 Domain-specific retry information</li>
+            </ul>
+        </div>
+
+        <div class="log-container" id="logContainer">
+            <div class="log-info">
+                <span class="timestamp">[INFO]</span> 
+                Connect to WebSocket to see real-time retry logs with HTTP status codes and failure reasons...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let logContainer = document.getElementById('logContainer');
+        let connectionStatus = document.getElementById('connectionStatus');
+
+        function connectWebSocket() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                addLogEntry('warning', 'WebSocket already connected!');
+                return;
+            }
+
+            // Connect to the crawl logs WebSocket endpoint
+            ws = new WebSocket('ws://localhost:3000/crawl-logs');
+            
+            ws.onopen = function(event) {
+                connectionStatus.className = 'status connected';
+                connectionStatus.innerHTML = '✅ Connected to WebSocket - Ready to receive retry logs';
+                addLogEntry('success', 'WebSocket connected! Waiting for retry events...');
+            };
+            
+            ws.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    const message = data.message || event.data;
+                    const level = data.level || 'info';
+                    const timestamp = new Date().toLocaleTimeString();
+                    
+                    // Enhanced parsing for different retry events
+                    let logLevel = level;
+                    if (message.includes('RETRY')) {
+                        logLevel = 'warning';
+                    } else if (message.includes('SUCCESS')) {
+                        logLevel = 'success';
+                    } else if (message.includes('FAILED') || message.includes('CIRCUIT BREAKER')) {
+                        logLevel = 'error';
+                    }
+                    
+                    addLogEntry(logLevel, `[${timestamp}] ${message}`);
+                } catch (e) {
+                    addLogEntry('info', `[${new Date().toLocaleTimeString()}] ${event.data}`);
+                }
+            };
+            
+            ws.onclose = function(event) {
+                connectionStatus.className = 'status disconnected';
+                connectionStatus.innerHTML = '❌ WebSocket disconnected';
+                addLogEntry('error', 'WebSocket connection closed');
+            };
+            
+            ws.onerror = function(error) {
+                addLogEntry('error', 'WebSocket error: ' + error);
+            };
+        }
+
+        function addLogEntry(level, message) {
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${level}`;
+            
+            // Add appropriate icons for different message types
+            let icon = '';
+            if (message.includes('🔄 RETRY')) icon = '🔄';
+            else if (message.includes('✅ SUCCESS')) icon = '✅';
+            else if (message.includes('❌ FAILED')) icon = '❌';
+            else if (message.includes('🚨 CIRCUIT BREAKER')) icon = '🚨';
+            else if (message.includes('⏱️ DOMAIN DELAY')) icon = '⏱️';
+            
+            logEntry.innerHTML = `${icon} ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function testRetryURLs() {
+            const testBtn = document.getElementById('testBtn');
+            testBtn.disabled = true;
+            testBtn.textContent = 'Testing...';
+            
+            // Test different types of failures
+            const testUrls = [
+                'http://httpbin.org/status/503',  // Server Error - TEMPORARY
+                'http://httpbin.org/status/429',  // Rate Limited - RATE_LIMITED  
+                'http://httpbin.org/status/408',  // Request Timeout - TEMPORARY
+                'https://nonexistent-domain-12345.com', // DNS Error - PERMANENT
+            ];
+            
+            addLogEntry('info', '🧪 Starting retry system test with various failure types...');
+            
+            testUrls.forEach((url, index) => {
+                setTimeout(() => {
+                    fetch('/api/crawl/add-site', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            url: url,
+                            maxPages: 2,
+                            maxDepth: 1,
+                            requestTimeout: 5000,
+                            maxRetries: 2,
+                            baseRetryDelay: 2000,
+                            spaRenderingEnabled: false
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            addLogEntry('info', `📤 Submitted test URL: ${url} - Watch for retry logs!`);
+                        } else {
+                            addLogEntry('error', `❌ Failed to submit: ${url} - ${data.message}`);
+                        }
+                    })
+                    .catch(error => {
+                        addLogEntry('error', `❌ Request error for ${url}: ${error.message}`);
+                    });
+                }, index * 3000); // Spread out requests
+            });
+            
+            setTimeout(() => {
+                testBtn.disabled = false;
+                testBtn.textContent = 'Test Retry System';
+            }, 15000);
+        }
+
+        function clearLogs() {
+            logContainer.innerHTML = '<div class="log-info"><span class="timestamp">[INFO]</span> Logs cleared. Ready for new retry events...</div>';
+        }
+
+        // Auto-connect on page load
+        window.onload = function() {
+            connectWebSocket();
+        };
+    </script>
+</body>
+</html>

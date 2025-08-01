@@ -14,6 +14,7 @@ struct PageFetchResult {
     std::string content;
     std::string errorMessage;
     std::string finalUrl;  // After redirects
+    CURLcode curlCode = CURLE_OK;  // CURL error code for better retry classification
 };
 
 class PageFetcher {

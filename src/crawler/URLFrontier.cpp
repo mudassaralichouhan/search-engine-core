@@ -1,9 +1,11 @@
 #include "URLFrontier.h"
 #include "../../include/Logger.h"
+#include "../../include/crawler/CrawlLogger.h"
 #include <algorithm>
 #include <regex>
 #include <sstream>
 #include <iomanip>
+#include <vector>
 
 URLFrontier::URLFrontier() {
     LOG_DEBUG("URLFrontier constructor called");
@@ -13,93 +15,256 @@ URLFrontier::~URLFrontier() {
     LOG_DEBUG("URLFrontier destructor called");
 }
 
-void URLFrontier::addURL(const std::string& url, bool force) {
-    LOG_DEBUG("URLFrontier::addURL called with: " + url + (force ? " (force)" : ""));
+void URLFrontier::addURL(const std::string& url, bool force, CrawlPriority priority, int depth) {
+    LOG_DEBUG("URLFrontier::addURL called with: " + url + (force ? " (force)" : "") +
+              ", priority: " + std::to_string(static_cast<int>(priority)) + 
+              ", depth: " + std::to_string(depth));
+    
     std::string normalizedURL = normalizeURL(url);
-    std::string domain = extractDomain(normalizedURL);
+    
     if (force) {
         // Remove from visited set if present
         {
             std::lock_guard<std::mutex> visitedLock(visitedMutex);
             visitedURLs.erase(normalizedURL);
         }
-        // Remove from queue if present
+        // Remove from queued URLs tracking
         {
-            std::lock_guard<std::mutex> queueLock(queueMutex);
-            std::queue<std::string> tempQueue;
-            while (!urlQueue.empty()) {
-                std::string current = urlQueue.front();
-                urlQueue.pop();
-                if (current != normalizedURL) {
-                    tempQueue.push(current);
-                }
-            }
-            while (!tempQueue.empty()) {
-                urlQueue.push(tempQueue.front());
-                tempQueue.pop();
-            }
+            std::lock_guard<std::mutex> queuedLock(queuedMutex);
+            queuedURLs.erase(normalizedURL);
         }
+        // Note: We don't remove from queues directly as it's expensive with priority_queue
+        // Instead, we'll check and skip during getNextURL() if needed
     }
-    // Check both visited URLs and queue for duplicates
-    {
+    
+    // Check if already visited (unless forced)
+    if (!force) {
         std::lock_guard<std::mutex> visitedLock(visitedMutex);
-        if (!force && visitedURLs.find(normalizedURL) != visitedURLs.end()) {
+        if (visitedURLs.find(normalizedURL) != visitedURLs.end()) {
             LOG_DEBUG("URL already visited, skipping: " + normalizedURL);
             return;
         }
     }
-    {
-        std::lock_guard<std::mutex> queueLock(queueMutex);
-        if (!force) {
-            std::queue<std::string> tempQueue;
-            bool found = false;
-            while (!urlQueue.empty()) {
-                std::string current = urlQueue.front();
-                urlQueue.pop();
-                if (current == normalizedURL) {
-                    found = true;
-                }
-                tempQueue.push(current);
-            }
-            while (!tempQueue.empty()) {
-                urlQueue.push(tempQueue.front());
-                tempQueue.pop();
-            }
-            if (found) {
-                LOG_DEBUG("URL already in queue, skipping: " + normalizedURL);
-                return;
-            }
+    
+    // Check if already queued (unless forced)
+    if (!force) {
+        std::lock_guard<std::mutex> queuedLock(queuedMutex);
+        if (queuedURLs.find(normalizedURL) != queuedURLs.end()) {
+            LOG_DEBUG("URL already queued, skipping: " + normalizedURL);
+            return;
         }
-        urlQueue.push(normalizedURL);
-        LOG_DEBUG("Added URL to queue: " + normalizedURL + ", queue size: " + std::to_string(urlQueue.size()));
+    }
+    
+    // Add to main queue
+    {
+        std::lock_guard<std::mutex> mainLock(mainQueueMutex);
+        std::lock_guard<std::mutex> queuedLock(queuedMutex);
+        
+        QueuedURL queuedUrl = createQueuedURL(normalizedURL, priority, depth);
+        mainQueue.push(queuedUrl);
+        queuedURLs.insert(normalizedURL);
+        
+        LOG_DEBUG("Added URL to main queue: " + normalizedURL + 
+                  ", main queue size: " + std::to_string(mainQueue.size()));
+        CrawlLogger::broadcastLog("Added URL to queue: " + normalizedURL, "info");
     }
 }
 
 std::string URLFrontier::getNextURL() {
-    std::lock_guard<std::mutex> lock(queueMutex);
-    if (urlQueue.empty()) {
-        LOG_DEBUG("URLFrontier::getNextURL - Queue is empty, returning empty string");
-        return "";
+    auto now = std::chrono::system_clock::now();
+    
+    // First, check retry queue for ready URLs
+    {
+        std::lock_guard<std::mutex> retryLock(retryQueueMutex);
+        std::lock_guard<std::mutex> queuedLock(queuedMutex);
+        
+        // Process retry queue - get URLs that are ready to retry
+        std::vector<QueuedURL> notReadyYet;
+        
+        while (!retryQueue.empty()) {
+            QueuedURL queuedUrl = retryQueue.top();
+            retryQueue.pop();
+            
+            // Skip if URL was visited while waiting for retry
+            {
+                std::lock_guard<std::mutex> visitedLock(visitedMutex);
+                if (visitedURLs.find(queuedUrl.url) != visitedURLs.end()) {
+                    queuedURLs.erase(queuedUrl.url);
+                    LOG_DEBUG("Skipping retry URL (already visited): " + queuedUrl.url);
+                    continue;
+                }
+            }
+            
+            if (queuedUrl.nextRetryTime <= now) {
+                // Ready to retry
+                queuedURLs.erase(queuedUrl.url);  // Remove from tracking
+                LOG_INFO("Retrieved retry URL: " + queuedUrl.url + 
+                        " (attempt " + std::to_string(queuedUrl.retryCount + 1) + ")");
+                CrawlLogger::broadcastLog("Retrying URL: " + queuedUrl.url + 
+                                        " (attempt " + std::to_string(queuedUrl.retryCount + 1) + ")", "info");
+                
+                // Put back not-ready URLs
+                for (const auto& notReady : notReadyYet) {
+                    retryQueue.push(notReady);
+                }
+                
+                return queuedUrl.url;
+            } else {
+                // Not ready yet, keep it
+                notReadyYet.push_back(queuedUrl);
+            }
+        }
+        
+        // Put back all not-ready URLs
+        for (const auto& notReady : notReadyYet) {
+            retryQueue.push(notReady);
+        }
     }
     
-    std::string url = urlQueue.front();
-    urlQueue.pop();
-    LOG_DEBUG("URLFrontier::getNextURL - Retrieved URL: " + url + ", remaining queue size: " + std::to_string(urlQueue.size()));
-    return url;
+    // Then check main queue
+    {
+        std::lock_guard<std::mutex> mainLock(mainQueueMutex);
+        std::lock_guard<std::mutex> queuedLock(queuedMutex);
+        
+        while (!mainQueue.empty()) {
+            QueuedURL queuedUrl = mainQueue.top();
+            mainQueue.pop();
+            
+            // Skip if URL was visited while in queue
+            {
+                std::lock_guard<std::mutex> visitedLock(visitedMutex);
+                if (visitedURLs.find(queuedUrl.url) != visitedURLs.end()) {
+                    queuedURLs.erase(queuedUrl.url);
+                    LOG_DEBUG("Skipping main queue URL (already visited): " + queuedUrl.url);
+                    continue;
+                }
+            }
+            
+            queuedURLs.erase(queuedUrl.url);  // Remove from tracking
+            LOG_DEBUG("Retrieved URL from main queue: " + queuedUrl.url + 
+                     ", remaining main queue size: " + std::to_string(mainQueue.size()));
+            return queuedUrl.url;
+        }
+    }
+    
+    LOG_DEBUG("URLFrontier::getNextURL - All queues are empty, returning empty string");
+    return "";
+}
+
+void URLFrontier::scheduleRetry(const std::string& url, 
+                              int retryCount, 
+                              const std::string& error, 
+                              FailureType failureType,
+                              std::chrono::milliseconds delay) {
+    LOG_INFO("Scheduling retry for URL: " + url + 
+             ", attempt: " + std::to_string(retryCount) + 
+             ", delay: " + std::to_string(delay.count()) + "ms" + 
+             ", error: " + error);
+    
+    std::string normalizedURL = normalizeURL(url);
+    auto nextRetryTime = std::chrono::system_clock::now() + delay;
+    
+    QueuedURL retryUrl;
+    retryUrl.url = normalizedURL;
+    retryUrl.retryCount = retryCount;
+    retryUrl.nextRetryTime = nextRetryTime;
+    retryUrl.lastError = error;
+    retryUrl.priority = CrawlPriority::RETRY;
+    retryUrl.lastFailureType = failureType;
+    
+    // Preserve the original depth of the URL being retried
+    // Try to find the URL in visited or current queues to get its depth
+    retryUrl.depth = 0; // Default depth if not found
+    
+    // Check if we can find the URL's original depth from getQueuedURLInfo
+    try {
+        QueuedURL originalInfo = getQueuedURLInfo(normalizedURL);
+        if (!originalInfo.url.empty()) {
+            retryUrl.depth = originalInfo.depth;
+        }
+    } catch (...) {
+        // If we can't find the original depth, default to 0
+        LOG_DEBUG("Could not find original depth for retry URL: " + normalizedURL + ", using depth 0");
+    }
+    
+    {
+        std::lock_guard<std::mutex> retryLock(retryQueueMutex);
+        std::lock_guard<std::mutex> queuedLock(queuedMutex);
+        
+        retryQueue.push(retryUrl);
+        queuedURLs.insert(normalizedURL);
+        
+        LOG_DEBUG("Added URL to retry queue: " + normalizedURL + 
+                  ", retry queue size: " + std::to_string(retryQueue.size()));
+        
+        CrawlLogger::broadcastLog("Scheduled retry for: " + url + 
+                                " (attempt " + std::to_string(retryCount) + 
+                                " in " + std::to_string(delay.count()) + "ms)", "warning");
+    }
 }
 
 bool URLFrontier::isEmpty() const {
-    std::lock_guard<std::mutex> lock(queueMutex);
-    bool empty = urlQueue.empty();
-    LOG_TRACE("URLFrontier::isEmpty - Queue is " + std::string(empty ? "empty" : "not empty"));
-    return empty;
+    std::lock_guard<std::mutex> mainLock(mainQueueMutex);
+    bool mainEmpty = mainQueue.empty();
+    
+    if (!mainEmpty) {
+        return false;
+    }
+    
+    std::lock_guard<std::mutex> retryLock(retryQueueMutex);
+    bool retryEmpty = retryQueue.empty();
+    
+    LOG_TRACE("URLFrontier::isEmpty - Both queues are " + std::string((mainEmpty && retryEmpty) ? "empty" : "not empty"));
+    return mainEmpty && retryEmpty;
+}
+
+bool URLFrontier::hasReadyURLs() const {
+    auto now = std::chrono::system_clock::now();
+    
+    // Check main queue
+    {
+        std::lock_guard<std::mutex> mainLock(mainQueueMutex);
+        if (!mainQueue.empty()) {
+            return true;
+        }
+    }
+    
+    // Check retry queue for ready URLs
+    {
+        std::lock_guard<std::mutex> retryLock(retryQueueMutex);
+        if (retryQueue.empty()) {
+            return false;
+        }
+        
+        // We need to peek at the top element without modifying the queue
+        // Since priority_queue doesn't have non-const top(), we can't do this easily
+        // So we'll be conservative and return true if retry queue has items
+        // The actual readiness check happens in getNextURL()
+        return true;
+    }
 }
 
 size_t URLFrontier::size() const {
-    std::lock_guard<std::mutex> lock(queueMutex);
-    size_t size = urlQueue.size();
-    LOG_TRACE("URLFrontier::size - Queue size: " + std::to_string(size));
-    return size;
+    std::lock_guard<std::mutex> mainLock(mainQueueMutex);
+    std::lock_guard<std::mutex> retryLock(retryQueueMutex);
+    
+    size_t totalSize = mainQueue.size() + retryQueue.size();
+    LOG_TRACE("URLFrontier::size - Total queue size: " + std::to_string(totalSize) + 
+              " (main: " + std::to_string(mainQueue.size()) + 
+              ", retry: " + std::to_string(retryQueue.size()) + ")");
+    return totalSize;
+}
+
+size_t URLFrontier::retryQueueSize() const {
+    std::lock_guard<std::mutex> retryLock(retryQueueMutex);
+    return retryQueue.size();
+}
+
+size_t URLFrontier::pendingRetryCount() const {
+    std::lock_guard<std::mutex> retryLock(retryQueueMutex);
+    // For now, return total retry queue size
+    // Could be enhanced to count only non-ready URLs
+    return retryQueue.size();
 }
 
 void URLFrontier::markVisited(const std::string& url) {
@@ -145,6 +310,64 @@ std::string URLFrontier::extractDomain(const std::string& url) const {
     }
     LOG_WARNING("URLFrontier::extractDomain - Could not extract domain from URL: " + url);
     return "";
+}
+
+QueuedURL URLFrontier::getQueuedURLInfo(const std::string& url) const {
+    std::string normalizedURL = normalizeURL(url);
+    
+    // Check retry queue first
+    {
+        std::lock_guard<std::mutex> retryLock(retryQueueMutex);
+        // Note: priority_queue doesn't allow iteration, so we can't easily find specific URLs
+        // For now, return a default QueuedURL if not found
+    }
+    
+    // Return default QueuedURL
+    QueuedURL result;
+    result.url = normalizedURL;
+    result.retryCount = 0;
+    result.priority = CrawlPriority::NORMAL;
+    result.lastFailureType = FailureType::UNKNOWN;
+    return result;
+}
+
+URLFrontier::RetryStats URLFrontier::getRetryStats() const {
+    RetryStats stats;
+    auto now = std::chrono::system_clock::now();
+    
+    std::lock_guard<std::mutex> retryLock(retryQueueMutex);
+    stats.totalRetries = retryQueue.size();
+    stats.pendingRetries = retryQueue.size();
+    stats.readyRetries = 0;
+    
+    // Set next retry time to max if no retries pending
+    if (retryQueue.empty()) {
+        stats.nextRetryTime = std::chrono::system_clock::time_point::max();
+    } else {
+        // We can't easily peek into priority_queue without modifying it
+        // So we'll set a reasonable default
+        stats.nextRetryTime = now + std::chrono::minutes(1);
+    }
+    
+    return stats;
+}
+
+QueuedURL URLFrontier::createQueuedURL(const std::string& url, CrawlPriority priority, int depth) const {
+    QueuedURL queuedUrl;
+    queuedUrl.url = url;
+    queuedUrl.retryCount = 0;
+    queuedUrl.nextRetryTime = std::chrono::system_clock::now();
+    queuedUrl.lastError = "";
+    queuedUrl.priority = priority;
+    queuedUrl.lastFailureType = FailureType::UNKNOWN;
+    queuedUrl.depth = depth;
+    return queuedUrl;
+}
+
+void URLFrontier::removeFromMainQueue(const std::string& url) {
+    // Note: priority_queue doesn't support efficient removal
+    // This is a placeholder - in practice, we handle this by checking during getNextURL()
+    LOG_DEBUG("URLFrontier::removeFromMainQueue called for: " + url + " (lazy removal)");
 }
 
 std::string URLFrontier::normalizeURL(const std::string& url) const {

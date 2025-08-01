@@ -27,6 +27,9 @@ set(CRAWLER_SOURCES
     RobotsTxtParser.cpp
     PageFetcher.cpp
     ContentParser.cpp
+    FailureClassifier.cpp
+    DomainManager.cpp
+    CrawlMetrics.cpp
 )
 
 # Always add BrowserlessClient.cpp and header

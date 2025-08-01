@@ -184,6 +184,7 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
     
     if (res != CURLE_OK) {
         result.errorMessage = curl_easy_strerror(res);
+        result.curlCode = res;  // Store CURL error code
         LOG_ERROR("CURL error: " + result.errorMessage);
         curl_easy_cleanup(localCurl);
         return result;

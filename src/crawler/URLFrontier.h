@@ -6,6 +6,34 @@
 #include <unordered_set>
 #include <mutex>
 #include <chrono>
+#include "FailureClassifier.h"
+
+enum class CrawlPriority {
+    LOW = 0,
+    NORMAL = 1,
+    HIGH = 2,
+    RETRY = 3  // Higher priority for retries
+};
+
+struct QueuedURL {
+    std::string url;
+    int retryCount = 0;
+    std::chrono::system_clock::time_point nextRetryTime = std::chrono::system_clock::now();
+    std::string lastError;
+    CrawlPriority priority = CrawlPriority::NORMAL;
+    FailureType lastFailureType = FailureType::UNKNOWN;
+    int depth = 0;  // Crawl depth (0 = seed URL, 1 = first level, etc.)
+    
+    // Comparison operator for priority queue (higher priority value = higher priority)
+    bool operator<(const QueuedURL& other) const {
+        // First compare by ready time
+        if (nextRetryTime != other.nextRetryTime) {
+            return nextRetryTime > other.nextRetryTime; // Earlier times have higher priority
+        }
+        // Then by priority level
+        return static_cast<int>(priority) < static_cast<int>(other.priority);
+    }
+};
 
 class URLFrontier {
 public:
@@ -13,16 +41,35 @@ public:
     ~URLFrontier();
 
     // Add a URL to the frontier
-    void addURL(const std::string& url, bool force = false);
+    void addURL(const std::string& url, bool force = false, CrawlPriority priority = CrawlPriority::NORMAL, int depth = 0);
     
-    // Get the next URL to crawl
+    // Schedule a URL for retry with exponential backoff
+    void scheduleRetry(const std::string& url, 
+                      int retryCount, 
+                      const std::string& error, 
+                      FailureType failureType,
+                      std::chrono::milliseconds delay);
+    
+    // Get the next URL to crawl (checks retry queue first)
     std::string getNextURL();
     
-    // Check if the frontier is empty
+    // Get the queued URL information for a specific URL
+    QueuedURL getQueuedURLInfo(const std::string& url) const;
+    
+    // Check if the frontier is empty (both main and retry queues)
     bool isEmpty() const;
     
-    // Get the number of URLs in the frontier
+    // Check if there are any URLs ready to be processed now
+    bool hasReadyURLs() const;
+    
+    // Get the total number of URLs in both queues
     size_t size() const;
+    
+    // Get the number of URLs in the retry queue
+    size_t retryQueueSize() const;
+    
+    // Get the number of pending retries (not yet ready)
+    size_t pendingRetryCount() const;
     
     // Mark a URL as visited
     void markVisited(const std::string& url);
@@ -36,15 +83,44 @@ public:
     // Extract domain from URL
     std::string extractDomain(const std::string& url) const;
     
+    // Get retry statistics
+    struct RetryStats {
+        size_t totalRetries = 0;
+        size_t pendingRetries = 0;
+        size_t readyRetries = 0;
+        std::chrono::system_clock::time_point nextRetryTime;
+    };
+    RetryStats getRetryStats() const;
+    
 private:
     // Normalize URL
     std::string normalizeURL(const std::string& url) const;
+    
+    // Remove a URL from the main queue (used during retry scheduling)
+    void removeFromMainQueue(const std::string& url);
+    
+    // Convert string URL to QueuedURL for main queue
+    QueuedURL createQueuedURL(const std::string& url, CrawlPriority priority = CrawlPriority::NORMAL, int depth = 0) const;
 
-    std::queue<std::string> urlQueue;
+    // Main queue for new URLs
+    std::priority_queue<QueuedURL> mainQueue;
+    
+    // Retry queue for failed URLs (separate to handle timing)
+    std::priority_queue<QueuedURL> retryQueue;
+    
+    // Track visited URLs
     std::unordered_set<std::string> visitedURLs;
+    
+    // Track domain last visit times
     std::unordered_map<std::string, std::chrono::system_clock::time_point> domainLastVisit;
     
-    mutable std::mutex queueMutex;
+    // Track URLs currently in queues to prevent duplicates
+    std::unordered_set<std::string> queuedURLs;
+    
+    // Mutexes for thread safety
+    mutable std::mutex mainQueueMutex;
+    mutable std::mutex retryQueueMutex;
     mutable std::mutex visitedMutex;
     mutable std::mutex domainMutex;
+    mutable std::mutex queuedMutex;
 }; 

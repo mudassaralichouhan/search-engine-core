@@ -3,6 +3,9 @@
 #include "RobotsTxtParser.h"
 #include "PageFetcher.h"
 #include "ContentParser.h"
+#include "FailureClassifier.h"
+#include "DomainManager.h"
+#include "CrawlMetrics.h"
 #include "../../include/Logger.h"
 #include "../../include/crawler/CrawlLogger.h"
 #include <thread>
@@ -29,6 +32,8 @@ Crawler::Crawler(const CrawlConfig& config, std::shared_ptr<search_engine::stora
         config.maxRedirects
     );
     contentParser = std::make_unique<ContentParser>();
+    domainManager = std::make_unique<DomainManager>(config);
+    metrics = std::make_unique<CrawlMetrics>();
 }
 
 Crawler::~Crawler() {
@@ -97,7 +102,7 @@ void Crawler::addSeedURL(const std::string& url, bool force) {
         CrawlLogger::broadcastLog("Set seed domain to: " + seedDomain, "info");
     }
     
-    urlFrontier->addURL(url, force);
+    urlFrontier->addURL(url, force, CrawlPriority::NORMAL, 0); // Seed URLs start at depth 0
     // Add a CrawlResult for this URL with status 'queued'
     CrawlResult result;
     result.url = url;
@@ -117,12 +122,21 @@ std::vector<CrawlResult> Crawler::getResults() {
 }
 
 void Crawler::crawlLoop() {
-    LOG_DEBUG("Entering crawl loop");
+    LOG_DEBUG("Entering crawl loop with retry support");
+    CrawlLogger::broadcastLog("Starting crawl with retry support (max retries: " + std::to_string(config.maxRetries) + ")", "info");
+    
     while (isRunning) {
         std::string url = urlFrontier->getNextURL();
         if (url.empty()) {
-            LOG_INFO("No more URLs to crawl, exiting crawl loop");
-            CrawlLogger::broadcastLog("No more URLs to crawl, exiting crawl loop", "info");
+            // Check if we have pending retries before giving up
+            if (urlFrontier->hasReadyURLs() || urlFrontier->pendingRetryCount() > 0) {
+                LOG_DEBUG("No ready URLs, but have pending retries. Waiting...");
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                continue;
+            }
+            
+            LOG_INFO("No more URLs to crawl (including retries), exiting crawl loop");
+            CrawlLogger::broadcastLog("No more URLs to crawl (including retries), exiting crawl loop", "info");
             isRunning = false;
             break;
         }
@@ -132,29 +146,218 @@ void Crawler::crawlLoop() {
             continue;
         }
         
+        // Check domain circuit breaker and delays
+        std::string domain = urlFrontier->extractDomain(url);
+        if (domainManager->isCircuitBreakerOpen(domain)) {
+            metrics->recordCircuitBreakerTriggered();
+            metrics->recordDomainCircuitBreaker(domain);
+            LOG_WARNING("Circuit breaker OPEN for domain " + domain + ", skipping URL: " + url);
+            
+            // WebSocket log for circuit breaker
+            CrawlLogger::broadcastLog("🚨 CIRCUIT BREAKER ACTIVE for " + domain + " - Blocking: " + url, "error");
+            continue;
+        }
+        
+        if (domainManager->shouldDelay(domain)) {
+            auto delay = domainManager->getDelay(domain);
+            LOG_DEBUG("Domain " + domain + " requires delay of " + std::to_string(delay.count()) + "ms, skipping for now");
+            
+            // Put URL back in queue with delay (if not already scheduled)
+            urlFrontier->scheduleRetry(url, 0, "Domain delay required", FailureType::TEMPORARY, delay);
+            
+            // WebSocket log for domain delays
+            CrawlLogger::broadcastLog("⏱️ DOMAIN DELAY " + domain + " - Delaying: " + url + 
+                                    " for " + std::to_string(delay.count()) + "ms", "info");
+            continue;
+        }
+        
+        // Get existing result info to determine if this is a retry
+        QueuedURL queuedInfo = urlFrontier->getQueuedURLInfo(url);
+        bool isRetryAttempt = queuedInfo.retryCount > 0;
+        
         // Set status to 'downloading' and startedAt
         {
             std::lock_guard<std::mutex> lock(resultsMutex);
             for (auto& r : results) {
-                if (r.url == url && r.crawlStatus == "queued") {
+                if (r.url == url && (r.crawlStatus == "queued" || r.crawlStatus == "failed")) {
                     r.crawlStatus = "downloading";
                     r.startedAt = std::chrono::system_clock::now();
-                    CrawlLogger::broadcastLog("Started downloading: " + url, "info");
+                    r.retryCount = queuedInfo.retryCount;
+                    r.isRetryAttempt = isRetryAttempt;
+                    
+                    std::string logMessage = isRetryAttempt ? 
+                        "Started retry attempt " + std::to_string(queuedInfo.retryCount) + " for: " + url :
+                        "Started downloading: " + url;
+                    CrawlLogger::broadcastLog(logMessage, "info");
                 }
             }
         }
         
+        auto processStartTime = std::chrono::steady_clock::now();
         CrawlResult result = processURL(url);
+        auto processEndTime = std::chrono::steady_clock::now();
+        
         result.finishedAt = std::chrono::system_clock::now();
         result.domain = urlFrontier->extractDomain(url);
         
-        // Set crawlStatus based on result.success
-        if (result.success) {
-            result.crawlStatus = "downloaded";
-            CrawlLogger::broadcastLog("Successfully downloaded: " + url + " (Status: " + std::to_string(result.statusCode) + ")", "info");
+        // Record metrics for this request (after domain is set)
+        metrics->recordRequest();
+        metrics->recordDomainRequest(result.domain);
+        result.retryCount = queuedInfo.retryCount;
+        result.isRetryAttempt = isRetryAttempt;
+        
+        // Calculate total retry time
+        auto processingTime = std::chrono::duration_cast<std::chrono::milliseconds>(processEndTime - processStartTime);
+        result.totalRetryTime = processingTime;
+        
+        // Handle retry logic
+        if (!result.success) {
+            bool shouldRetry = FailureClassifier::shouldRetry(
+                result.failureType, 
+                result.retryCount, 
+                config.maxRetries
+            );
+            
+            if (shouldRetry) {
+                // Record retry metrics
+                metrics->recordRetry();
+                metrics->recordDomainRetry(result.domain);
+                metrics->recordFailureType(result.failureType);
+                
+                // Schedule retry with exponential backoff
+                auto retryDelay = FailureClassifier::calculateRetryDelay(
+                    result.retryCount + 1, 
+                    config, 
+                    result.failureType
+                );
+                
+                urlFrontier->scheduleRetry(
+                    url, 
+                    result.retryCount + 1, 
+                    result.errorMessage.value_or("Unknown error"), 
+                    result.failureType, 
+                    retryDelay
+                );
+                
+                result.crawlStatus = "retry_scheduled";
+                
+                // Create detailed retry reason message
+                std::string retryReason;
+                if (result.statusCode > 0) {
+                    retryReason = "HTTP " + std::to_string(result.statusCode);
+                    if (result.statusCode == 429) {
+                        retryReason += " (Rate Limited)";
+                    } else if (result.statusCode >= 500) {
+                        retryReason += " (Server Error)";
+                    } else if (result.statusCode == 408) {
+                        retryReason += " (Request Timeout)";
+                    }
+                } else if (result.curlErrorCode != CURLE_OK) {
+                    retryReason = "Network Error";
+                    if (result.curlErrorCode == CURLE_OPERATION_TIMEDOUT) {
+                        retryReason += " (Timeout)";
+                    } else if (result.curlErrorCode == CURLE_COULDNT_CONNECT) {
+                        retryReason += " (Connection Failed)";
+                    } else if (result.curlErrorCode == CURLE_COULDNT_RESOLVE_HOST) {
+                        retryReason += " (DNS Failed)";
+                    }
+                } else {
+                    retryReason = "Unknown Error";
+                }
+                
+                // Add failure type classification
+                retryReason += " [" + FailureClassifier::getFailureTypeDescription(result.failureType) + "]";
+                
+                LOG_INFO("Scheduled retry " + std::to_string(result.retryCount + 1) + "/" + 
+                        std::to_string(config.maxRetries) + " for: " + url + 
+                        " in " + std::to_string(retryDelay.count()) + "ms - " + retryReason);
+                
+                // Enhanced WebSocket log with detailed retry information
+                std::string wsMessage = "🔄 RETRY " + std::to_string(result.retryCount + 1) + "/" + 
+                                      std::to_string(config.maxRetries) + " scheduled for " + url + 
+                                      " - Reason: " + retryReason + 
+                                      " | Delay: " + std::to_string(retryDelay.count()) + "ms" +
+                                      " | Domain: " + result.domain;
+                
+                CrawlLogger::broadcastLog(wsMessage, "warning");
+            } else {
+                result.crawlStatus = "failed";
+                urlFrontier->markVisited(url); // Mark as visited to prevent further processing
+                
+                // Record final failure metrics
+                metrics->recordFailure();
+                metrics->recordPermanentFailure();
+                metrics->recordDomainFailure(result.domain);
+                metrics->recordFailureType(result.failureType);
+                
+                // Record failure in domain manager (only for final failures)
+                if (result.failureType == FailureType::RATE_LIMITED) {
+                    // Special handling for rate limiting
+                    metrics->recordRateLimit();
+                    metrics->recordDomainRateLimit(result.domain);
+                    domainManager->recordRateLimit(result.domain);
+                } else {
+                    domainManager->recordFailure(result.domain, result.failureType, 
+                                               result.errorMessage.value_or("Unknown error"));
+                }
+                
+                std::string reason = (result.retryCount >= config.maxRetries) ? 
+                    "max retries exceeded" : 
+                    "permanent failure (" + FailureClassifier::getFailureTypeDescription(result.failureType) + ")";
+                
+                // Create detailed final failure message
+                std::string finalFailureReason;
+                if (result.statusCode > 0) {
+                    finalFailureReason = "HTTP " + std::to_string(result.statusCode);
+                } else if (result.curlErrorCode != CURLE_OK) {
+                    finalFailureReason = "Network Error (Code: " + std::to_string(static_cast<int>(result.curlErrorCode)) + ")";
+                } else {
+                    finalFailureReason = "Unknown Error";
+                }
+                
+                LOG_WARNING("Giving up on URL: " + url + " - " + reason);
+                
+                // Enhanced WebSocket log for final failures
+                std::string wsMessage = "❌ FAILED (Final) " + url + 
+                                      " - " + finalFailureReason + 
+                                      " | Reason: " + reason + 
+                                      " | Attempts: " + std::to_string(result.retryCount + 1) +
+                                      " | Domain: " + result.domain;
+                
+                CrawlLogger::broadcastLog(wsMessage, "error");
+            }
         } else {
-            result.crawlStatus = "failed";
-            CrawlLogger::broadcastLog("Failed to download: " + url + " - " + (result.errorMessage.has_value() ? result.errorMessage.value() : "Unknown error"), "error");
+            result.crawlStatus = "downloaded";
+            urlFrontier->markVisited(url); // Mark as visited on success
+            
+            // Record success metrics
+            metrics->recordSuccess();
+            metrics->recordDomainSuccess(result.domain);
+            
+            // Record success in domain manager
+            domainManager->recordSuccess(result.domain);
+            
+            std::string successMessage = isRetryAttempt ? 
+                "Successfully downloaded on retry attempt " + std::to_string(result.retryCount) + ": " + url :
+                "Successfully downloaded: " + url;
+            
+            LOG_INFO(successMessage + " (Status: " + std::to_string(result.statusCode) + ")");
+            
+            // Enhanced WebSocket log for successful downloads
+            std::string wsMessage;
+            if (isRetryAttempt) {
+                wsMessage = "✅ SUCCESS (Retry " + std::to_string(result.retryCount) + ") " + url + 
+                           " - HTTP " + std::to_string(result.statusCode) + 
+                           " | Domain: " + result.domain +
+                           " | Size: " + std::to_string(result.contentSize) + " bytes";
+            } else {
+                wsMessage = "✅ SUCCESS " + url + 
+                           " - HTTP " + std::to_string(result.statusCode) + 
+                           " | Domain: " + result.domain +
+                           " | Size: " + std::to_string(result.contentSize) + " bytes";
+            }
+            
+            CrawlLogger::broadcastLog(wsMessage, "info");
         }
         
         // Store the result (replace the old one for this URL)
@@ -166,7 +369,7 @@ void Crawler::crawlLoop() {
             } else {
                 results.push_back(result);
             }
-            LOG_INFO("Added result for URL: " + url + ", total results: " + std::to_string(results.size()));
+            LOG_INFO("Updated result for URL: " + url + ", total results: " + std::to_string(results.size()));
         }
         
         if (storage) {
@@ -201,17 +404,41 @@ void Crawler::crawlLoop() {
             LOG_WARNING("No storage configured, crawl result not saved to database for URL: " + url);
         }
         
-        urlFrontier->markVisited(url);
+        // Check if we've reached the maximum pages limit (count only successful downloads)
+        size_t successfulDownloads = 0;
+        {
+            std::lock_guard<std::mutex> lock(resultsMutex);
+            for (const auto& r : results) {
+                if (r.success && r.crawlStatus == "downloaded") {
+                    successfulDownloads++;
+                }
+            }
+        }
         
-        if (results.size() >= config.maxPages) {
-            LOG_INFO("Reached maximum pages limit (" + std::to_string(config.maxPages) + "), stopping crawler");
-            CrawlLogger::broadcastLog("Reached maximum pages limit (" + std::to_string(config.maxPages) + "), stopping crawler", "warning");
+        if (successfulDownloads >= config.maxPages) {
+            LOG_INFO("Reached maximum pages limit (" + std::to_string(config.maxPages) + " successful downloads), stopping crawler");
+            CrawlLogger::broadcastLog("Reached maximum pages limit (" + std::to_string(config.maxPages) + " successful downloads), stopping crawler", "warning");
             isRunning = false;
             break;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        
+        // Brief pause to prevent CPU spinning
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
-    LOG_DEBUG("Exiting crawl loop");
+    
+    // Log comprehensive metrics before exiting
+    auto retryStats = urlFrontier->getRetryStats();
+    LOG_INFO("Crawl loop finished. Retry stats - Total: " + std::to_string(retryStats.totalRetries) + 
+             ", Pending: " + std::to_string(retryStats.pendingRetries));
+    
+    // Log comprehensive metrics summary
+    if (metrics) {
+        metrics->logSummary();
+    }
+    
+    CrawlLogger::broadcastLog("Crawl completed - check logs for detailed metrics", "info");
+    
+    LOG_DEBUG("Exiting crawl loop with retry support");
 }
 
 CrawlResult Crawler::processURL(const std::string& url) {
@@ -252,6 +479,9 @@ CrawlResult Crawler::processURL(const std::string& url) {
     LOG_DEBUG("[processURL] fetchResult.statusCode: " + std::to_string(fetchResult.statusCode));
     LOG_DEBUG("[processURL] fetchResult.contentType: " + fetchResult.contentType);
     LOG_DEBUG("[processURL] fetchResult.content (first 200): " + (fetchResult.content.size() > 200 ? fetchResult.content.substr(0, 200) + "..." : fetchResult.content));
+    
+    // Get CURL error code directly from fetch result
+    CURLcode curlErrorCode = fetchResult.curlCode;
 
     // If SPA rendering is enabled and the page is detected as SPA, fetch again with headless browser
     if (pageFetcher->isSpaPage(fetchResult.content, url)) {
@@ -305,15 +535,35 @@ CrawlResult Crawler::processURL(const std::string& url) {
         LOG_INFO("Page fetched successfully: " + url + " Status: " + std::to_string(fetchResult.statusCode));
     } else {
         result.success = false;
+        
+        // Classify the failure for potential retry
+        FailureType failureType = FailureClassifier::classifyFailure(
+            fetchResult.statusCode, 
+            curlErrorCode, 
+            fetchResult.errorMessage.empty() ? "Unknown error" : fetchResult.errorMessage,
+            config
+        );
+        
+        // Store failure classification info in result for retry logic
+        result.curlErrorCode = curlErrorCode;
+        result.failureType = failureType;
+        
         if (fetchResult.statusCode >= 300 && fetchResult.statusCode < 400) {
             result.errorMessage = "HTTP Redirect: " + std::to_string(fetchResult.statusCode);
-            LOG_INFO("HTTP REDIRECT: Status " + std::to_string(fetchResult.statusCode) + " for URL: " + url);
+            LOG_INFO("HTTP REDIRECT: Status " + std::to_string(fetchResult.statusCode) + " for URL: " + url + 
+                    " (Failure type: " + FailureClassifier::getFailureTypeDescription(failureType) + ")");
         } else if (fetchResult.statusCode >= 400) {
             result.errorMessage = "HTTP Error: " + std::to_string(fetchResult.statusCode);
-            LOG_WARNING("HTTP ERROR: Status " + std::to_string(fetchResult.statusCode) + " for URL: " + url);
+            LOG_WARNING("HTTP ERROR: Status " + std::to_string(fetchResult.statusCode) + " for URL: " + url + 
+                       " (Failure type: " + FailureClassifier::getFailureTypeDescription(failureType) + ")");
         } else if (!fetchResult.errorMessage.empty()) {
             result.errorMessage = fetchResult.errorMessage;
-            LOG_ERROR("Failed to fetch page: " + url + " Error: " + fetchResult.errorMessage);
+            LOG_ERROR("Failed to fetch page: " + url + " Error: " + fetchResult.errorMessage + 
+                     " (Failure type: " + FailureClassifier::getFailureTypeDescription(failureType) + ")");
+        } else {
+            result.errorMessage = "Unknown error (status: " + std::to_string(fetchResult.statusCode) + ")";
+            LOG_ERROR("Failed to fetch page: " + url + " - Unknown error" + 
+                     " (Failure type: " + FailureClassifier::getFailureTypeDescription(failureType) + ")");
         }
     }
     
@@ -332,8 +582,12 @@ CrawlResult Crawler::processURL(const std::string& url) {
         }
         result.title = parsedContent.title;
         result.metaDescription = parsedContent.metaDescription;
+        // Get current URL's depth for link extraction
+        QueuedURL queuedInfo = urlFrontier->getQueuedURLInfo(url);
+        int currentDepth = queuedInfo.depth;
+        
         // Add new URLs to the frontier
-        extractAndAddURLs(fetchResult.content, url);
+        extractAndAddURLs(fetchResult.content, url, currentDepth);
     } else {
         LOG_INFO("🔍 TEXTCONTENT DEBUG: ❌ Content is NOT HTML, skipping parsing. Content-Type: " + fetchResult.contentType);
     }
@@ -347,14 +601,53 @@ CrawlResult Crawler::processURL(const std::string& url) {
     return result;
 }
 
-void Crawler::extractAndAddURLs(const std::string& content, const std::string& baseUrl) {
+void Crawler::extractAndAddURLs(const std::string& content, const std::string& baseUrl, int currentDepth) {
+    // Check if we've reached the maximum depth limit
+    int nextDepth = currentDepth + 1;
+    if (nextDepth > config.maxDepth) {
+        LOG_INFO("Reached maximum depth limit (" + std::to_string(config.maxDepth) + 
+                "), skipping link extraction from: " + baseUrl);
+        return;
+    }
+    
+    // Check if we've already reached the pages limit
+    size_t currentSuccessfulDownloads = 0;
+    {
+        std::lock_guard<std::mutex> lock(resultsMutex);
+        for (const auto& r : results) {
+            if (r.success && r.crawlStatus == "downloaded") {
+                currentSuccessfulDownloads++;
+            }
+        }
+    }
+    
+    if (currentSuccessfulDownloads >= config.maxPages) {
+        LOG_INFO("Already reached maximum pages limit (" + std::to_string(config.maxPages) + 
+                "), skipping link extraction from: " + baseUrl);
+        return;
+    }
+    
     auto links = contentParser->extractLinks(content, baseUrl);
-    LOG_DEBUG("Extracted " + std::to_string(links.size()) + " links from " + baseUrl);
+    LOG_DEBUG("Extracted " + std::to_string(links.size()) + " links from " + baseUrl + 
+              " at depth " + std::to_string(currentDepth) + " (next depth would be " + 
+              std::to_string(nextDepth) + ")");
     
     int addedCount = 0;
     int skippedCount = 0;
+    int depthSkippedCount = 0;
+    int pagesLimitSkippedCount = 0;
     
     for (const auto& link : links) {
+        // Check if adding this URL would exceed maxPages
+        size_t queueSize = urlFrontier->size() + urlFrontier->retryQueueSize();
+        if (queueSize >= config.maxPages) {
+            LOG_DEBUG("Queue size (" + std::to_string(queueSize) + 
+                     ") would exceed maxPages (" + std::to_string(config.maxPages) + 
+                     "), skipping: " + link);
+            pagesLimitSkippedCount++;
+            continue;
+        }
+        
         // Check if URL is allowed by robots.txt
         if (!config.respectRobotsTxt || robotsParser->isAllowed(link, config.userAgent)) {
             // Check domain restriction if enabled
@@ -364,14 +657,17 @@ void Crawler::extractAndAddURLs(const std::string& content, const std::string& b
                 continue;
             }
             
-            urlFrontier->addURL(link);
+            // Add URL with proper depth tracking
+            urlFrontier->addURL(link, false, CrawlPriority::NORMAL, nextDepth);
             addedCount++;
         }
     }
     
-    LOG_INFO("Added " + std::to_string(addedCount) + " URLs to frontier, skipped " + 
-             std::to_string(skippedCount) + " URLs (domain restriction: " + 
-             (config.restrictToSeedDomain ? "enabled" : "disabled") + ")");
+    LOG_INFO("Added " + std::to_string(addedCount) + " URLs to frontier at depth " + 
+             std::to_string(nextDepth) + ", skipped " + std::to_string(skippedCount) + 
+             " URLs (domain restriction: " + (config.restrictToSeedDomain ? "enabled" : "disabled") + 
+             "), " + std::to_string(depthSkippedCount) + " (depth limit), " + 
+             std::to_string(pagesLimitSkippedCount) + " (pages limit)");
 }
 
 bool Crawler::isSameDomain(const std::string& url) const {
@@ -433,6 +729,11 @@ void Crawler::updateConfig(const CrawlConfig& newConfig) {
     
     // Update PageFetcher configuration
     updatePageFetcherConfig();
+    
+    // Update DomainManager configuration
+    if (domainManager) {
+        domainManager->updateConfig(newConfig);
+    }
 }
 
 void Crawler::updatePageFetcherConfig() {

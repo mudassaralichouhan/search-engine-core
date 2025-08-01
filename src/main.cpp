@@ -86,10 +86,8 @@ int main() {
     // WebSocket registry and handler injection
     WebSocketRegistry wsRegistry;
     wsRegistry.addHandler(std::make_shared<DateTimeWebSocketHandler>());
-    
     // Create and register crawl logs WebSocket handler
-    auto crawlLogsHandler = std::make_shared<CrawlLogsWebSocketHandler>();
-    wsRegistry.addHandler(crawlLogsHandler);
+    wsRegistry.addHandler(std::make_shared<CrawlLogsWebSocketHandler>());
     wsRegistry.registerAll(app);
     
     // Connect CrawlLogger to WebSocket handler for real-time logging

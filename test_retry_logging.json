@@ -1,0 +1,16 @@
+{
+  "urls": [
+    "https://httpstat.us/503",
+    "https://httpstat.us/429",
+    "https://httpstat.us/408",
+    "https://nonexistent-site-12345.com",
+    "https://httpbin.org/delay/30"
+  ],
+  "maxPages": 10,
+  "maxDepth": 1,
+  "requestTimeout": 5000,
+  "maxRetries": 2,
+  "baseRetryDelay": 2000,
+  "backoffMultiplier": 2.0,
+  "spaRenderingEnabled": false
+}

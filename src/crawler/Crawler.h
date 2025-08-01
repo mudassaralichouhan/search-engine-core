@@ -15,6 +15,8 @@ class URLFrontier;
 class RobotsTxtParser;
 class PageFetcher;
 class ContentParser;
+class DomainManager;
+class CrawlMetrics;
 
 class Crawler {
 public:
@@ -62,7 +64,7 @@ private:
     void crawlLoop();
     
     // Extract and add new URLs from the page content
-    void extractAndAddURLs(const std::string& content, const std::string& baseURL);
+    void extractAndAddURLs(const std::string& content, const std::string& baseURL, int currentDepth = 0);
     
     // Check if URL belongs to the seed domain
     bool isSameDomain(const std::string& url) const;
@@ -74,6 +76,8 @@ private:
     std::unique_ptr<RobotsTxtParser> robotsParser;
     std::unique_ptr<PageFetcher> pageFetcher;
     std::unique_ptr<ContentParser> contentParser;
+    std::unique_ptr<DomainManager> domainManager;
+    std::unique_ptr<CrawlMetrics> metrics;
     std::shared_ptr<search_engine::storage::ContentStorage> storage;
     
     CrawlConfig config;
