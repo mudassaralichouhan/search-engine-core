@@ -1,4 +1,11 @@
 {
+    
+
+        "emmet.includeLanguages": {
+          "jinja-html": "html"
+        },
+      
+      
     "cmake.sourceDirectory": "D:/Projects/hatef.ir/search-engine-core/SearchEngineCore",
     "cmake.ignoreCMakeListsMissing": true,
     "cSpell.words": [
@@ -22,6 +29,9 @@
         "vcpkg"
     ],
     "files.associations": {
+        "*.inja": "jinja-html",      // use "jinja" if your templates aren't HTML
+          "*.j2": "jinja-html",
+          "*.tmpl": "jinja-html",
         "*.yaml": "ssm-yaml",
         "iostream": "cpp",
         "codecvt": "cpp",
