@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="{{ t.language.code }}" dir="{{ t.language.direction }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ t.meta.title }}</title>
+    <meta name="description" content="{{ t.meta.description }}">
+    
+    <!-- Open Graph meta tags -->
+    <meta property="og:title" content="{{ t.meta.title }}">
+    <meta property="og:description" content="{{ t.meta.description }}">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="{{ t.language.code }}">
+    
+    <link rel="stylesheet" href="css/crawl-request-template.css">
+    <style>
+        /* Template-specific dynamic styles */
+        body {
+            direction: {{ t.language.direction }};
+        }
+        
+        /* RTL-specific adjustments when needed */
+        {% if t.language.direction == "rtl" %}
+        .language-switcher {
+            left: 20px;
+            right: auto;
+        }
+        .slider-value {
+            margin-right: 10px;
+            margin-left: 0;
+        }
+        {% endif %}
+    </style>
+</head>
+<body>
+    <!-- Language Switcher -->
+    <div class="language-switcher">
+        <select onchange="switchLanguage(this.value)">
+            <option value="en">🇺🇸 English</option>
+            <option value="fa">🇮🇷 فارسی</option>
+        </select>
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>{{ t.header.title }}</h1>
+            <p>{{ t.header.subtitle }}</p>
+        </div>
+        
+        <div class="card">
+            <!-- Form Section -->
+            <div id="form-section">
+                <div class="error-message" id="error-message"></div>
+                
+                <div class="form-section">
+                    <h3>{{ t.form.url_section_title }}</h3>
+                    <div class="input-group">
+                        <label for="url-input">{{ t.form.url_label }}</label>
+                        <input type="url" id="url-input" class="url-input" 
+                               placeholder="{{ t.form.url_placeholder }}" 
+                               value="https://www.irangan.com">
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h3>{{ t.form.crawl_type_title }}</h3>
+                    <div class="presets">
+                        <div class="preset-card" data-preset="quick">
+                            <div class="preset-title">{{ t.presets.quick.title }}</div>
+                            <div class="preset-description">{{ t.presets.quick.description }}</div>
+                            <div class="preset-specs">{{ t.presets.quick.specs }}</div>
+                        </div>
+                        <div class="preset-card active" data-preset="standard">
+                            <div class="preset-title">{{ t.presets.standard.title }}</div>
+                            <div class="preset-description">{{ t.presets.standard.description }}</div>
+                            <div class="preset-specs">{{ t.presets.standard.specs }}</div>
+                        </div>
+                        <div class="preset-card" data-preset="deep">
+                            <div class="preset-title">{{ t.presets.deep.title }}</div>
+                            <div class="preset-description">{{ t.presets.deep.description }}</div>
+                            <div class="preset-specs">{{ t.presets.deep.specs }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="custom-toggle">
+                        <button class="toggle-btn" onclick="toggleCustomSettings()">
+                            {{ t.form.custom_settings }}
+                        </button>
+                    </div>
+                    
+                    <div class="custom-settings" id="custom-settings">
+                        <div class="slider-group">
+                            <label>{{ t.form.max_pages_label }}: <span class="slider-value" id="pages-value">50</span></label>
+                            <input type="range" id="pages-slider" class="slider" 
+                                   min="5" max="500" value="50" 
+                                   oninput="updateSliderValue('pages')">
+                        </div>
+                        <div class="slider-group">
+                            <label>{{ t.form.crawl_depth_label }}: <span class="slider-value" id="depth-value">3</span> {{ t.form.depth_levels }}</label>
+                            <input type="range" id="depth-slider" class="slider" 
+                                   min="1" max="10" value="3" 
+                                   oninput="updateSliderValue('depth')">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <div class="email-section">
+                        <label for="email-input">
+                            {{ t.form.email_section_title }}
+                        </label>
+                        <input type="email" id="email-input" class="email-input" 
+                               placeholder="{{ t.form.email_placeholder }}">
+                        <small class="privacy-note">
+                            {{ t.form.email_privacy_note }}
+                        </small>
+                    </div>
+                </div>
+                
+                <button class="submit-btn" onclick="startCrawl()">
+                    {{ t.form.submit_button }}
+                </button>
+            </div>
+            
+            <!-- Progress Section -->
+            <div id="progress-section" class="progress-section">
+                <div class="progress-text" id="progress-text">
+                    {{ t.progress.initializing }}
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="estimated-time" id="estimated-time">
+                    {{ t.progress.estimated_time }}
+                </div>
+            </div>
+            
+            <!-- Results Section -->
+            <div id="results-section" class="results-section">
+                <div class="success-message">
+                    {{ t.results.success_message }}
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="pages-found">0</div>
+                        <div class="stat-label">{{ t.results.stats.pages_found }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="links-found">0</div>
+                        <div class="stat-label">{{ t.results.stats.links_found }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="images-found">0</div>
+                        <div class="stat-label">{{ t.results.stats.images_found }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="time-taken">0</div>
+                        <div class="stat-label">{{ t.results.stats.minutes }}</div>
+                    </div>
+                </div>
+                
+                <div class="download-section">
+                    <h4 class="download-title">{{ t.results.download_title }}</h4>
+                    <a href="#" class="download-btn" id="download-json">{{ t.results.download_json }}</a>
+                    <a href="#" class="download-btn" id="download-csv">{{ t.results.download_csv }}</a>
+                </div>
+                
+                <button class="submit-btn new-analysis-btn" onclick="startNewCrawl()">
+                    {{ t.results.new_analysis }}
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Template data injection for JavaScript -->
+    <script>
+        // Initialize template data for external JavaScript
+        if (typeof initializeTemplateData === 'function') {
+            initializeTemplateData({
+                baseUrl: "{{ base_url }}",
+                progressComplete: "{{ t.progress.complete }}",
+                errorMessages: {
+                    emptyUrl: "{{ t.errors.empty_url }}",
+                    invalidUrl: "{{ t.errors.invalid_url }}",
+                    crawlFailed: "{{ t.errors.crawl_failed }}",
+                    networkError: "{{ t.errors.network_error }}"
+                },
+                progressMessages: [
+                    "{{ t.progress.connecting }}",
+                    "{{ t.progress.analyzing }}",
+                    "{{ t.progress.discovering }}",
+                    "{{ t.progress.crawling }}",
+                    "{{ t.progress.processing }}",
+                    "{{ t.progress.finalizing }}"
+                ]
+            });
+        }
+        
+        console.log('Full crawl template loaded successfully!');
+        console.log('Language:', '{{ t.language.code }}');
+        console.log('Direction:', '{{ t.language.direction }}');
+    </script>
+    <script src="js/crawl-request-template.js"></script>
+</body>
+</html>

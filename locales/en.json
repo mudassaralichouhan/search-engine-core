@@ -1,0 +1,78 @@
+{
+  "meta": {
+    "title": "Website Crawler - Request Analysis",
+    "description": "Analyze and discover all pages on any website with our professional web crawler service"
+  },
+  "header": {
+    "title": "🔍 Website Crawler",
+    "subtitle": "Analyze and discover all pages on any website"
+  },
+  "form": {
+    "url_section_title": "Enter Website URL",
+    "url_label": "Website URL",
+    "url_placeholder": "https://example.com",
+    "crawl_type_title": "Choose Crawl Type",
+    "custom_settings": "⚙️ Custom Settings",
+    "max_pages_label": "Maximum Pages",
+    "crawl_depth_label": "Crawl Depth",
+    "depth_levels": "levels",
+    "email_section_title": "📧 Get notified when complete (optional)",
+    "email_placeholder": "your.email@example.com",
+    "email_privacy_note": "We'll send you the results and never spam you",
+    "submit_button": "🚀 Start Website Analysis"
+  },
+  "presets": {
+    "quick": {
+      "title": "⚡ Quick Scan",
+      "description": "Perfect for getting an overview",
+      "specs": "5 pages • 2 levels deep • ~1 minute"
+    },
+    "standard": {
+      "title": "🎯 Standard Crawl", 
+      "description": "Comprehensive site analysis",
+      "specs": "50 pages • 3 levels deep • ~3 minutes"
+    },
+    "deep": {
+      "title": "🔬 Deep Analysis",
+      "description": "Complete site mapping", 
+      "specs": "200 pages • 5 levels deep • ~8 minutes"
+    }
+  },
+  "progress": {
+    "initializing": "Initializing crawler...",
+    "connecting": "Connecting to website...",
+    "analyzing": "Analyzing homepage...",
+    "discovering": "Discovering links...",
+    "crawling": "Crawling pages...",
+    "processing": "Processing content...",
+    "finalizing": "Finalizing results...",
+    "complete": "Analysis complete!",
+    "estimated_time": "Estimated time: 2-5 minutes"
+  },
+  "results": {
+    "success_message": "✅ Website analysis completed successfully!",
+    "stats": {
+      "pages_found": "Pages Found",
+      "links_found": "Links Discovered", 
+      "images_found": "Images Found",
+      "minutes": "Minutes"
+    },
+    "download_title": "Download Your Results",
+    "download_json": "📄 JSON Report",
+    "download_csv": "📊 CSV Export",
+    "new_analysis": "🔄 Analyze Another Website"
+  },
+  "errors": {
+    "invalid_url": "Please enter a valid URL (e.g., https://example.com)",
+    "empty_url": "Please enter a website URL",
+    "invalid_json": "Invalid JSON payload",
+    "server_error": "Server error occurred",
+    "crawl_failed": "Crawl request failed",
+    "network_error": "Network error - please check your connection"
+  },
+  "language": {
+    "code": "en",
+    "direction": "ltr",
+    "name": "English"
+  }
+}

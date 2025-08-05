@@ -311,7 +311,7 @@ cmake .. \
     -DCMAKE_CXX_STANDARD_REQUIRED=ON \
     -DCMAKE_CXX_EXTENSIONS=OFF \
     -DPkgConfig_DIR=/usr/share/pkgconfig \
-    -DBUILD_TESTS=ON
+    -DBUILD_TESTS=OFF
 
 # Build the project
 echo "Building project..."

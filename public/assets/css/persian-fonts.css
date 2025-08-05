@@ -1,0 +1,187 @@
+/* Persian/Farsi Font Support */
+
+/* Vazir Font Family - Modern Persian Font */
+@font-face {
+    font-family: 'Vazir';
+    src: url('data:font/woff2;base64,') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Vazir';
+    src: url('data:font/woff2;base64,') format('woff2');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* IRANSans Font Family - Alternative Persian Font */
+@font-face {
+    font-family: 'IRANSans';
+    src: url('data:font/woff2;base64,') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Persian Typography Improvements */
+.persian-text, [lang="fa"], [dir="rtl"] {
+    font-family: 'Vazir', 'IRANSans', 'Tahoma', 'Arial Unicode MS', sans-serif;
+    line-height: 1.8; /* Better line spacing for Persian */
+    word-spacing: 0.1em; /* Improved word spacing */
+}
+
+/* Persian Number Styling */
+.persian-numbers {
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    unicode-bidi: embed;
+}
+
+/* RTL Layout Improvements */
+[dir="rtl"] {
+    text-align: right;
+}
+
+[dir="rtl"] .form-group {
+    text-align: right;
+}
+
+[dir="rtl"] .preset-card {
+    text-align: right;
+}
+
+[dir="rtl"] .slider-value {
+    margin-right: 10px;
+    margin-left: 0;
+}
+
+[dir="rtl"] .language-switcher {
+    left: 20px;
+    right: auto;
+}
+
+[dir="rtl"] .download-section {
+    direction: rtl;
+}
+
+[dir="rtl"] .stats-grid {
+    direction: rtl;
+}
+
+[dir="rtl"] .preset-title,
+[dir="rtl"] .preset-description,
+[dir="rtl"] .preset-specs {
+    text-align: right;
+}
+
+/* Input field RTL support */
+[dir="rtl"] input[type="url"],
+[dir="rtl"] input[type="email"],
+[dir="rtl"] textarea {
+    text-align: right;
+    direction: rtl;
+}
+
+[dir="rtl"] input[type="url"]:placeholder-shown,
+[dir="rtl"] input[type="email"]:placeholder-shown {
+    text-align: right;
+}
+
+/* Button improvements for Persian */
+[dir="rtl"] .submit-btn,
+[dir="rtl"] .download-btn,
+[dir="rtl"] .toggle-btn {
+    font-family: 'Vazir', 'IRANSans', 'Tahoma', sans-serif;
+}
+
+/* Progress section RTL */
+[dir="rtl"] .progress-text,
+[dir="rtl"] .estimated-time {
+    text-align: center; /* Keep centered for progress */
+}
+
+/* Error messages RTL */
+[dir="rtl"] .error-message {
+    text-align: right;
+}
+
+/* Email section RTL */
+[dir="rtl"] .email-section {
+    text-align: right;
+}
+
+[dir="rtl"] .email-section small {
+    text-align: right;
+}
+
+/* Custom settings RTL */
+[dir="rtl"] .custom-settings label {
+    text-align: right;
+}
+
+/* Stats cards RTL */
+[dir="rtl"] .stat-card {
+    text-align: center; /* Keep stats centered */
+}
+
+/* Mobile responsive improvements for Persian */
+@media (max-width: 768px) {
+    [dir="rtl"] .header h1 {
+        font-size: 1.8rem; /* Slightly smaller for Persian on mobile */
+    }
+    
+    [dir="rtl"] .preset-card {
+        padding: 15px;
+    }
+    
+    [dir="rtl"] .card {
+        padding: 15px;
+    }
+}
+
+/* Improved contrast for Persian text */
+[dir="rtl"] .preset-title {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+[dir="rtl"] .form-section h3 {
+    color: #34495e;
+    font-weight: 600;
+}
+
+/* Persian-specific utility classes */
+.persian-bold {
+    font-weight: 700;
+}
+
+.persian-medium {
+    font-weight: 500;
+}
+
+.persian-light {
+    font-weight: 300;
+}
+
+/* Fix for Persian punctuation */
+[dir="rtl"] .preset-specs::before {
+    content: '';
+}
+
+[dir="rtl"] .preset-specs {
+    font-feature-settings: "kern" 1, "liga" 1;
+}
+
+/* Loading states for Persian fonts */
+.persian-font-loading {
+    font-family: 'Tahoma', 'Arial Unicode MS', sans-serif;
+}
+
+/* Ensure proper text rendering for Persian */
+[lang="fa"] {
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
+}

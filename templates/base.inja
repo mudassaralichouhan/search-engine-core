@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="{{ t.language.code }}" dir="{{ t.language.direction }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ t.meta.title }}</title>
+    <meta name="description" content="{{ t.meta.description }}">
+    
+    <!-- Language alternate links for SEO -->
+    <link rel="alternate" hreflang="en" href="{{ base_url }}/crawl-request/en">
+    <link rel="alternate" hreflang="fa" href="{{ base_url }}/crawl-request/fa">
+    <link rel="alternate" hreflang="x-default" href="{{ base_url }}/crawl-request">
+    
+    <!-- Open Graph meta tags -->
+    <meta property="og:title" content="{{ t.meta.title }}">
+    <meta property="og:description" content="{{ t.meta.description }}">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="{{ t.language.code }}">
+    
+    {% block head %}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: {% if t.language.code == "fa" %}'Vazir', 'IRANSans', {% endif %}'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            direction: {{ t.language.direction }};
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        
+        /* RTL specific styles */
+        .rtl {
+            direction: rtl;
+            text-align: right;
+        }
+        
+        .rtl .form-section h3,
+        .rtl .input-group label {
+            text-align: right;
+        }
+        
+        .rtl .preset-card {
+            text-align: right;
+        }
+        
+        .rtl .email-section {
+            text-align: right;
+        }
+        
+        .rtl .slider-value {
+            margin-right: 10px;
+            margin-left: 0;
+        }
+        
+        /* Persian/Farsi font loading */
+        {% if t.language.code == "fa" %}
+        @font-face {
+            font-family: 'Vazir';
+            src: url('{{ base_url }}/assets/fonts/Vazir.woff2') format('woff2'),
+                 url('{{ base_url }}/assets/fonts/Vazir.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+        {% endif %}
+        
+        /* Language switcher */
+        .language-switcher {
+            position: absolute;
+            top: 20px;
+            {% if t.language.direction == "rtl" %}left{% else %}right{% endif %}: 20px;
+            z-index: 1000;
+        }
+        
+        .language-switcher select {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .language-switcher select option {
+            background: #333;
+            color: white;
+        }
+        
+        {% block styles %}{% endblock %}
+    </style>
+    {% endblock %}
+</head>
+<body class="{{ t.language.direction == 'rtl' ? 'rtl' : '' }}">
+    <!-- Language Switcher -->
+    <div class="language-switcher">
+        <select onchange="switchLanguage(this.value)">
+            <option value="en" {{ t.language.code == "en" ? "selected" : "" }}>🇺🇸 English</option>
+            <option value="fa" {{ t.language.code == "fa" ? "selected" : "" }}>🇮🇷 فارسی</option>
+        </select>
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>{{ t.header.title }}</h1>
+            <p>{{ t.header.subtitle }}</p>
+        </div>
+        
+        {% block content %}{% endblock %}
+    </div>
+    
+    <script>
+        function switchLanguage(langCode) {
+            const currentPath = window.location.pathname;
+            let newPath;
+            
+            if (currentPath.includes('/crawl-request')) {
+                newPath = `/crawl-request/${langCode}`;
+            } else {
+                newPath = `/crawl-request/${langCode}`;
+            }
+            
+            window.location.href = newPath;
+        }
+        
+        {% block scripts %}{% endblock %}
+    </script>
+</body>
+</html>

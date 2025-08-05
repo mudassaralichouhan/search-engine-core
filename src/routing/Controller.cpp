@@ -24,12 +24,12 @@ std::string injectNonce(const std::string& content, const std::string& nonce) {
     std::string result = content;
     
     // Add nonce to <script> tags without src attribute (inline scripts)
-    std::regex scriptRegex(R"(<script(?![^>]*\ssrc=)[^>]*>)");
-    result = std::regex_replace(result, scriptRegex, "<script nonce=\"" + nonce + "\"$&");
+    std::regex scriptRegex(R"(<script(?![^>]*\ssrc=)([^>]*)>)");
+    result = std::regex_replace(result, scriptRegex, "<script nonce=\"" + nonce + "\"$1>");
     
     // Add nonce to <style> tags
-    std::regex styleRegex(R"(<style[^>]*>)");
-    result = std::regex_replace(result, styleRegex, "<style nonce=\"" + nonce + "\"$&");
+    std::regex styleRegex(R"(<style([^>]*)>)");
+    result = std::regex_replace(result, styleRegex, "<style nonce=\"" + nonce + "\"$1>");
     
     return result;
 }

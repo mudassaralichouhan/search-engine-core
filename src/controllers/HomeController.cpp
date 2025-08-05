@@ -2,6 +2,7 @@
 #include "../../include/Logger.h"
 #include "../../include/api.h"
 #include <filesystem>
+#include <nlohmann/json.hpp>
 
 std::string HomeController::loadFile(const std::string& path) {
     LOG_DEBUG("Attempting to load file: " + path);
@@ -56,6 +57,55 @@ void HomeController::searchPage(uWS::HttpResponse<false>* res, uWS::HttpRequest*
     }
     
     html(res, searchIndexHtml);
+}
+
+std::string HomeController::renderTemplate(const std::string& templateName, const nlohmann::json& data) {
+    try {
+        // Initialize Inja environment
+        inja::Environment env("templates/");
+        
+        // Load the template and render with data  
+        std::string result = env.render_file(templateName, data);
+        return result;
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR("Template rendering error: " + std::string(e.what()));
+        return "";
+    }
+}
+
+void HomeController::crawlRequestPage(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
+    LOG_INFO("HomeController::crawlRequestPage called");
+    
+    try {
+        // Load localization data
+        std::string localeData = loadFile("locales/en.json");
+        if (localeData.empty()) {
+            serverError(res, "Failed to load localization data");
+            return;
+        }
+        
+        // Parse JSON data
+        nlohmann::json localeJson = nlohmann::json::parse(localeData);
+        nlohmann::json templateData = {
+            {"t", localeJson},
+            {"base_url", "http://localhost:3000"}
+        };
+        
+        // Render template with data
+        std::string renderedHtml = renderTemplate("crawl-request-full.inja", templateData);
+        
+        if (renderedHtml.empty()) {
+            serverError(res, "Failed to render template");
+            return;
+        }
+        
+        html(res, renderedHtml);
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR("Error in crawlRequestPage: " + std::string(e.what()));
+        serverError(res, "Failed to load crawl request page");
+    }
 }
 
 void HomeController::emailSubscribe(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {

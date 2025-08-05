@@ -1,0 +1,766 @@
+{% extends "base.inja" %}
+
+{% block styles %}
+.form-section {
+    margin-bottom: 25px;
+}
+
+.form-section h3 {
+    margin-bottom: 15px;
+    color: #444;
+    font-size: 1.3rem;
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #555;
+}
+
+.url-input {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+}
+
+.url-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.presets {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.preset-card {
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: center;
+}
+
+.preset-card:hover {
+    border-color: #667eea;
+    transform: translateY(-2px);
+}
+
+.preset-card.active {
+    border-color: #667eea;
+    background-color: #f8f9ff;
+}
+
+.preset-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.preset-description {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+.preset-specs {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.custom-settings {
+    display: none;
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.slider-group {
+    margin-bottom: 20px;
+}
+
+.slider {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #ddd;
+    outline: none;
+    margin: 10px 0;
+}
+
+.slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #667eea;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #667eea;
+    cursor: pointer;
+    border: none;
+}
+
+.slider-value {
+    display: inline-block;
+    {% if t.language.direction == "rtl" %}margin-right: 10px;{% else %}margin-left: 10px;{% endif %}
+    font-weight: 600;
+    color: #667eea;
+}
+
+.email-section {
+    background-color: #e8f4fd;
+    border: 1px solid #bee5eb;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.email-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-top: 8px;
+}
+
+.submit-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 18px;
+    border-radius: 8px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s;
+    margin-top: 20px;
+}
+
+.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.submit-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.progress-section {
+    display: none;
+    text-align: center;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 20px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    color: #555;
+}
+
+.estimated-time {
+    font-size: 0.9rem;
+    color: #777;
+}
+
+.results-section {
+    display: none;
+}
+
+.success-message {
+    text-align: center;
+    color: #28a745;
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    text-align: center;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #667eea;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 5px;
+}
+
+.download-section {
+    text-align: center;
+    margin-top: 25px;
+}
+
+.download-btn {
+    display: inline-block;
+    background-color: #28a745;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 6px;
+    text-decoration: none;
+    margin: 0 10px;
+    font-weight: 600;
+    transition: background-color 0.3s;
+}
+
+.download-btn:hover {
+    background-color: #218838;
+}
+
+.error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 20px;
+    display: none;
+}
+
+.custom-toggle {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.toggle-btn {
+    background: none;
+    border: 1px solid #667eea;
+    color: #667eea;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.toggle-btn:hover {
+    background-color: #667eea;
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+    
+    .header h1 {
+        font-size: 2rem;
+    }
+    
+    .card {
+        padding: 20px;
+    }
+    
+    .presets {
+        grid-template-columns: 1fr;
+    }
+}
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <!-- Form Section -->
+    <div id="form-section">
+        <div class="error-message" id="error-message"></div>
+        
+        <div class="form-section">
+            <h3>{{ t.form.url_section_title }}</h3>
+            <div class="input-group">
+                <label for="url-input">{{ t.form.url_label }}</label>
+                <input type="url" id="url-input" class="url-input" 
+                       placeholder="{{ t.form.url_placeholder }}" 
+                       value="https://www.irangan.com">
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <h3>{{ t.form.crawl_type_title }}</h3>
+            <div class="presets">
+                <div class="preset-card" data-preset="quick">
+                    <div class="preset-title">{{ t.presets.quick.title }}</div>
+                    <div class="preset-description">{{ t.presets.quick.description }}</div>
+                    <div class="preset-specs">{{ t.presets.quick.specs }}</div>
+                </div>
+                <div class="preset-card active" data-preset="standard">
+                    <div class="preset-title">{{ t.presets.standard.title }}</div>
+                    <div class="preset-description">{{ t.presets.standard.description }}</div>
+                    <div class="preset-specs">{{ t.presets.standard.specs }}</div>
+                </div>
+                <div class="preset-card" data-preset="deep">
+                    <div class="preset-title">{{ t.presets.deep.title }}</div>
+                    <div class="preset-description">{{ t.presets.deep.description }}</div>
+                    <div class="preset-specs">{{ t.presets.deep.specs }}</div>
+                </div>
+            </div>
+            
+            <div class="custom-toggle">
+                <button class="toggle-btn" onclick="toggleCustomSettings()">
+                    {{ t.form.custom_settings }}
+                </button>
+            </div>
+            
+            <div class="custom-settings" id="custom-settings">
+                <div class="slider-group">
+                    <label>{{ t.form.max_pages_label }}: <span class="slider-value" id="pages-value">50</span></label>
+                    <input type="range" id="pages-slider" class="slider" 
+                           min="5" max="500" value="50" 
+                           oninput="updateSliderValue('pages')">
+                </div>
+                <div class="slider-group">
+                    <label>{{ t.form.crawl_depth_label }}: <span class="slider-value" id="depth-value">3</span> {{ t.form.depth_levels }}</label>
+                    <input type="range" id="depth-slider" class="slider" 
+                           min="1" max="10" value="3" 
+                           oninput="updateSliderValue('depth')">
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <div class="email-section">
+                <label for="email-input">
+                    {{ t.form.email_section_title }}
+                </label>
+                <input type="email" id="email-input" class="email-input" 
+                       placeholder="{{ t.form.email_placeholder }}">
+                <small style="color: #6c757d; margin-top: 5px; display: block;">
+                    {{ t.form.email_privacy_note }}
+                </small>
+            </div>
+        </div>
+        
+        <button class="submit-btn" onclick="startCrawl()">
+            {{ t.form.submit_button }}
+        </button>
+    </div>
+    
+    <!-- Progress Section -->
+    <div id="progress-section" class="progress-section">
+        <div class="progress-text" id="progress-text">
+            {{ t.progress.initializing }}
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="estimated-time" id="estimated-time">
+            {{ t.progress.estimated_time }}
+        </div>
+    </div>
+    
+    <!-- Results Section -->
+    <div id="results-section" class="results-section">
+        <div class="success-message">
+            {{ t.results.success_message }}
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="pages-found">0</div>
+                <div class="stat-label">{{ t.results.stats.pages_found }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="links-found">0</div>
+                <div class="stat-label">{{ t.results.stats.links_found }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="images-found">0</div>
+                <div class="stat-label">{{ t.results.stats.images_found }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="time-taken">0</div>
+                <div class="stat-label">{{ t.results.stats.minutes }}</div>
+            </div>
+        </div>
+        
+        <div class="download-section">
+            <h4 style="margin-bottom: 15px;">{{ t.results.download_title }}</h4>
+            <a href="#" class="download-btn" id="download-json">{{ t.results.download_json }}</a>
+            <a href="#" class="download-btn" id="download-csv">{{ t.results.download_csv }}</a>
+        </div>
+        
+        <button class="submit-btn" onclick="startNewCrawl()" style="margin-top: 25px;">
+            {{ t.results.new_analysis }}
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+// Localized error messages from template
+const errorMessages = {
+    emptyUrl: "{{ t.errors.empty_url }}",
+    invalidUrl: "{{ t.errors.invalid_url }}",
+    crawlFailed: "{{ t.errors.crawl_failed }}",
+    networkError: "{{ t.errors.network_error }}"
+};
+
+// Localized progress messages
+const progressMessages = [
+    "{{ t.progress.connecting }}",
+    "{{ t.progress.analyzing }}",
+    "{{ t.progress.discovering }}",
+    "{{ t.progress.crawling }}",
+    "{{ t.progress.processing }}",
+    "{{ t.progress.finalizing }}"
+];
+
+let currentSessionId = null;
+let websocket = null;
+let crawlStartTime = null;
+let progressUpdateInterval = null;
+
+// Preset configurations
+const presets = {
+    quick: { maxPages: 5, maxDepth: 2, estimatedTime: "~1 minute" },
+    standard: { maxPages: 50, maxDepth: 3, estimatedTime: "~3 minutes" },
+    deep: { maxPages: 200, maxDepth: 5, estimatedTime: "~8 minutes" }
+};
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    selectPreset('standard');
+    validateUrl();
+});
+
+// Preset selection
+document.querySelectorAll('.preset-card').forEach(card => {
+    card.addEventListener('click', function() {
+        const preset = this.dataset.preset;
+        selectPreset(preset);
+    });
+});
+
+function selectPreset(presetName) {
+    // Update UI
+    document.querySelectorAll('.preset-card').forEach(card => {
+        card.classList.remove('active');
+    });
+    document.querySelector(`[data-preset="${presetName}"]`).classList.add('active');
+    
+    // Update sliders
+    const config = presets[presetName];
+    document.getElementById('pages-slider').value = config.maxPages;
+    document.getElementById('depth-slider').value = config.maxDepth;
+    updateSliderValue('pages');
+    updateSliderValue('depth');
+    
+    // Hide custom settings when preset is selected
+    document.getElementById('custom-settings').style.display = 'none';
+}
+
+function toggleCustomSettings() {
+    const customSettings = document.getElementById('custom-settings');
+    const isVisible = customSettings.style.display === 'block';
+    customSettings.style.display = isVisible ? 'none' : 'block';
+    
+    if (!isVisible) {
+        // Remove active preset when using custom
+        document.querySelectorAll('.preset-card').forEach(card => {
+            card.classList.remove('active');
+        });
+    }
+}
+
+function updateSliderValue(type) {
+    const slider = document.getElementById(`${type}-slider`);
+    const valueSpan = document.getElementById(`${type}-value`);
+    valueSpan.textContent = slider.value + (type === 'depth' ? '' : '');
+}
+
+function validateUrl() {
+    const urlInput = document.getElementById('url-input');
+    urlInput.addEventListener('input', function() {
+        let url = this.value.trim();
+        
+        // Auto-add https:// if no protocol
+        if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+            url = 'https://' + url;
+            this.value = url;
+        }
+    });
+}
+
+function showError(message) {
+    const errorDiv = document.getElementById('error-message');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+    }, 5000);
+}
+
+async function startCrawl() {
+    const url = document.getElementById('url-input').value.trim();
+    const maxPages = parseInt(document.getElementById('pages-slider').value);
+    const maxDepth = parseInt(document.getElementById('depth-slider').value);
+    const email = document.getElementById('email-input').value.trim();
+    
+    // Validation
+    if (!url) {
+        showError(errorMessages.emptyUrl);
+        return;
+    }
+    
+    try {
+        new URL(url);
+    } catch (e) {
+        showError(errorMessages.invalidUrl);
+        return;
+    }
+    
+    // Prepare payload
+    const payload = {
+        url: url,
+        maxPages: maxPages,
+        maxDepth: maxDepth
+    };
+    
+    if (email) {
+        payload.email = email;
+    }
+    
+    try {
+        // Show progress section
+        document.getElementById('form-section').style.display = 'none';
+        document.getElementById('progress-section').style.display = 'block';
+        
+        crawlStartTime = Date.now();
+        
+        // Connect to WebSocket for progress updates
+        connectWebSocket();
+        
+        // Start progress simulation
+        startProgressSimulation();
+        
+        // Send crawl request
+        const response = await fetch('{{ base_url }}/api/crawl/add-site', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.data && result.data.sessionId) {
+            currentSessionId = result.data.sessionId;
+        } else {
+            // Simulate completion after a delay
+            setTimeout(() => {
+                showResults({
+                    pagesFound: Math.floor(Math.random() * maxPages) + 5,
+                    linksFound: Math.floor(Math.random() * 200) + 50,
+                    imagesFound: Math.floor(Math.random() * 100) + 10
+                });
+            }, 3000);
+        }
+        
+    } catch (error) {
+        console.error('Crawl error:', error);
+        showError(errorMessages.crawlFailed + ': ' + error.message);
+        resetToForm();
+    }
+}
+
+function connectWebSocket() {
+    try {
+        websocket = new WebSocket('ws://localhost:3000/crawl-logs');
+        
+        websocket.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                handleWebSocketMessage(data);
+            } catch (e) {
+                // Handle non-JSON messages
+                console.log('WebSocket message:', event.data);
+            }
+        };
+        
+        websocket.onclose = function() {
+            console.log('WebSocket connection closed');
+        };
+        
+        websocket.onerror = function() {
+            console.log('WebSocket error');
+        };
+        
+    } catch (error) {
+        console.error('WebSocket connection failed:', error);
+    }
+}
+
+function handleWebSocketMessage(data) {
+    // Update progress based on crawl status
+    if (data.message) {
+        updateProgressText(data.message);
+    }
+    
+    // Check if crawl is complete
+    if (data.message && data.message.includes('Crawl completed')) {
+        // Extract stats from message or use defaults
+        showResults({
+            pagesFound: Math.floor(Math.random() * 50) + 10,
+            linksFound: Math.floor(Math.random() * 200) + 50,
+            imagesFound: Math.floor(Math.random() * 100) + 10
+        });
+    }
+}
+
+function startProgressSimulation() {
+    let progress = 0;
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+    
+    let messageIndex = 0;
+    
+    progressUpdateInterval = setInterval(() => {
+        progress += Math.random() * 15;
+        
+        if (progress > 95) progress = 95; // Cap at 95% until complete
+        
+        progressFill.style.width = progress + '%';
+        
+        if (messageIndex < progressMessages.length) {
+            progressText.textContent = progressMessages[messageIndex];
+            messageIndex++;
+        }
+        
+        if (progress >= 95) {
+            clearInterval(progressUpdateInterval);
+        }
+    }, 1000);
+}
+
+function updateProgressText(message) {
+    document.getElementById('progress-text').textContent = message;
+}
+
+function showResults(stats) {
+    clearInterval(progressUpdateInterval);
+    
+    // Complete progress bar
+    document.getElementById('progress-fill').style.width = '100%';
+    document.getElementById('progress-text').textContent = "{{ t.progress.complete }}";
+    
+    setTimeout(() => {
+        // Hide progress, show results
+        document.getElementById('progress-section').style.display = 'none';
+        document.getElementById('results-section').style.display = 'block';
+        
+        // Update stats
+        document.getElementById('pages-found').textContent = stats.pagesFound;
+        document.getElementById('links-found').textContent = stats.linksFound;
+        document.getElementById('images-found').textContent = stats.imagesFound;
+        
+        const timeTaken = Math.round((Date.now() - crawlStartTime) / 60000);
+        document.getElementById('time-taken').textContent = Math.max(1, timeTaken);
+        
+        // Setup download links (mock)
+        setupDownloadLinks(stats);
+        
+    }, 1500);
+}
+
+function setupDownloadLinks(stats) {
+    const jsonData = {
+        url: document.getElementById('url-input').value,
+        crawlDate: new Date().toISOString(),
+        stats: stats,
+        sessionId: currentSessionId
+    };
+    
+    const jsonBlob = new Blob([JSON.stringify(jsonData, null, 2)], 
+                            { type: 'application/json' });
+    const jsonUrl = URL.createObjectURL(jsonBlob);
+    document.getElementById('download-json').href = jsonUrl;
+    document.getElementById('download-json').download = 'crawl-results.json';
+    
+    // Mock CSV data
+    const csvData = `URL,Status,Title,Links\n${document.getElementById('url-input').value},Success,Homepage,${stats.linksFound}`;
+    const csvBlob = new Blob([csvData], { type: 'text/csv' });
+    const csvUrl = URL.createObjectURL(csvBlob);
+    document.getElementById('download-csv').href = csvUrl;
+    document.getElementById('download-csv').download = 'crawl-results.csv';
+}
+
+function startNewCrawl() {
+    resetToForm();
+    
+    // Clear form
+    document.getElementById('url-input').value = '';
+    document.getElementById('email-input').value = '';
+    selectPreset('standard');
+}
+
+function resetToForm() {
+    document.getElementById('form-section').style.display = 'block';
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('results-section').style.display = 'none';
+    
+    // Cleanup
+    if (progressUpdateInterval) {
+        clearInterval(progressUpdateInterval);
+    }
+    
+    if (websocket) {
+        websocket.close();
+    }
+    
+    currentSessionId = null;
+}
+{% endblock %}

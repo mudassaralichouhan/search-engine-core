@@ -25,6 +25,15 @@ find_package(Threads REQUIRED)
 find_path(WEBSOCKETPP_INCLUDE_DIR NAMES websocketpp/endpoint.hpp PATHS /usr/include /usr/local/include)
 find_path(NLOHMANN_JSON_INCLUDE_DIR NAMES nlohmann/json.hpp PATHS /usr/include /usr/local/include)
 
+# Add Inja template engine (header-only)
+find_path(INJA_INCLUDE_DIR NAMES inja/inja.hpp PATHS ${CMAKE_SOURCE_DIR}/include /usr/include /usr/local/include)
+if(INJA_INCLUDE_DIR)
+    set(INJA_AVAILABLE TRUE)
+    message(STATUS "Inja found at: ${INJA_INCLUDE_DIR}")
+else()
+    message(FATAL_ERROR "Inja header file not found. Please run: mkdir -p include/inja && curl -L https://github.com/pantor/inja/releases/download/v3.4.0/inja.hpp -o include/inja/inja.hpp")
+endif()
+
 # Remove WebSocket++ and nlohmann/json checks for browserless
 # Always build BrowserlessClient if referenced
 
@@ -64,6 +73,11 @@ include_directories(
 # Add WebSocket include directories if available
 # Always include BrowserlessClient if referenced
 include_directories(${WEBSOCKETPP_INCLUDE_DIR} ${NLOHMANN_JSON_INCLUDE_DIR})
+
+# Add Inja include directories if available
+if(INJA_AVAILABLE AND INJA_INCLUDE_DIR)
+    include_directories(${INJA_INCLUDE_DIR})
+endif()
 
 # Add Redis include directories if available
 if(REDIS_AVAILABLE)
@@ -137,6 +151,8 @@ target_link_libraries(server
         ${GUMBO_LIBRARIES}
         Threads::Threads
 )
+
+# Link Inja if available (header-only library, no linking required)
 
 # Link Redis libraries if available
 if(REDIS_AVAILABLE)
