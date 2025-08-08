@@ -71,9 +71,9 @@
     "network_error": "Network error - please check your connection"
   },
   "language": {
-    "code": "en",
+    "code": "de",
     "direction": "ltr",
-    "name": "English",
-    "choose_language": "Choose language"
+    "name": "German",
+    "choose_language": "Sprache wählen"
   }
 }

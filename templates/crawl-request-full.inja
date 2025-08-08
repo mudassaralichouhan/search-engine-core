@@ -12,11 +12,30 @@
     <meta property="og:type" content="website">
     <meta property="og:locale" content="{{ t.language.code }}">
     
-    <link rel="stylesheet" href="css/crawl-request-template.css">
+    <link rel="stylesheet" href="/css/crawl-request-template.css">
     <style>
         /* Template-specific dynamic styles */
         body {
             direction: {{ t.language.direction }};
+        }
+        
+        /* URL and Email inputs must always be LTR regardless of language */
+        .url-input, .email-input {
+            direction: ltr !important;
+            text-align: left !important;
+        }
+        
+        /* Screen reader only text for accessibility */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
         
         /* RTL-specific adjustments when needed */
@@ -35,7 +54,8 @@
 <body>
     <!-- Language Switcher -->
     <div class="language-switcher">
-        <select onchange="switchLanguage(this.value)">
+        <label for="language-switcher" class="sr-only">{{ t.language.choose_language }}</label>
+        <select id="language-switcher" aria-label="{{ t.language.choose_language }}">
             <option value="en">🇺🇸 English</option>
             <option value="fa">🇮🇷 فارسی</option>
         </select>
@@ -83,7 +103,7 @@
                     </div>
                     
                     <div class="custom-toggle">
-                        <button class="toggle-btn" onclick="toggleCustomSettings()">
+                        <button class="toggle-btn" id="custom-settings-toggle">
                             {{ t.form.custom_settings }}
                         </button>
                     </div>
@@ -92,14 +112,12 @@
                         <div class="slider-group">
                             <label>{{ t.form.max_pages_label }}: <span class="slider-value" id="pages-value">50</span></label>
                             <input type="range" id="pages-slider" class="slider" 
-                                   min="5" max="500" value="50" 
-                                   oninput="updateSliderValue('pages')">
+                                   min="5" max="500" value="50">
                         </div>
                         <div class="slider-group">
                             <label>{{ t.form.crawl_depth_label }}: <span class="slider-value" id="depth-value">3</span> {{ t.form.depth_levels }}</label>
                             <input type="range" id="depth-slider" class="slider" 
-                                   min="1" max="10" value="3" 
-                                   oninput="updateSliderValue('depth')">
+                                   min="1" max="10" value="3">
                         </div>
                     </div>
                 </div>
@@ -117,7 +135,7 @@
                     </div>
                 </div>
                 
-                <button class="submit-btn" onclick="startCrawl()">
+                <button class="submit-btn" id="start-crawl-btn">
                     {{ t.form.submit_button }}
                 </button>
             </div>
@@ -166,7 +184,7 @@
                     <a href="#" class="download-btn" id="download-csv">{{ t.results.download_csv }}</a>
                 </div>
                 
-                <button class="submit-btn new-analysis-btn" onclick="startNewCrawl()">
+                <button class="submit-btn new-analysis-btn" id="new-analysis-btn">
                     {{ t.results.new_analysis }}
                 </button>
             </div>
@@ -201,6 +219,6 @@
         console.log('Language:', '{{ t.language.code }}');
         console.log('Direction:', '{{ t.language.direction }}');
     </script>
-    <script src="js/crawl-request-template.js"></script>
+    <script src="/js/crawl-request-template.js"></script>
 </body>
 </html>

@@ -73,6 +73,7 @@
   "language": {
     "code": "fa",
     "direction": "rtl",
-    "name": "فارسی"
+    "name": "فارسی",
+    "choose_language": "انتخاب زبان"
   }
 }

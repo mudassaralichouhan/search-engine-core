@@ -39,7 +39,53 @@ const presets = {
 document.addEventListener('DOMContentLoaded', function() {
     selectPreset('standard');
     validateUrl();
+    
+    // Set up event listeners for all interactive elements
+    setupEventListeners();
 });
+
+function setupEventListeners() {
+    // Language switcher
+    const languageSwitcher = document.getElementById('language-switcher');
+    if (languageSwitcher) {
+        languageSwitcher.addEventListener('change', function() {
+            switchLanguage(this.value);
+        });
+    }
+    
+    // Custom settings toggle
+    const customToggle = document.getElementById('custom-settings-toggle');
+    if (customToggle) {
+        customToggle.addEventListener('click', toggleCustomSettings);
+    }
+    
+    // Slider event listeners
+    const pagesSlider = document.getElementById('pages-slider');
+    if (pagesSlider) {
+        pagesSlider.addEventListener('input', function() {
+            updateSliderValue('pages');
+        });
+    }
+    
+    const depthSlider = document.getElementById('depth-slider');
+    if (depthSlider) {
+        depthSlider.addEventListener('input', function() {
+            updateSliderValue('depth');
+        });
+    }
+    
+    // Start crawl button
+    const startCrawlBtn = document.getElementById('start-crawl-btn');
+    if (startCrawlBtn) {
+        startCrawlBtn.addEventListener('click', startCrawl);
+    }
+    
+    // New analysis button
+    const newAnalysisBtn = document.getElementById('new-analysis-btn');
+    if (newAnalysisBtn) {
+        newAnalysisBtn.addEventListener('click', startNewCrawl);
+    }
+}
 
 // Preset selection
 document.querySelectorAll('.preset-card').forEach(card => {

@@ -78,8 +78,9 @@ void HomeController::crawlRequestPage(uWS::HttpResponse<false>* res, uWS::HttpRe
     LOG_INFO("HomeController::crawlRequestPage called");
     
     try {
-        // Load localization data
-        std::string localeData = loadFile("locales/en.json");
+        // Load default localization data (English)
+        std::string defaultLang = getDefaultLocale();
+        std::string localeData = loadFile("locales/" + defaultLang + ".json");
         if (localeData.empty()) {
             serverError(res, "Failed to load localization data");
             return;
@@ -105,6 +106,61 @@ void HomeController::crawlRequestPage(uWS::HttpResponse<false>* res, uWS::HttpRe
     } catch (const std::exception& e) {
         LOG_ERROR("Error in crawlRequestPage: " + std::string(e.what()));
         serverError(res, "Failed to load crawl request page");
+    }
+}
+
+void HomeController::crawlRequestPageWithLang(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
+    LOG_INFO("HomeController::crawlRequestPageWithLang called");
+    
+    try {
+        // Extract language code from URL path
+        std::string url = std::string(req->getUrl());
+        LOG_INFO("Full URL: " + url);
+        
+        // Extract language code from /crawl-request/lang format
+        std::string langCode;
+        size_t lastSlash = url.find_last_of('/');
+        if (lastSlash != std::string::npos && lastSlash < url.length() - 1) {
+            langCode = url.substr(lastSlash + 1);
+        }
+        
+        LOG_INFO("Extracted language code: " + langCode);
+        
+        // Check if language file exists, fallback to default if not
+        std::string localeFile = "locales/" + langCode + ".json";
+        if (!std::filesystem::exists(localeFile)) {
+            LOG_WARNING("Language file not found: " + localeFile + ", falling back to default");
+            langCode = getDefaultLocale();
+            localeFile = "locales/" + langCode + ".json";
+        }
+        
+        // Load localization data
+        std::string localeData = loadFile(localeFile);
+        if (localeData.empty()) {
+            serverError(res, "Failed to load localization data for language: " + langCode);
+            return;
+        }
+        
+        // Parse JSON data
+        nlohmann::json localeJson = nlohmann::json::parse(localeData);
+        nlohmann::json templateData = {
+            {"t", localeJson},
+            {"base_url", "http://localhost:3000"}
+        };
+        
+        // Render template with data
+        std::string renderedHtml = renderTemplate("crawl-request-full.inja", templateData);
+        
+        if (renderedHtml.empty()) {
+            serverError(res, "Failed to render template");
+            return;
+        }
+        
+        html(res, renderedHtml);
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR("Error in crawlRequestPageWithLang: " + std::string(e.what()));
+        serverError(res, "Failed to load crawl request page with language");
     }
 }
 
@@ -148,4 +204,33 @@ void HomeController::emailSubscribe(uWS::HttpResponse<false>* res, uWS::HttpRequ
     res->onAborted([]() {
         LOG_WARNING("Email subscription request aborted");
     });
+}
+
+std::string HomeController::getAvailableLocales() {
+    try {
+        std::vector<std::string> locales;
+        
+        // Scan the locales directory for JSON files
+        for (const auto& entry : std::filesystem::directory_iterator("locales/")) {
+            if (entry.is_regular_file() && entry.path().extension() == ".json") {
+                std::string filename = entry.path().stem().string();
+                // Skip test files or other non-locale files
+                if (filename != "test-data") {
+                    locales.push_back(filename);
+                }
+            }
+        }
+        
+        // Convert to JSON array string for client-side usage if needed
+        nlohmann::json localeArray = locales;
+        return localeArray.dump();
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR("Error getting available locales: " + std::string(e.what()));
+        return "[\"en\"]"; // Fallback to English only
+    }
+}
+
+std::string HomeController::getDefaultLocale() {
+    return "en"; // English as default
 } 

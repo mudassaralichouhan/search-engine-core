@@ -18,8 +18,13 @@ public:
     
     // GET /crawl-request
     void crawlRequestPage(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
+    
+    // GET /crawl-request/{lang}
+    void crawlRequestPageWithLang(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
 
 private:
+    std::string getAvailableLocales();
+    std::string getDefaultLocale();
     std::string loadFile(const std::string& path);
     std::string renderTemplate(const std::string& templateName, const nlohmann::json& data);
 };
@@ -31,5 +36,6 @@ ROUTE_CONTROLLER(HomeController) {
     REGISTER_ROUTE(HttpMethod::GET, "/test", searchPage, HomeController);
     REGISTER_ROUTE(HttpMethod::GET, "/crawl-request", crawlRequestPage, HomeController);
     REGISTER_ROUTE(HttpMethod::GET, "/crawl-request.html", crawlRequestPage, HomeController);
+    REGISTER_ROUTE(HttpMethod::GET, "/crawl-request/*", crawlRequestPageWithLang, HomeController);
     REGISTER_ROUTE(HttpMethod::POST, "/api/v2/email-subscribe", emailSubscribe, HomeController);
 } 
