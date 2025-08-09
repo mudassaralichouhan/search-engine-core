@@ -45,11 +45,11 @@ std::string CrawlerManager::startCrawl(const std::string& url, const CrawlConfig
     std::string sessionId = generateSessionId();
     
     LOG_INFO("Starting new crawl session: " + sessionId + " for URL: " + url);
-    CrawlLogger::broadcastLog("Starting new crawl session: " + sessionId + " for URL: " + url, "info");
+    CrawlLogger::broadcastSessionLog(sessionId, "Starting new crawl session for URL: " + url, "info");
     
     try {
         // Create new crawler instance with the provided configuration
-        auto crawler = createCrawler(config);
+        auto crawler = createCrawler(config, sessionId);
         
         // Create crawl session
         auto session = std::make_unique<CrawlSession>(sessionId, std::move(crawler));
@@ -284,8 +284,8 @@ void CrawlerManager::cleanupWorker() {
     LOG_INFO("CrawlerManager cleanup worker stopped");
 }
 
-std::unique_ptr<Crawler> CrawlerManager::createCrawler(const CrawlConfig& config) {
-    auto crawler = std::make_unique<Crawler>(config, storage_);
+std::unique_ptr<Crawler> CrawlerManager::createCrawler(const CrawlConfig& config, const std::string& sessionId) {
+    auto crawler = std::make_unique<Crawler>(config, storage_, sessionId);
     
     // Configure PageFetcher settings
     if (crawler->getPageFetcher()) {

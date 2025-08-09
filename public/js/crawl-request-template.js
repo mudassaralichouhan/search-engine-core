@@ -215,6 +215,11 @@ async function startCrawl() {
         
         if (result.data && result.data.sessionId) {
             currentSessionId = result.data.sessionId;
+            // Subscribe to session-specific logs if WebSocket is already connected
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send('subscribe:' + currentSessionId);
+                console.log('Subscribed to session logs:', currentSessionId);
+            }
         } else {
             // Simulate completion after a delay
             setTimeout(() => {
@@ -237,9 +242,25 @@ function connectWebSocket() {
     try {
         websocket = new WebSocket('ws://localhost:3000/crawl-logs');
         
+        websocket.onopen = function() {
+            console.log('WebSocket connected');
+            // If we have a session ID, subscribe to session-specific logs
+            if (currentSessionId) {
+                websocket.send('subscribe:' + currentSessionId);
+                console.log('Subscribed to session logs:', currentSessionId);
+            }
+        };
+        
         websocket.onmessage = function(event) {
             try {
                 const data = JSON.parse(event.data);
+                
+                // Handle subscription confirmation
+                if (data.message && data.message.includes('Subscribed to session logs')) {
+                    console.log('Session subscription confirmed:', data.message);
+                    return;
+                }
+                
                 handleWebSocketMessage(data);
             } catch (e) {
                 // Handle non-JSON messages

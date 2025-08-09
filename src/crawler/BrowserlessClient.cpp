@@ -72,7 +72,9 @@ public:
             curl_easy_setopt(curl_, CURLOPT_POSTFIELDS, json_payload.c_str());
             curl_easy_setopt(curl_, CURLOPT_POSTFIELDSIZE, json_payload.length());
             curl_easy_setopt(curl_, CURLOPT_TIMEOUT_MS, timeout_ms);
-            curl_easy_setopt(curl_, CURLOPT_CONNECTTIMEOUT_MS, 10000);
+            curl_easy_setopt(curl_, CURLOPT_CONNECTTIMEOUT_MS, 5000);  // Reduced connection timeout
+            curl_easy_setopt(curl_, CURLOPT_LOW_SPEED_LIMIT, 1000L);   // Minimum 1KB/s
+            curl_easy_setopt(curl_, CURLOPT_LOW_SPEED_TIME, 10L);      // For 10 seconds
             
             // Set headers
             struct curl_slist* headers = nullptr;
@@ -93,6 +95,12 @@ public:
             
             if (res != CURLE_OK) {
                 result.error = "CURL error: " + std::string(curl_easy_strerror(res));
+                if (res == CURLE_OPERATION_TIMEDOUT || res == CURLE_COULDNT_CONNECT) {
+                    LOG_WARNING("Browserless timeout/connection failure for: " + url + " - " + result.error);
+                    CrawlLogger::broadcastLog("⚠️ Browserless unavailable for: " + url + " - falling back to static HTML", "warning");
+                } else {
+                    LOG_ERROR("Browserless CURL error for: " + url + " - " + result.error);
+                }
                 return result;
             }
             

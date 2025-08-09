@@ -165,6 +165,11 @@
         let websocket = null;
         let isConnected = false;
         let isLogsPaused = false;
+        let reconnectAttempts = 0;
+        let maxReconnectAttempts = 10;
+        let reconnectDelay = 1000; // Start with 1 second
+        let heartbeatInterval = null;
+        let isManualDisconnect = false;
 
         function updateConnectionStatus(status) {
             const statusElement = document.getElementById('ws-status');
@@ -201,7 +206,7 @@
             }
 
             updateConnectionStatus('connecting');
-            addLogEntry('Connecting to WebSocket...', 'info');
+            addLogEntry(`Connecting to WebSocket... (Attempt ${reconnectAttempts + 1})`, 'info');
 
             const wsUrl = 'ws://localhost:3000/crawl-logs';
             websocket = new WebSocket(wsUrl);
@@ -209,6 +214,22 @@
             websocket.onopen = function(event) {
                 updateConnectionStatus('connected');
                 addLogEntry('Connected to crawl logs WebSocket', 'info');
+                
+                // Reset reconnection state on successful connection
+                reconnectAttempts = 0;
+                reconnectDelay = 1000;
+                isManualDisconnect = false;
+                
+                // Ensure admin subscription
+                try {
+                    websocket.send('subscribe:admin');
+                    addLogEntry('Subscribed to admin logs', 'info');
+                } catch (e) {
+                    console.warn('Failed to subscribe to admin logs:', e);
+                }
+                
+                // Start heartbeat
+                startHeartbeat();
             };
 
             websocket.onmessage = function(event) {
@@ -216,16 +237,34 @@
                     const data = JSON.parse(event.data);
                     const logLevel = data.level || 'info';
                     const message = data.message || event.data;
+                    
+                    // Handle heartbeat responses
+                    if (message === 'pong') {
+                        return; // Don't display pong messages
+                    }
+                    
                     addLogEntry(message, logLevel);
                 } catch (e) {
-                    // If it's not JSON, just display as plain text
+                    // If it's not JSON, just display as plain text unless it's a pong
+                    if (typeof event.data === 'string' && event.data === 'pong') {
+                        return;
+                    }
                     addLogEntry(event.data, 'info');
                 }
             };
 
             websocket.onclose = function(event) {
                 updateConnectionStatus('disconnected');
-                addLogEntry(`WebSocket connection closed (Code: ${event.code})`, 'warning');
+                const reason = getCloseReason(event.code);
+                addLogEntry(`WebSocket connection closed (Code: ${event.code}, ${reason})`, 'warning');
+                
+                // Stop heartbeat
+                stopHeartbeat();
+                
+                // Attempt reconnection if not manually disconnected
+                if (!isManualDisconnect) {
+                    scheduleReconnect();
+                }
             };
 
             websocket.onerror = function(error) {
@@ -236,12 +275,70 @@
         }
 
         function disconnectWebSocket() {
+            isManualDisconnect = true;
+            stopHeartbeat();
+            
             if (websocket) {
                 websocket.close();
                 websocket = null;
             }
             updateConnectionStatus('disconnected');
-            addLogEntry('Disconnected from WebSocket', 'info');
+            addLogEntry('Manually disconnected from WebSocket', 'info');
+        }
+
+        function startHeartbeat() {
+            stopHeartbeat(); // Clear any existing heartbeat
+            
+            heartbeatInterval = setInterval(function() {
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    websocket.send('ping');
+                }
+            }, 30000); // Send ping every 30 seconds
+        }
+
+        function stopHeartbeat() {
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+            }
+        }
+
+        function scheduleReconnect() {
+            if (reconnectAttempts >= maxReconnectAttempts) {
+                addLogEntry(`Max reconnection attempts (${maxReconnectAttempts}) reached. Please manually reconnect.`, 'error');
+                return;
+            }
+
+            reconnectAttempts++;
+            addLogEntry(`Scheduling reconnection in ${reconnectDelay}ms (Attempt ${reconnectAttempts}/${maxReconnectAttempts})`, 'info');
+            
+            setTimeout(function() {
+                if (!isManualDisconnect && (!websocket || websocket.readyState === WebSocket.CLOSED)) {
+                    connectWebSocket();
+                }
+            }, reconnectDelay);
+            
+            // Exponential backoff with jitter
+            reconnectDelay = Math.min(reconnectDelay * 2 + Math.random() * 1000, 30000);
+        }
+
+        function getCloseReason(code) {
+            const reasons = {
+                1000: 'Normal Closure',
+                1001: 'Going Away',
+                1002: 'Protocol Error',
+                1003: 'Unsupported Data',
+                1004: 'Reserved',
+                1005: 'No Status Received',
+                1006: 'Abnormal Closure',
+                1007: 'Invalid Payload',
+                1008: 'Policy Violation',
+                1009: 'Message Too Big',
+                1010: 'Mandatory Extension',
+                1011: 'Internal Server Error',
+                1015: 'TLS Handshake Error'
+            };
+            return reasons[code] || 'Unknown';
         }
 
         function addLogEntry(message, level = 'info') {
@@ -349,12 +446,7 @@
             setTimeout(connectWebSocket, 1000);
         });
 
-        // Reconnect WebSocket if connection is lost
-        setInterval(function() {
-            if (!isConnected && (!websocket || websocket.readyState === WebSocket.CLOSED)) {
-                connectWebSocket();
-            }
-        }, 5000);
+        // Enhanced reconnection logic is now handled in scheduleReconnect() function
     </script>
 </body>
 </html>

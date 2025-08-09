@@ -156,6 +156,7 @@ RUN apt install -y \
     libssl-dev \
     libasio-dev
 
+RUN ANTICASH=6
 # Set up project build
 WORKDIR /deps
 COPY src/ /deps/src/
@@ -180,6 +181,8 @@ RUN rm -rf build && \
     make -j$(nproc)
 
 COPY public/ /app/public/
+COPY locales/ /app/locales/
+COPY templates/ /app/templates/
 
 # Run tests after build - crawler tests first, then all tests
 # RUN cd build && \
@@ -251,6 +254,8 @@ RUN ldconfig
 
 # Copy public folder from builder stage
 COPY public ./public
+COPY locales ./locales
+COPY templates ./templates
 
 
 

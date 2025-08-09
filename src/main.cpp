@@ -21,6 +21,7 @@
 #include "websocket/WebSocketRegistry.h"
 #include "websocket/DateTimeWebSocketHandler.h"
 #include "websocket/CrawlLogsWebSocketHandler.h"
+#include <iostream>
 #include "../include/crawler/CrawlLogger.h"
 
 using namespace std;
@@ -64,52 +65,87 @@ void traceRequest(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
 }
 
 int main() {
+    std::cout << "[MAIN-DEBUG] ============== SEARCH ENGINE STARTING ==============" << std::endl;
+    
     // Initialize logger
+    std::cout << "[MAIN-DEBUG] Initializing logger..." << std::endl;
     Logger::getInstance().init(LogLevel::INFO, true, "server.log");
+    std::cout << "[MAIN-DEBUG] Logger initialized successfully" << std::endl;
     
     // Log registered routes
+    std::cout << "[MAIN-DEBUG] Logging registered routes..." << std::endl;
     LOG_INFO("=== Registered Routes ===");
     for (const auto& route : routing::RouteRegistry::getInstance().getRoutes()) {
         LOG_INFO(routing::methodToString(route.method) + " " + route.path + 
                  " -> " + route.controllerName + "::" + route.actionName);
     }
     LOG_INFO("========================");
+    std::cout << "[MAIN-DEBUG] All routes logged" << std::endl;
 
     // Get port from environment variable or use default
     const char* port_env = std::getenv("PORT");
     int port = port_env ? std::stoi(port_env) : 3000;
+    std::cout << "[MAIN-DEBUG] Using port: " << port << std::endl;
     LOG_INFO("Using port: " + std::to_string(port));
 
     // Create app and apply all registered routes
+    std::cout << "[MAIN-DEBUG] Creating uWebSockets app..." << std::endl;
     auto app = uWS::App();
+    std::cout << "[MAIN-DEBUG] uWebSockets app created successfully" << std::endl;
 
     // WebSocket registry and handler injection
+    std::cout << "[MAIN-DEBUG] Setting up WebSocket registry..." << std::endl;
     WebSocketRegistry wsRegistry;
+    std::cout << "[MAIN-DEBUG] Adding DateTime WebSocket handler..." << std::endl;
     wsRegistry.addHandler(std::make_shared<DateTimeWebSocketHandler>());
     // Create and register crawl logs WebSocket handler
+    std::cout << "[MAIN-DEBUG] Adding CrawlLogs WebSocket handler..." << std::endl;
     wsRegistry.addHandler(std::make_shared<CrawlLogsWebSocketHandler>());
+    std::cout << "[MAIN-DEBUG] Registering all WebSocket handlers..." << std::endl;
     wsRegistry.registerAll(app);
+    std::cout << "[MAIN-DEBUG] All WebSocket handlers registered successfully" << std::endl;
     
     // Connect CrawlLogger to WebSocket handler for real-time logging
+    std::cout << "[MAIN-DEBUG] Setting up WebSocket broadcast functions..." << std::endl;
+    
+    // General broadcast function (for admin and legacy support)
     CrawlLogger::setLogBroadcastFunction([](const std::string& message, const std::string& level) {
+        std::cout << "[MAIN-DEBUG] Lambda called for WebSocket broadcast: [" << level << "] " << message << std::endl;
         CrawlLogsWebSocketHandler::broadcastLog(message, level);
     });
     
+    // Session-specific broadcast function
+    CrawlLogger::setSessionLogBroadcastFunction([](const std::string& sessionId, const std::string& message, const std::string& level) {
+        std::cout << "[MAIN-DEBUG] Lambda called for session WebSocket broadcast: [" << level << "] " << message << " (Session: " << sessionId << ")" << std::endl;
+        CrawlLogsWebSocketHandler::broadcastToSession(sessionId, message, level);
+    });
+    
+    std::cout << "[MAIN-DEBUG] WebSocket broadcast functions set successfully" << std::endl;
+    
     // Add request tracing middleware wrapper
+    std::cout << "[MAIN-DEBUG] Applying routes to app..." << std::endl;
     routing::RouteRegistry::getInstance().applyRoutes(app);
+    std::cout << "[MAIN-DEBUG] Routes applied successfully" << std::endl;
     
     // Start the server
+    std::cout << "[MAIN-DEBUG] Starting server on port " << port << "..." << std::endl;
     app.listen(port, [port](auto* listen_socket) {
         
         if (listen_socket) {
+            std::cout << "[MAIN-DEBUG] ✅ SERVER STARTED SUCCESSFULLY! Port: " << port << std::endl;
+            std::cout << "[MAIN-DEBUG] ✅ WebSocket endpoint: ws://localhost:" << port << "/crawl-logs" << std::endl;
+            std::cout << "[MAIN-DEBUG] ✅ Crawl tester page: http://localhost:" << port << "/crawl-tester.html" << std::endl;
             LOG_INFO("Server listening on port " + std::to_string(port));
             LOG_INFO("Access the search engine at: http://localhost:" + std::to_string(port) + "/test");
             LOG_INFO("Coming soon page at: http://localhost:" + std::to_string(port) + "/");
         }
         else {
+            std::cout << "[MAIN-DEBUG] ❌ FAILED TO START SERVER on port " << port << std::endl;
             LOG_ERROR("Failed to listen on port " + std::to_string(port));
         }
     }).run();
+    
+    std::cout << "[MAIN-DEBUG] ============== SEARCH ENGINE STOPPED ==============" << std::endl;
 
     return 0;
 }

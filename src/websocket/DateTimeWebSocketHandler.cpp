@@ -12,9 +12,21 @@ DateTimeWebSocketHandler::~DateTimeWebSocketHandler() {
 }
 
 void DateTimeWebSocketHandler::registerEndpoint(uWS::App& app) {
+    // Store app reference for pub/sub
+    this->app = &app;
+    
     app.ws<PerSocketData>("/datetime", {
-        .open = [this](auto* ws) { clients.insert(ws); },
-        .close = [this](auto* ws, int, std::string_view) { clients.erase(ws); }
+        .open = [this](auto* ws) { 
+            // Mark socket as open for lifecycle management
+            ws->getUserData()->open = true;
+            // Subscribe to datetime topic for pub/sub broadcasting
+            ws->subscribe(DATETIME_TOPIC);
+        },
+        .close = [this](auto* ws, int, std::string_view) { 
+            // Mark socket as closed for lifecycle management
+            ws->getUserData()->open = false;
+            // uWS automatically unsubscribes on close
+        }
     });
 }
 
@@ -24,8 +36,15 @@ void DateTimeWebSocketHandler::broadcastLoop() {
         auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         std::string datetime = std::ctime(&now);
         datetime.erase(datetime.find_last_not_of(" \n\r\t")+1);
-        for (auto* ws : clients) {
-            ws->send(datetime, uWS::OpCode::TEXT);
-        }
+        
+        // Use loop->defer() for thread-safe broadcasting from external thread
+        auto* loop = uWS::Loop::get();
+        loop->defer([this, datetime]() {
+            // This lambda runs on the correct uWS thread
+            if (app) {
+                // Use pub/sub pattern - automatically handles lifecycle
+                app->publish(DATETIME_TOPIC, datetime, uWS::OpCode::TEXT);
+            }
+        });
     }
 } 

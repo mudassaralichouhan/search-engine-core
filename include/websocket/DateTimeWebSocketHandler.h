@@ -1,6 +1,5 @@
 #pragma once
 #include "WebSocketHandler.h"
-#include <unordered_set>
 #include <thread>
 #include <atomic>
 
@@ -11,7 +10,7 @@ public:
     void registerEndpoint(uWS::App& app) override;
 
 private:
-    std::unordered_set<uWS::WebSocket<false, true, PerSocketData>*> clients;
+    static constexpr const char* DATETIME_TOPIC = "datetime";
     std::atomic<bool> running;
     std::thread broadcastThread;
     void broadcastLoop();

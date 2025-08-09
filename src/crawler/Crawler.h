@@ -20,7 +20,7 @@ class CrawlMetrics;
 
 class Crawler {
 public:
-    Crawler(const CrawlConfig& config, std::shared_ptr<search_engine::storage::ContentStorage> storage = nullptr);
+    Crawler(const CrawlConfig& config, std::shared_ptr<search_engine::storage::ContentStorage> storage = nullptr, const std::string& sessionId = "");
     ~Crawler();
 
     // Start the crawling process
@@ -71,6 +71,9 @@ private:
     
     // Update PageFetcher configuration
     void updatePageFetcherConfig();
+    
+    // Helper method for session-aware logging
+    void logToCrawlSession(const std::string& message, const std::string& level = "info") const;
 
     std::unique_ptr<URLFrontier> urlFrontier;
     std::unique_ptr<RobotsTxtParser> robotsParser;
@@ -86,4 +89,5 @@ private:
     std::vector<CrawlResult> results;
     std::unordered_set<std::string> visitedURLs;
     std::string seedDomain;  // Domain of the first seed URL
+    std::string sessionId;   // Session ID for logging
 }; 

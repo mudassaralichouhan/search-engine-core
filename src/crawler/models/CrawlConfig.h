@@ -18,8 +18,8 @@ struct CrawlConfig {
     // User agent string to use in requests
     std::string userAgent = "Hatefbot/1.0";
     
-    // Maximum number of concurrent connections
-    size_t maxConcurrentConnections = 10;
+    // Maximum number of concurrent connections (reduced to prevent browserless overload)
+    size_t maxConcurrentConnections = 5;
     
     // Timeout for HTTP requests (in milliseconds) - increased for SPA rendering
     std::chrono::milliseconds requestTimeout{30000};

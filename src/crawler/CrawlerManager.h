@@ -79,5 +79,5 @@ private:
     void cleanupWorker();
     
     // Create a new crawler instance with configuration
-    std::unique_ptr<Crawler> createCrawler(const CrawlConfig& config);
+    std::unique_ptr<Crawler> createCrawler(const CrawlConfig& config, const std::string& sessionId = "");
 }; 

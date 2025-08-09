@@ -15,10 +15,11 @@
 #include <iostream>
 #include <algorithm>
 
-Crawler::Crawler(const CrawlConfig& config, std::shared_ptr<search_engine::storage::ContentStorage> storage)
+Crawler::Crawler(const CrawlConfig& config, std::shared_ptr<search_engine::storage::ContentStorage> storage, const std::string& sessionId)
     : storage(storage)
     , config(config)
-    , isRunning(false) {
+    , isRunning(false)
+    , sessionId(sessionId) {
     // Initialize logger with DEBUG level to troubleshoot textContent issue
     Logger::getInstance().init(LogLevel::DEBUG, true);
     LOG_DEBUG("Crawler constructor called");
@@ -48,7 +49,7 @@ void Crawler::start() {
     }
     
     LOG_INFO("Starting crawler");
-    CrawlLogger::broadcastLog("Starting crawler", "info");
+    logToCrawlSession("Starting crawler", "info");
     isRunning = true;
     std::thread crawlerThread(&Crawler::crawlLoop, this);
     crawlerThread.detach();
@@ -93,13 +94,13 @@ void Crawler::reset() {
 
 void Crawler::addSeedURL(const std::string& url, bool force) {
     LOG_INFO("Adding seed URL: " + url + (force ? " (force)" : ""));
-    CrawlLogger::broadcastLog("Adding seed URL: " + url + (force ? " (force)" : ""), "info");
+    logToCrawlSession("Adding seed URL: " + url + (force ? " (force)" : ""), "info");
     
     // Set seed domain if this is the first URL and domain restriction is enabled
     if (config.restrictToSeedDomain && seedDomain.empty()) {
         seedDomain = urlFrontier->extractDomain(url);
         LOG_INFO("Set seed domain to: " + seedDomain);
-        CrawlLogger::broadcastLog("Set seed domain to: " + seedDomain, "info");
+        logToCrawlSession("Set seed domain to: " + seedDomain, "info");
     }
     
     urlFrontier->addURL(url, force, CrawlPriority::NORMAL, 0); // Seed URLs start at depth 0
@@ -123,7 +124,7 @@ std::vector<CrawlResult> Crawler::getResults() {
 
 void Crawler::crawlLoop() {
     LOG_DEBUG("Entering crawl loop with retry support");
-    CrawlLogger::broadcastLog("Starting crawl with retry support (max retries: " + std::to_string(config.maxRetries) + ")", "info");
+    logToCrawlSession("Starting crawl with retry support (max retries: " + std::to_string(config.maxRetries) + ")", "info");
     
     while (isRunning) {
         std::string url = urlFrontier->getNextURL();
@@ -136,7 +137,7 @@ void Crawler::crawlLoop() {
             }
             
             LOG_INFO("No more URLs to crawl (including retries), exiting crawl loop");
-            CrawlLogger::broadcastLog("No more URLs to crawl (including retries), exiting crawl loop", "info");
+            logToCrawlSession("No more URLs to crawl (including retries), exiting crawl loop", "info");
             isRunning = false;
             break;
         }
@@ -154,7 +155,7 @@ void Crawler::crawlLoop() {
             LOG_WARNING("Circuit breaker OPEN for domain " + domain + ", skipping URL: " + url);
             
             // WebSocket log for circuit breaker
-            CrawlLogger::broadcastLog("🚨 CIRCUIT BREAKER ACTIVE for " + domain + " - Blocking: " + url, "error");
+            logToCrawlSession("🚨 CIRCUIT BREAKER ACTIVE for " + domain + " - Blocking: " + url, "error");
             continue;
         }
         
@@ -166,7 +167,7 @@ void Crawler::crawlLoop() {
             urlFrontier->scheduleRetry(url, 0, "Domain delay required", FailureType::TEMPORARY, delay);
             
             // WebSocket log for domain delays
-            CrawlLogger::broadcastLog("⏱️ DOMAIN DELAY " + domain + " - Delaying: " + url + 
+            logToCrawlSession("⏱️ DOMAIN DELAY " + domain + " - Delaying: " + url + 
                                     " for " + std::to_string(delay.count()) + "ms", "info");
             continue;
         }
@@ -188,7 +189,7 @@ void Crawler::crawlLoop() {
                     std::string logMessage = isRetryAttempt ? 
                         "Started retry attempt " + std::to_string(queuedInfo.retryCount) + " for: " + url :
                         "Started downloading: " + url;
-                    CrawlLogger::broadcastLog(logMessage, "info");
+                    logToCrawlSession(logMessage, "info");
                 }
             }
         }
@@ -279,7 +280,7 @@ void Crawler::crawlLoop() {
                                       " | Delay: " + std::to_string(retryDelay.count()) + "ms" +
                                       " | Domain: " + result.domain;
                 
-                CrawlLogger::broadcastLog(wsMessage, "warning");
+                logToCrawlSession(wsMessage, "warning");
             } else {
                 result.crawlStatus = "failed";
                 urlFrontier->markVisited(url); // Mark as visited to prevent further processing
@@ -324,7 +325,7 @@ void Crawler::crawlLoop() {
                                       " | Attempts: " + std::to_string(result.retryCount + 1) +
                                       " | Domain: " + result.domain;
                 
-                CrawlLogger::broadcastLog(wsMessage, "error");
+                logToCrawlSession(wsMessage, "error");
             }
         } else {
             result.crawlStatus = "downloaded";
@@ -357,7 +358,7 @@ void Crawler::crawlLoop() {
                            " | Size: " + std::to_string(result.contentSize) + " bytes";
             }
             
-            CrawlLogger::broadcastLog(wsMessage, "info");
+            logToCrawlSession(wsMessage, "info");
         }
         
         // Store the result (replace the old one for this URL)
@@ -376,10 +377,10 @@ void Crawler::crawlLoop() {
             auto storeResult = storage->storeCrawlResult(result);
             if (storeResult.success) {
                 LOG_INFO("Successfully saved crawl result to database for URL: " + url);
-                CrawlLogger::broadcastLog("Saved to database: " + url, "info");
+                logToCrawlSession("Saved to database: " + url, "info");
             } else {
                 LOG_ERROR("Failed to save crawl result to database for URL: " + url + " - " + storeResult.message);
-                CrawlLogger::broadcastLog("Database save failed for: " + url + " - " + storeResult.message, "error");
+                logToCrawlSession("Database save failed for: " + url + " - " + storeResult.message, "error");
             }
             // Store crawl log for history
             search_engine::storage::CrawlLog log;
@@ -417,7 +418,7 @@ void Crawler::crawlLoop() {
         
         if (successfulDownloads >= config.maxPages) {
             LOG_INFO("Reached maximum pages limit (" + std::to_string(config.maxPages) + " successful downloads), stopping crawler");
-            CrawlLogger::broadcastLog("Reached maximum pages limit (" + std::to_string(config.maxPages) + " successful downloads), stopping crawler", "warning");
+            logToCrawlSession("Reached maximum pages limit (" + std::to_string(config.maxPages) + " successful downloads), stopping crawler", "warning");
             isRunning = false;
             break;
         }
@@ -436,7 +437,7 @@ void Crawler::crawlLoop() {
         metrics->logSummary();
     }
     
-    CrawlLogger::broadcastLog("Crawl completed - check logs for detailed metrics", "info");
+    logToCrawlSession("Crawl completed - check logs for detailed metrics", "info");
     
     LOG_DEBUG("Exiting crawl loop with retry support");
 }
@@ -762,4 +763,12 @@ void Crawler::updatePageFetcherConfig() {
 CrawlConfig Crawler::getConfig() const {
     std::lock_guard<std::mutex> lock(resultsMutex);
     return config;
+}
+
+void Crawler::logToCrawlSession(const std::string& message, const std::string& level) const {
+    if (!sessionId.empty()) {
+        CrawlLogger::broadcastSessionLog(sessionId, message, level);
+    } else {
+        CrawlLogger::broadcastLog(message, level);
+    }
 } 
