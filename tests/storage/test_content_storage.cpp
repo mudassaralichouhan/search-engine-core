@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_session.hpp>
 #include "../../include/search_engine/storage/ContentStorage.h"
-#include "../../src/crawler/models/CrawlResult.h"
+#include "../../include/search_engine/crawler/models/CrawlResult.h"
 #include "../../include/Logger.h"
 #include <chrono>
 #include <thread>

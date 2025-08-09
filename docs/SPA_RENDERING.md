@@ -172,7 +172,7 @@ POST /api/spa/render
 ### 3. Programmatic Usage
 
 ```cpp
-#include "PageFetcher.h"
+#include "search_engine/crawler/PageFetcher.h"
 
 // Create PageFetcher with enhanced SPA support
 PageFetcher fetcher(

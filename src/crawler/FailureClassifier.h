@@ -3,13 +3,7 @@
 #include <string>
 #include <curl/curl.h>
 #include "models/CrawlConfig.h"
-
-enum class FailureType {
-    TEMPORARY,    // Retry with exponential backoff
-    RATE_LIMITED, // Retry with longer delay (respect rate limits)
-    PERMANENT,    // Don't retry (404, 403, DNS doesn't exist, etc.)
-    UNKNOWN       // Retry with caution (limited attempts)
-};
+#include "../../include/search_engine/crawler/models/FailureType.h"
 
 class FailureClassifier {
 public:

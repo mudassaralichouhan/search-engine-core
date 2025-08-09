@@ -71,6 +71,7 @@ void URLFrontier::addURL(const std::string& url, bool force, CrawlPriority prior
 }
 
 std::string URLFrontier::getNextURL() {
+    // Use steady_clock for consistent monotonic time in readiness checks
     auto now = std::chrono::system_clock::now();
     
     // First, check retry queue for ready URLs
@@ -219,7 +220,6 @@ bool URLFrontier::isEmpty() const {
 }
 
 bool URLFrontier::hasReadyURLs() const {
-    auto now = std::chrono::system_clock::now();
     
     // Check main queue
     {

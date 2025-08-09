@@ -7,7 +7,7 @@
 #include "SiteProfile.h"
 #include "CrawlLog.h"
 #include "../../infrastructure.h"
-#include "../../../src/crawler/models/CrawlResult.h"
+#include "../crawler/models/CrawlResult.h"
 #include <memory>
 #include <string>
 #include <vector>

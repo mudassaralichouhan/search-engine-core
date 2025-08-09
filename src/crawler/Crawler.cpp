@@ -604,7 +604,7 @@ CrawlResult Crawler::processURL(const std::string& url) {
 
 void Crawler::extractAndAddURLs(const std::string& content, const std::string& baseUrl, int currentDepth) {
     // Check if we've reached the maximum depth limit
-    int nextDepth = currentDepth + 1;
+    size_t nextDepth = static_cast<size_t>(currentDepth + 1);
     if (nextDepth > config.maxDepth) {
         LOG_INFO("Reached maximum depth limit (" + std::to_string(config.maxDepth) + 
                 "), skipping link extraction from: " + baseUrl);
@@ -633,10 +633,10 @@ void Crawler::extractAndAddURLs(const std::string& content, const std::string& b
               " at depth " + std::to_string(currentDepth) + " (next depth would be " + 
               std::to_string(nextDepth) + ")");
     
-    int addedCount = 0;
-    int skippedCount = 0;
-    int depthSkippedCount = 0;
-    int pagesLimitSkippedCount = 0;
+    size_t addedCount = 0;
+    size_t skippedCount = 0;
+    size_t depthSkippedCount = 0;
+    size_t pagesLimitSkippedCount = 0;
     
     for (const auto& link : links) {
         // Check if adding this URL would exceed maxPages

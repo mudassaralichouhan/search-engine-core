@@ -78,6 +78,15 @@ A high-performance search engine built with C++, uWebSockets, MongoDB, and Redis
 │   ├── Logger.h                # Logging interface with multiple levels
 │   ├── search_core/            # Search API headers
 │   └── search_engine/          # Public API headers
+│       └── crawler/            # Public crawler API (new)
+│          ├── BrowserlessClient.h
+│          ├── PageFetcher.h
+│          ├── Crawler.h
+│          ├── CrawlerManager.h
+│          └── models/
+│             ├── CrawlConfig.h
+│             ├── CrawlResult.h
+│             └── FailureType.h
 ├── docs/                       # Comprehensive documentation
 │   ├── SPA_RENDERING.md        # SPA rendering setup and usage guide
 │   ├── content-storage-layer.md # Storage architecture documentation

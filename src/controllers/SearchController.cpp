@@ -1,9 +1,9 @@
 #include "SearchController.h"
 #include "../../include/Logger.h"
-#include "../../src/crawler/Crawler.h"
-#include "../../src/crawler/CrawlerManager.h"
-#include "../../src/crawler/PageFetcher.h"
-#include "../../src/crawler/models/CrawlConfig.h"
+#include "../../include/search_engine/crawler/Crawler.h"
+#include "../../include/search_engine/crawler/CrawlerManager.h"
+#include "../../include/search_engine/crawler/PageFetcher.h"
+#include "../../include/search_engine/crawler/models/CrawlConfig.h"
 #include "../../include/search_engine/storage/ContentStorage.h"
 #include <cstdlib>
 #include <chrono>

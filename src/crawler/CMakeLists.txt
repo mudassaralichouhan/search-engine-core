@@ -32,19 +32,22 @@ set(CRAWLER_SOURCES
     CrawlMetrics.cpp
 )
 
-# Always add BrowserlessClient.cpp and header
+# Always add BrowserlessClient.cpp and expose public headers under include/search_engine
 list(APPEND CRAWLER_SOURCES BrowserlessClient.cpp)
-list(APPEND CRAWLER_HEADERS ../../include/BrowserlessClient.h)
+file(GLOB_RECURSE CRAWLER_PUBLIC_HEADERS
+    ${CMAKE_SOURCE_DIR}/include/search_engine/crawler/*.h
+)
 
 # Create crawler library
-add_library(crawler STATIC ${CRAWLER_SOURCES} ${CRAWLER_HEADERS})
+add_library(crawler STATIC ${CRAWLER_SOURCES} ${CRAWLER_PUBLIC_HEADERS})
 
 # Set include directories
 target_include_directories(crawler
     PUBLIC
+        ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CURL_INCLUDE_DIRS}
-        ${GUMBO_INCLUDE_DIRS} # Add system Gumbo include directories
+        ${GUMBO_INCLUDE_DIRS}
 )
 
 # Link libraries
@@ -67,6 +70,7 @@ install(TARGETS crawler
     RUNTIME DESTINATION bin
 )
 
-install(FILES ${CRAWLER_HEADERS}
-    DESTINATION include/crawler
-) 
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/search_engine/crawler/
+    DESTINATION include/search_engine/crawler
+    FILES_MATCHING PATTERN "*.h"
+)
