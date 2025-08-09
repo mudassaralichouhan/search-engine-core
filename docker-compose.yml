@@ -19,6 +19,10 @@ services:
       - mongodb
     networks:
       - search-network
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+      - 8.8.4.4
 
   redis:
     image: redis:latest
@@ -62,6 +66,10 @@ services:
       - "MAX_MEMORY_PERCENT=95"
     networks:
       - search-network
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+      - 8.8.4.4
     deploy:
       resources:
         limits:

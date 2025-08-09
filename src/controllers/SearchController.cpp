@@ -120,6 +120,7 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                 bool extractTextContent = jsonBody.value("extractTextContent", true);  // Default to true for text extraction
                 bool spaRenderingEnabled = jsonBody.value("spaRenderingEnabled", true);  // Default to enabled
                 bool includeFullContent = jsonBody.value("includeFullContent", false);
+                int requestTimeoutMs = jsonBody.value("requestTimeout", 90000); // allow overriding request timeout
                 bool stopPreviousSessions = jsonBody.value("stopPreviousSessions", false);  // Default to false for concurrent crawling
                 std::string browserlessUrl = jsonBody.value("browserlessUrl", "http://browserless:3000");
                 
@@ -155,6 +156,7 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                     config.maxPages = maxPages;
                     config.maxDepth = maxDepth;
                     config.userAgent = "Hatefbot/1.0";
+                    config.requestTimeout = std::chrono::milliseconds(requestTimeoutMs);
                     config.extractTextContent = extractTextContent;
                     config.restrictToSeedDomain = restrictToSeedDomain;
                     config.followRedirects = followRedirects;

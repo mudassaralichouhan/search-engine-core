@@ -246,15 +246,47 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
         
         if (browserlessClient) {
             try {
+                // Measure SPA rendering time with both steady and system clocks for logging
+                auto spaStartSteady = std::chrono::steady_clock::now();
+                auto spaStartSys = std::chrono::system_clock::now();
+                long long spaStartMs = std::chrono::duration_cast<std::chrono::milliseconds>(spaStartSys.time_since_epoch()).count();
+
                 auto renderResult = browserlessClient->renderUrl(url, static_cast<int>(timeout.count()));
-                if (renderResult.success) {
-                    LOG_INFO("Successfully rendered SPA, content size: " + std::to_string(renderResult.html.size()) + " bytes");
-                    CrawlLogger::broadcastLog("✅ SPA successfully rendered for: " + url + " (Size: " + std::to_string(renderResult.html.size()) + " bytes)", "info");
+
+                auto spaEndSteady = std::chrono::steady_clock::now();
+                auto spaEndSys = std::chrono::system_clock::now();
+                long long spaEndMs = std::chrono::duration_cast<std::chrono::milliseconds>(spaEndSys.time_since_epoch()).count();
+                auto spaDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(spaEndSteady - spaStartSteady).count();
+
+                if (renderResult.success || !renderResult.html.empty()) {
+                    LOG_INFO("Successfully rendered SPA, content size: " + std::to_string(renderResult.html.size()) +
+                             " bytes, render_time_ms=" + std::to_string(renderResult.render_time.count()));
+                    CrawlLogger::broadcastLog(
+                        "✅ SPA successfully rendered for: " + url +
+                        " (size=" + std::to_string(renderResult.html.size()) +
+                        " bytes, duration_ms=" + std::to_string(renderResult.render_time.count()) +
+                        ", ~" + std::to_string(static_cast<double>(renderResult.render_time.count()) / 1000.0) + "s)",
+                        "info");
+                    result.content = renderResult.html;
+                    if (renderResult.status_code > 0) {
+                        result.statusCode = renderResult.status_code;
+                    }
+                } else {
+
                     result.content = renderResult.html;
                     result.statusCode = renderResult.status_code;
-                } else {
-                    LOG_WARNING("Failed to render SPA: " + renderResult.error + ", using original content");
-                    CrawlLogger::broadcastLog("⚠️ SPA rendering failed for: " + url + " - " + renderResult.error + " (using original content)", "warning");
+                    
+                    std::string msg =
+                        "⚠️ SPA rendering failed for: " + url +
+                        " - " + renderResult.error +
+                        " (using original content)" +
+                        " [start_ts_ms=" + std::to_string(spaStartMs) +
+                        ", end_ts_ms=" + std::to_string(spaEndMs) +
+                        ", duration_ms=" + std::to_string(spaDurationMs) +
+                        ", ~" + std::to_string(static_cast<double>(spaDurationMs) / 1000.0) + "s" +
+                        ", timeout_ms=" + std::to_string(static_cast<long long>(timeout.count())) + "]";
+                    LOG_WARNING(msg);
+                    CrawlLogger::broadcastLog(msg, "warning");
                 }
             } catch (const std::exception& e) {
                 LOG_ERROR("Exception during SPA rendering: " + std::string(e.what()) + ", using original content");
