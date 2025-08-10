@@ -55,9 +55,9 @@ sudo yum install libcurl-devel nlohmann-json-devel
 # Or build from source if not available in package manager
 ```
 
-### 2. Enhanced Docker Compose
+### 2. Enhanced Docker Compose (with Kafka Frontier)
 
-The `docker-compose.yml` includes the browserless service with optimized settings:
+The `docker-compose.yml` includes browserless for SPA rendering and Kafka/Zookeeper for the durable crawl frontier:
 
 ```yaml
 services:
@@ -68,6 +68,8 @@ services:
     environment:
       - MONGODB_URI=mongodb://mongodb:27017
       - REDIS_URI=tcp://redis:6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_FRONTIER_TOPIC=crawl.frontier
       - BROWSERLESS_URL=http://browserless:3000
       - SPA_RENDERING_ENABLED=true
       - DEFAULT_TIMEOUT=30000
@@ -75,6 +77,7 @@ services:
       - mongodb
       - redis
       - browserless
+      - kafka
 
   browserless:
     image: browserless/chrome:latest
@@ -89,6 +92,30 @@ services:
     networks:
       - search-network
     restart: unless-stopped
+
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+    networks:
+      - search-network
+
+  kafka:
+    image: bitnami/kafka:3.7
+    depends_on:
+      - zookeeper
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+    networks:
+      - search-network
 
   mongodb:
     image: mongodb/mongodb-enterprise-server:latest

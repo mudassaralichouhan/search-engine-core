@@ -2,14 +2,14 @@
 
 ## Overview
 
-This document describes the implementation of lazy/asynchronous database connection handling in the search engine core, following microservices best practices for **loose coupling**, **fault tolerance**, **self-healing**, and **fast startup**.
+This document describes the implementation of lazy/asynchronous connection handling in the search engine core (MongoDB, Redis, Browserless, and Kafka), following microservices best practices for **loose coupling**, **fault tolerance**, **self-healing**, and **fast startup**.
 
 ## Problem Statement
 
-The original implementation had tight coupling between the search engine core and its database dependencies:
+The original implementation had tight coupling between the search engine core and its service dependencies:
 
 1. **Blocking Startup**: Service wouldn't start if MongoDB/Redis were unavailable
-2. **Tight Coupling**: Direct dependency on database availability at startup
+2. **Tight Coupling**: Direct dependency on service availability at startup
 3. **No Self-Healing**: Required manual restart if databases recovered
 4. **Slow Startup**: Waited for all database connections before starting
 
@@ -93,6 +93,20 @@ void ContentStorage::ensureMongoConnection() {
 ```
 
 #### 3. Operation-Level Connection Handling
+#### 4. Kafka Frontier Lazy Initialization
+
+Kafka producer and consumer clients are created on first use and re-used across the process lifetime. Delivery reports and error callbacks are registered at initialization time. Consumer subscribes lazily and commits offsets only after successful processing.
+
+```cpp
+// Pseudocode
+class KafkaFrontier {
+  std::unique_ptr<KafkaProducer> producer; // uses librdkafka
+  std::unique_ptr<KafkaConsumer> consumer; // uses librdkafka
+  void ensureProducer();
+  void ensureConsumer();
+};
+```
+
 
 **Before:**
 ```cpp

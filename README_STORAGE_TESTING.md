@@ -18,6 +18,7 @@ The storage layer provides a dual-storage architecture:
 3. **vcpkg** package manager
 4. **MongoDB Community Server** (for MongoDB tests)
 5. **Redis with RediSearch module** (for Redis tests)
+6. **Apache Kafka + Zookeeper** (Docker, for Kafka-backed frontier tests)
 
 ### MongoDB Setup
 

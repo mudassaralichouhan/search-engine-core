@@ -28,6 +28,7 @@ A high-performance search engine built with C++, uWebSockets, MongoDB, and Redis
 - **Title Extraction**: Properly extracts titles from JavaScript-rendered pages (e.g., www.digikala.com)
 - **Configurable Content Storage**: Support for full content extraction with `includeFullContent` parameter
 - **Optimized Timeouts**: 30-second default timeout for complex JavaScript sites
+ - **Durable Frontier (Kafka-backed)**: At-least-once delivery using Apache Kafka with direct `librdkafka` client; restart-safe via MongoDB `frontier_tasks` state; admin visibility of URL states
 
 ### 🎯 **Modern Session-Aware API Architecture**
 - **Session-Based Crawler API**: Enhanced `/api/crawl/add-site` with session ID responses and management
@@ -427,11 +428,11 @@ For **Single-User/Resource-Constrained Environments**:
 - **Memory Optimization**: Prevents resource competition
 - **Controlled Processing**: Sequential crawl processing when needed
 
-## Docker Integration with Browserless
+## Docker Integration with Browserless & Kafka Frontier
 
 ### Enhanced Docker Compose
 
-The system includes browserless/Chrome service for SPA rendering:
+The system includes browserless/Chrome for SPA rendering and Kafka/Zookeeper for a durable crawl frontier:
 
 ```yaml
 services:
@@ -442,10 +443,14 @@ services:
     environment:
       - MONGODB_URI=mongodb://mongodb:27017
       - REDIS_URI=tcp://redis:6379
+      # Kafka frontier config
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_FRONTIER_TOPIC=crawl.frontier
     depends_on:
       - mongodb
       - redis
       - browserless
+      - kafka
 
   browserless:
     image: browserless/chrome:latest
@@ -455,6 +460,30 @@ services:
     environment:
       - MAX_CONCURRENT_SESSIONS=10
       - PREBOOT_CHROME=true
+    networks:
+      - search-network
+
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+    networks:
+      - search-network
+
+  kafka:
+    image: bitnami/kafka:3.7
+    depends_on:
+      - zookeeper
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
     networks:
       - search-network
 
@@ -468,6 +497,12 @@ services:
     ports:
       - "6379:6379"
 ```
+
+### Kafka Frontier Configuration
+
+- **Bootstrap servers**: `KAFKA_BOOTSTRAP_SERVERS` (default `kafka:9092` in compose)
+- **Frontier topic**: `KAFKA_FRONTIER_TOPIC` (default `crawl.frontier`)
+- The crawler uses direct `librdkafka` producer/consumer clients for at-least-once delivery. Crawl task state is persisted to MongoDB collection `frontier_tasks` for restart-safe progress and admin visibility.
 
 ### Environment Configuration
 
@@ -555,12 +590,13 @@ REDIS_URI=tcp://localhost:6379
 - **SPA Rendering**: browserless/Chrome, Docker
 - **Testing**: Catch2, Docker (for test infrastructure)
 - **Logging**: Custom centralized logging system
+ - **Kafka Frontier**: Apache Kafka (via Docker) and `librdkafka` (C client)
 
 ## Quick Start with Session-Based SPA Crawling
 
-1. **Start services**:
+1. **Start services** (includes Browserless + Kafka + Zookeeper):
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 2. **Start a crawl session**:
@@ -576,6 +612,8 @@ curl -X POST http://localhost:3000/api/crawl/add-site \
     "includeFullContent": true
   }'
 ```
+
+Kafka frontier is enabled automatically when `KAFKA_BOOTSTRAP_SERVERS` and `KAFKA_FRONTIER_TOPIC` are provided (as in the compose above). Tasks are enqueued to Kafka and progress is mirrored in MongoDB `frontier_tasks`.
 
 3. **Monitor session progress**:
 ```bash
