@@ -83,6 +83,28 @@ public:
     // Connection management
     Result<bool> testConnection();
     Result<bool> ensureIndexes();
+
+    // Frontier (durable queue) operations stored in collection 'frontier_tasks'
+    Result<bool> frontierUpsertTask(const std::string& sessionId,
+                                    const std::string& url,
+                                    const std::string& normalizedUrl,
+                                    const std::string& domain,
+                                    int depth,
+                                    int priority,
+                                    const std::string& status,
+                                    const std::chrono::system_clock::time_point& readyAt,
+                                    int retryCount);
+
+    Result<bool> frontierMarkCompleted(const std::string& sessionId,
+                                       const std::string& normalizedUrl);
+
+    Result<bool> frontierUpdateRetry(const std::string& sessionId,
+                                     const std::string& normalizedUrl,
+                                     int retryCount,
+                                     const std::chrono::system_clock::time_point& nextReadyAt);
+
+    Result<std::vector<std::pair<std::string,int>>> frontierLoadPending(const std::string& sessionId,
+                                                                        size_t limit = 2000);
 };
 
 } // namespace storage

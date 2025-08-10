@@ -20,6 +20,10 @@ struct CrawlConfig {
     bool restrictToSeedDomain = true;
     bool spaRenderingEnabled = true;
     std::string browserlessUrl = "http://browserless:3000";
+    // When true, prefer WebSocket/CDP transport to Browserless; falls back to HTTP on failure
+    bool useWebsocketForBrowserless = true;
+    // Size of WebSocket connection pool per CPU (1 means one ws per CPU)
+    size_t wsConnectionsPerCpu = 1;
     bool includeFullContent = false;
 
     int maxRetries = 3;
@@ -43,6 +47,11 @@ struct CrawlConfig {
     int circuitBreakerFailureThreshold = 5;
     std::chrono::minutes circuitBreakerResetTime{5};
     std::chrono::seconds rateLimitDelay{60};
+
+    // Kafka frontier (durable queue) configuration
+    bool useKafkaFrontier = false;
+    std::string kafkaBootstrapServers = "kafka:9092";
+    std::string kafkaTopic = "crawl.frontier";
 };
 
 

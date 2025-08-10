@@ -32,7 +32,10 @@ public:
     void setCustomHeaders(const std::vector<std::pair<std::string, std::string>>& headers);
     void setProxy(const std::string& proxy);
     void setVerifySSL(bool verify);
-    void setSpaRendering(bool enable, const std::string& browserless_url = "http://browserless:3000");
+    void setSpaRendering(bool enable,
+                         const std::string& browserless_url = "http://browserless:3000",
+                         bool useWebsocket = true,
+                         size_t wsConnectionsPerCpu = 1);
     bool isSpaPage(const std::string& html, const std::string& url);
 
 private:

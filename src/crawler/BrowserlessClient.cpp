@@ -5,6 +5,8 @@
 #include <nlohmann/json.hpp>
 #include <sstream>
 #include <thread>
+#include "../../include/search_engine/common/UrlSanitizer.h"
+#include "../../include/search_engine/crawler/BrowserlessClient.h"
 
 using json = nlohmann::json;
 
@@ -14,20 +16,13 @@ public:
         : browserless_url_(browserless_url), 
           user_agent_("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36") {
         
-        // Initialize CURL
+        // Initialize CURL globally (thread-safe, can be called multiple times)
         curl_global_init(CURL_GLOBAL_ALL);
-        curl_ = curl_easy_init();
-        
-        if (!curl_) {
-            LOG_ERROR("Failed to initialize CURL for BrowserlessClient");
-        }
     }
     
     ~Impl() {
-        if (curl_) {
-            curl_easy_cleanup(curl_);
-        }
-        curl_global_cleanup();
+        // Note: curl_global_cleanup should only be called when no other threads are using libcurl
+        // In a multi-threaded server, we typically don't call it
     }
     
     BrowserlessRenderResult renderUrl(const std::string& url, int timeout_ms, bool wait_for_network_idle) {
@@ -38,22 +33,27 @@ public:
         auto start_time = std::chrono::steady_clock::now();
         auto start_sys = std::chrono::system_clock::now();
         
-        LOG_INFO("Starting headless browser rendering for: " + url);
-        CrawlLogger::broadcastLog("🤖 Starting headless browser rendering for: " + url, "info");
+        using namespace search_engine::common;
+        const std::string cleanedUrl = sanitizeUrl(url);
+        LOG_INFO("Starting headless browser rendering for: " + cleanedUrl);
+        CrawlLogger::broadcastLog("🤖 Starting headless browser rendering for: " + cleanedUrl, "info");
         
         try {
-            if (!curl_) {
-                result.error = "CURL not initialized";
+            // Create a local CURL handle for thread safety
+            CURL* curl = curl_easy_init();
+            if (!curl) {
+                result.error = "Failed to create CURL handle";
+                LOG_ERROR("Failed to create local CURL handle for BrowserlessClient");
                 return result;
             }
             
-            // Prepare the request to browserless
+            // Prepare the request to browserless (don't sanitize the endpoint URL)
             std::string browserless_endpoint = browserless_url_ + "/content";
             
             // Create JSON payload for browserless (best-practice defaults)
             // Use 20s for network-idle waits, 5s for simple waits
             json payload = {
-                {"url", url},
+                {"url", cleanedUrl},
                 {"waitFor", wait_for_network_idle ? 20000 : 5000},
                 {"rejectResourceTypes", json::array({"image", "media", "font"})}
             };
@@ -69,44 +69,55 @@ public:
             
             std::string json_payload = payload.dump();
             
+            // Debug logging
+            LOG_DEBUG("Browserless endpoint: " + browserless_endpoint);
+            LOG_DEBUG("JSON payload size: " + std::to_string(json_payload.size()) + " bytes");
+            LOG_DEBUG("JSON payload: " + json_payload);
+            
             // Set up CURL options
-            curl_easy_reset(curl_);
-            curl_easy_setopt(curl_, CURLOPT_URL, browserless_endpoint.c_str());
-            curl_easy_setopt(curl_, CURLOPT_POSTFIELDS, json_payload.c_str());
-            curl_easy_setopt(curl_, CURLOPT_POSTFIELDSIZE, json_payload.length());
-            curl_easy_setopt(curl_, CURLOPT_TIMEOUT_MS, timeout_ms);
-            curl_easy_setopt(curl_, CURLOPT_CONNECTTIMEOUT_MS, 5000);  // Reduced connection timeout
-            // Allow slow/idle periods while headless browser renders heavy SPAs (effectively disabled)
-            curl_easy_setopt(curl_, CURLOPT_LOW_SPEED_LIMIT, 0L);
-            curl_easy_setopt(curl_, CURLOPT_LOW_SPEED_TIME, 0L);
+            curl_easy_setopt(curl, CURLOPT_URL, browserless_endpoint.c_str());
+            curl_easy_setopt(curl, CURLOPT_POST, 1L);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_payload.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(json_payload.size()));
+            curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, static_cast<long>(timeout_ms));
+            curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 5000L);  // Reduced connection timeout
+            curl_easy_setopt(curl, CURLOPT_PROTOCOLS, static_cast<long>(CURLPROTO_HTTP | CURLPROTO_HTTPS));
+            curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+            char errbuf[CURL_ERROR_SIZE] = {0};
+            curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
             // Keep connection alive
-            curl_easy_setopt(curl_, CURLOPT_TCP_KEEPALIVE, 1L);
-            curl_easy_setopt(curl_, CURLOPT_TCP_KEEPIDLE, 30L);
-            curl_easy_setopt(curl_, CURLOPT_TCP_KEEPINTVL, 15L);
-            curl_easy_setopt(curl_, CURLOPT_NOSIGNAL, 1L);
+            curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
+            curl_easy_setopt(curl, CURLOPT_TCP_KEEPIDLE, 30L);
+            curl_easy_setopt(curl, CURLOPT_TCP_KEEPINTVL, 15L);
+            curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
             
             // Set headers
             struct curl_slist* headers = nullptr;
             headers = curl_slist_append(headers, "Content-Type: application/json");
             headers = curl_slist_append(headers, ("User-Agent: " + user_agent_).c_str());
-            curl_easy_setopt(curl_, CURLOPT_HTTPHEADER, headers);
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
             
             // Set up response handling
             std::string response;
-            curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION, writeCallback);
-            curl_easy_setopt(curl_, CURLOPT_WRITEDATA, &response);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
             
-            // Perform the request
-            CURLcode res = curl_easy_perform(curl_);
+            // Perform the request in an isolated thread to avoid interaction with other libs
+            CURLcode res = CURLE_OK;
+            std::exception_ptr perform_exc;
+            std::thread curlThread([&]() {
+                res = curl_easy_perform(curl);
+            });
+            curlThread.join();
             
             // Clean up headers
             curl_slist_free_all(headers);
             
             if (res != CURLE_OK) {
-                result.error = "CURL error: " + std::string(curl_easy_strerror(res));
+                result.error = "CURL error: " + std::string(curl_easy_strerror(res)) + " | errbuf=" + errbuf + " | url_hex=" + hexDump(cleanedUrl);
                 // Try to capture HTTP code and any partial HTML
                 long http_code_partial = 0;
-                curl_easy_getinfo(curl_, CURLINFO_RESPONSE_CODE, &http_code_partial);
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code_partial);
                 result.status_code = static_cast<int>(http_code_partial);
                 if (!response.empty()) {
                     result.html = response; // partial but possibly useful HTML
@@ -118,7 +129,7 @@ public:
                     long long end_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_sys_err.time_since_epoch()).count();
                     auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_steady_err - start_time).count();
                     std::string msg =
-                        "⚠️ Browserless unavailable for: " + url +
+                        "⚠️ Browserless unavailable for: " + cleanedUrl +
                         " - falling back to static HTML" +
                         " [error=" + result.error +
                         ", start_ts_ms=" + std::to_string(start_ms) +
@@ -132,31 +143,35 @@ public:
                     LOG_WARNING(msg);
                     CrawlLogger::broadcastLog(msg, "warning");
                 } else {
-                    LOG_ERROR("Browserless CURL error for: " + url + " - " + result.error);
+                    LOG_ERROR("Browserless CURL error for: " + cleanedUrl + " - " + result.error);
                 }
+                curl_easy_cleanup(curl);
                 return result;
             }
             
             // Get HTTP status code
             long http_code = 0;
-            curl_easy_getinfo(curl_, CURLINFO_RESPONSE_CODE, &http_code);
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
             result.status_code = static_cast<int>(http_code);
             
             if (http_code == 200) {
                 result.html = response;
                 result.success = true;
-                LOG_INFO("Successfully rendered page via browserless: " + url + ", size: " + std::to_string(response.size()) + " bytes");
-                CrawlLogger::broadcastLog("✅ Headless browser rendering completed for: " + url + " (Size: " + std::to_string(response.size()) + " bytes)", "info");
+                LOG_INFO("Successfully rendered page via browserless: " + cleanedUrl + ", size: " + std::to_string(response.size()) + " bytes");
+                CrawlLogger::broadcastLog("✅ Headless browser rendering completed for: " + cleanedUrl + " (Size: " + std::to_string(response.size()) + " bytes)", "info");
             } else {
                 result.error = "Browserless returned HTTP " + std::to_string(http_code) + ": " + response;
                 LOG_ERROR("Browserless error: " + result.error);
-                CrawlLogger::broadcastLog("❌ Headless browser rendering failed for: " + url + " - HTTP " + std::to_string(http_code), "error");
+                CrawlLogger::broadcastLog("❌ Headless browser rendering failed for: " + cleanedUrl + " - HTTP " + std::to_string(http_code), "error");
             }
+            
+            // Clean up curl handle
+            curl_easy_cleanup(curl);
             
         } catch (const std::exception& e) {
             result.error = "Exception during rendering: " + std::string(e.what());
             LOG_ERROR("Exception in BrowserlessClient::renderUrl: " + result.error);
-            CrawlLogger::broadcastLog("❌ Headless browser rendering exception for: " + url + " - " + std::string(e.what()), "error");
+            CrawlLogger::broadcastLog("❌ Headless browser rendering exception for: " + cleanedUrl + " - " + std::string(e.what()), "error");
         }
         
         auto end_time = std::chrono::steady_clock::now();
@@ -178,22 +193,30 @@ public:
     
     bool isAvailable() {
         try {
-            if (!curl_) return false;
+            // Create a local CURL handle for thread safety
+            CURL* curl = curl_easy_init();
+            if (!curl) return false;
             
             // Try a simple health check
             std::string health_url = browserless_url_ + "/health";
             
-            curl_easy_reset(curl_);
-            curl_easy_setopt(curl_, CURLOPT_URL, health_url.c_str());
-            curl_easy_setopt(curl_, CURLOPT_TIMEOUT_MS, 5000);
-            curl_easy_setopt(curl_, CURLOPT_NOBODY, 1L);
+            curl_easy_setopt(curl, CURLOPT_URL, health_url.c_str());
+            curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 5000L);
+            curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
+            curl_easy_setopt(curl, CURLOPT_PROTOCOLS, static_cast<long>(CURLPROTO_HTTP | CURLPROTO_HTTPS));
+            curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
             
-            CURLcode res = curl_easy_perform(curl_);
-            if (res != CURLE_OK) return false;
+            CURLcode res = curl_easy_perform(curl);
+            bool available = false;
             
-            long http_code = 0;
-            curl_easy_getinfo(curl_, CURLINFO_RESPONSE_CODE, &http_code);
-            return http_code == 200;
+            if (res == CURLE_OK) {
+                long http_code = 0;
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+                available = (http_code == 200);
+            }
+            
+            curl_easy_cleanup(curl);
+            return available;
             
         } catch (...) {
             return false;
@@ -217,7 +240,6 @@ private:
     }
     
     std::string browserless_url_;
-    CURL* curl_;
     std::map<std::string, std::string> custom_headers_;
     std::string user_agent_;
 };
@@ -233,6 +255,40 @@ BrowserlessRenderResult BrowserlessClient::renderUrl(const std::string& url,
                                                     bool wait_for_network_idle) {
     return pImpl->renderUrl(url, timeout_ms, wait_for_network_idle);
 }
+
+// Transport wrapper (HTTP now; WS placeholder)
+namespace search_engine::crawler {
+
+BrowserlessTransportClient::BrowserlessTransportClient(const std::string& baseUrl,
+                                                       bool useWebsocket,
+                                                       size_t /*poolSize*/)
+    : baseUrl_(baseUrl), useWebsocket_(useWebsocket) {
+    // For now, always initialize HTTP client; WS to be added later
+    httpClient_ = std::make_unique<::BrowserlessClient>(baseUrl_);
+}
+
+BrowserlessTransportClient::~BrowserlessTransportClient() = default;
+
+BrowserlessRenderResult BrowserlessTransportClient::renderUrl(const std::string& url,
+                                                              int timeout_ms,
+                                                              bool wait_for_network_idle) {
+    // If WS enabled and implemented, route to WS pool. Fallback to HTTP
+    return httpClient_->renderUrl(url, timeout_ms, wait_for_network_idle);
+}
+
+bool BrowserlessTransportClient::isAvailable() {
+    return httpClient_->isAvailable();
+}
+
+void BrowserlessTransportClient::setHeaders(const std::map<std::string, std::string>& headers) {
+    httpClient_->setHeaders(headers);
+}
+
+void BrowserlessTransportClient::setUserAgent(const std::string& user_agent) {
+    httpClient_->setUserAgent(user_agent);
+}
+
+} // namespace search_engine::crawler
 
 bool BrowserlessClient::isAvailable() {
     return pImpl->isAvailable();

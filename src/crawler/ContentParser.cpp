@@ -5,6 +5,7 @@
 #include <cctype>
 #include <iostream>
 #include "../../include/Logger.h"
+#include "../../include/search_engine/common/UrlSanitizer.h"
 
 ContentParser::ContentParser() {
     LOG_DEBUG("ContentParser constructor called");
@@ -170,7 +171,7 @@ void ContentParser::extractLinksFromNode(const GumboNode* node, const std::strin
         if (node->v.element.tag == GUMBO_TAG_A) {
             GumboAttribute* href = gumbo_get_attribute(&node->v.element.attributes, "href");
             if (href) {
-                std::string url = normalizeUrl(href->value, baseUrl);
+                std::string url = normalizeUrl(search_engine::common::sanitizeUrl(href->value), baseUrl);
                 if (isValidUrl(url)) {
                     links.push_back(url);
                 }

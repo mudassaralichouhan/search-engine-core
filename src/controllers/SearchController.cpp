@@ -817,7 +817,7 @@ void SearchController::renderPage(uWS::HttpResponse<false>* res, uWS::HttpReques
             int timeout = requestJson.value("timeout", 30000); // ms
             // Create PageFetcher with SPA rendering enabled
             PageFetcher fetcher("Hatefbot/1.0", std::chrono::milliseconds(timeout), true, 5);
-            fetcher.setSpaRendering(true, "http://browserless:3000");
+            fetcher.setSpaRendering(true, "http://browserless:3000", /*useWebsocket=*/true, /*wsConnectionsPerCpu=*/1);
             auto startTime = std::chrono::high_resolution_clock::now();
             auto result = fetcher.fetch(url);
             auto endTime = std::chrono::high_resolution_clock::now();

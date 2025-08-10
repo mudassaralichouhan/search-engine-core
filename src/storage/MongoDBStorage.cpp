@@ -492,12 +492,132 @@ Result<bool> MongoDBStorage::ensureIndexes() {
         siteProfilesCollection_.create_index(domainIndex.view());
         siteProfilesCollection_.create_index(statusIndex.view());
         siteProfilesCollection_.create_index(lastModifiedIndex.view());
+
+        // Frontier tasks indexes
+        auto frontier = database_["frontier_tasks"];
+        // Unique per-session normalized_url
+        {
+            bsoncxx::builder::stream::document keys;
+            keys << "sessionId" << 1 << "normalizedUrl" << 1;
+            mongocxx::options::index idx_opts{};
+            idx_opts.unique(true);
+            frontier.create_index(keys.view(), idx_opts);
+        }
+        // Status + readyAt + priority for fast claims
+        {
+            bsoncxx::builder::stream::document keys;
+            keys << "status" << 1 << "readyAt" << 1 << "priority" << -1;
+            frontier.create_index(keys.view());
+        }
+        // Domain filter
+        {
+            bsoncxx::builder::stream::document keys;
+            keys << "domain" << 1;
+            frontier.create_index(keys.view());
+        }
         
         return Result<bool>::Success(true, "Indexes created successfully");
     } catch (const mongocxx::exception& e) {
         return Result<bool>::Failure("Failed to create indexes: " + std::string(e.what()));
     }
 } 
+
+Result<bool> MongoDBStorage::frontierUpsertTask(const std::string& sessionId,
+                                    const std::string& url,
+                                    const std::string& normalizedUrl,
+                                    const std::string& domain,
+                                    int depth,
+                                    int priority,
+                                    const std::string& status,
+                                    const std::chrono::system_clock::time_point& readyAt,
+                                    int retryCount) {
+    try {
+        auto frontier = database_["frontier_tasks"];
+        auto filter = document{} << "sessionId" << sessionId << "normalizedUrl" << normalizedUrl << finalize;
+        auto update = document{}
+            << "$set" << open_document
+                << "sessionId" << sessionId
+                << "url" << url
+                << "normalizedUrl" << normalizedUrl
+                << "domain" << domain
+                << "depth" << depth
+                << "priority" << priority
+                << "status" << status
+                << "readyAt" << timePointToBsonDate(readyAt)
+                << "retryCount" << retryCount
+                << "updatedAt" << timePointToBsonDate(std::chrono::system_clock::now())
+            << close_document
+            << "$setOnInsert" << open_document
+                << "createdAt" << timePointToBsonDate(std::chrono::system_clock::now())
+            << close_document
+        << finalize;
+        mongocxx::options::update opts;
+        opts.upsert(true);
+        frontier.update_one(filter.view(), update.view(), opts);
+        return Result<bool>::Success(true, "Frontier task upserted");
+    } catch (const mongocxx::exception& e) {
+        return Result<bool>::Failure("MongoDB frontierUpsertTask error: " + std::string(e.what()));
+    }
+}
+
+Result<bool> MongoDBStorage::frontierMarkCompleted(const std::string& sessionId,
+                                       const std::string& normalizedUrl) {
+    try {
+        auto frontier = database_["frontier_tasks"];
+        auto filter = document{} << "sessionId" << sessionId << "normalizedUrl" << normalizedUrl << finalize;
+        auto update = document{} << "$set" << open_document
+            << "status" << "completed"
+            << "updatedAt" << timePointToBsonDate(std::chrono::system_clock::now())
+        << close_document << finalize;
+        frontier.update_one(filter.view(), update.view());
+        return Result<bool>::Success(true, "Frontier task completed");
+    } catch (const mongocxx::exception& e) {
+        return Result<bool>::Failure("MongoDB frontierMarkCompleted error: " + std::string(e.what()));
+    }
+}
+
+Result<bool> MongoDBStorage::frontierUpdateRetry(const std::string& sessionId,
+                                     const std::string& normalizedUrl,
+                                     int retryCount,
+                                     const std::chrono::system_clock::time_point& nextReadyAt) {
+    try {
+        auto frontier = database_["frontier_tasks"];
+        auto filter = document{} << "sessionId" << sessionId << "normalizedUrl" << normalizedUrl << finalize;
+        auto update = document{} << "$set" << open_document
+            << "status" << "queued"
+            << "retryCount" << retryCount
+            << "readyAt" << timePointToBsonDate(nextReadyAt)
+            << "updatedAt" << timePointToBsonDate(std::chrono::system_clock::now())
+        << close_document << finalize;
+        frontier.update_one(filter.view(), update.view());
+        return Result<bool>::Success(true, "Frontier task retry updated");
+    } catch (const mongocxx::exception& e) {
+        return Result<bool>::Failure("MongoDB frontierUpdateRetry error: " + std::string(e.what()));
+    }
+}
+
+Result<std::vector<std::pair<std::string,int>>> MongoDBStorage::frontierLoadPending(const std::string& sessionId,
+                                                                        size_t limit) {
+    try {
+        auto frontier = database_["frontier_tasks"];
+        using namespace bsoncxx::builder::stream;
+        auto now = timePointToBsonDate(std::chrono::system_clock::now());
+        auto filter = document{} << "sessionId" << sessionId << "status" << "queued" << "readyAt" << open_document << "$lte" << now << close_document << finalize;
+        mongocxx::options::find opts;
+        opts.limit(static_cast<int64_t>(limit));
+        opts.sort(document{} << "priority" << -1 << "readyAt" << 1 << finalize);
+        auto cursor = frontier.find(filter.view(), opts);
+        std::vector<std::pair<std::string,int>> items;
+        for (const auto& doc : cursor) {
+            std::string url = std::string(doc["url"].get_string().value);
+            int depth = doc["depth"].get_int32().value;
+            items.emplace_back(url, depth);
+        }
+        return Result<std::vector<std::pair<std::string,int>>>::Success(std::move(items), "Loaded pending tasks");
+    } catch (const mongocxx::exception& e) {
+        return Result<std::vector<std::pair<std::string,int>>>::Failure("MongoDB frontierLoadPending error: " + std::string(e.what()));
+    }
+}
 
 // CrawlLog BSON helpers
 bsoncxx::document::value MongoDBStorage::crawlLogToBson(const CrawlLog& log) const {

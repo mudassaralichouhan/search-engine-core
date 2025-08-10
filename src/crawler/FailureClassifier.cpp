@@ -72,6 +72,13 @@ FailureType FailureClassifier::classifyFailure(int httpCode,
         return FailureType::TEMPORARY;
     }
     
+    // Treat curl transport/argument issues specially when HTTP code is 0
+    if (curlCode != CURLE_OK) {
+        if (curlCode == CURLE_BAD_FUNCTION_ARGUMENT || curlCode == CURLE_URL_MALFORMAT) {
+            LOG_DEBUG("Classified as PERMANENT (bad argument or malformed URL)");
+            return FailureType::PERMANENT;
+        }
+    }
     // Default to UNKNOWN for unclassified errors
     LOG_DEBUG("Classified as UNKNOWN (unrecognized error pattern)");
     return FailureType::UNKNOWN;

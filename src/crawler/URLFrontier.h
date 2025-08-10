@@ -7,6 +7,7 @@
 #include <mutex>
 #include <chrono>
 #include "FailureClassifier.h"
+namespace search_engine { namespace crawler { class FrontierPersistence; } }
 
 enum class CrawlPriority {
     LOW = 0,
@@ -39,6 +40,9 @@ class URLFrontier {
 public:
     URLFrontier();
     ~URLFrontier();
+
+    // Optional: persist queue state to MongoDB for restart/resume visibility
+    void setPersistentStorage(search_engine::crawler::FrontierPersistence* persistence, const std::string& sessionId);
 
     // Add a URL to the frontier
     void addURL(const std::string& url, bool force = false, CrawlPriority priority = CrawlPriority::NORMAL, int depth = 0);
@@ -83,6 +87,9 @@ public:
     // Extract domain from URL
     std::string extractDomain(const std::string& url) const;
     
+    // Mark completion in persistence (if configured)
+    void markCompleted(const std::string& url);
+    
     // Get retry statistics
     struct RetryStats {
         size_t totalRetries = 0;
@@ -123,4 +130,8 @@ private:
     mutable std::mutex visitedMutex;
     mutable std::mutex domainMutex;
     mutable std::mutex queuedMutex;
+
+    // Persistence hooks
+    search_engine::crawler::FrontierPersistence* persistence_ = nullptr;
+    std::string sessionId_;
 }; 

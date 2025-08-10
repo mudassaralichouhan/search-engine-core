@@ -7,6 +7,7 @@
 #include <thread>
 #include <filesystem>
 #include <regex>
+#include "../../include/search_engine/common/UrlSanitizer.h"
 
 PageFetcher::PageFetcher(const std::string& userAgent,
                          std::chrono::milliseconds timeout,
@@ -64,7 +65,9 @@ void PageFetcher::cleanupCurl() {
 }
 
 PageFetchResult PageFetcher::fetch(const std::string& url) {
-    LOG_INFO("PageFetcher::fetch called for URL: " + url);
+    using namespace search_engine::common;
+    const std::string cleanedUrl = sanitizeUrl(url);
+    LOG_INFO("PageFetcher::fetch called for URL: " + cleanedUrl);
     PageFetchResult result;
     result.success = false;
     result.statusCode = 0;  // Initialize status code to prevent garbage data
@@ -96,8 +99,12 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
     LOG_TRACE("Setting CURL options");
     
     // Set URL
-    LOG_TRACE("Setting URL: " + url);
-    curl_easy_setopt(localCurl, CURLOPT_URL, url.c_str());
+    LOG_TRACE("Setting URL: " + cleanedUrl);
+    curl_easy_setopt(localCurl, CURLOPT_URL, cleanedUrl.c_str());
+    curl_easy_setopt(localCurl, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+    // Set error buffer for better diagnostics
+    char errbuf[CURL_ERROR_SIZE] = {0};
+    curl_easy_setopt(localCurl, CURLOPT_ERRORBUFFER, errbuf);
     
     // Set user agent
     LOG_TRACE("Setting user agent: " + userAgent);
@@ -121,9 +128,7 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
     curl_easy_setopt(localCurl, CURLOPT_DNS_SERVERS, "8.8.8.8,8.8.4.4,1.1.1.1");
     
     // Set low-speed time and limit to abort slow connections
-    LOG_DEBUG("Setting low speed time: 10 seconds");
-    curl_easy_setopt(localCurl, CURLOPT_LOW_SPEED_TIME, 10L);
-    curl_easy_setopt(localCurl, CURLOPT_LOW_SPEED_LIMIT, 100L);
+    // Avoid misconfigured low speed options causing argument errors on some libcurl builds
     
     // Set redirect options
     LOG_TRACE("Setting follow location: " + std::string(followRedirects ? "true" : "false"));
@@ -183,7 +188,7 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
     }
     
     if (res != CURLE_OK) {
-        result.errorMessage = curl_easy_strerror(res);
+        result.errorMessage = std::string(curl_easy_strerror(res)) + " | errbuf=" + errbuf + " | url_hex=" + hexDump(cleanedUrl);
         result.curlCode = res;  // Store CURL error code
         LOG_ERROR("CURL error: " + result.errorMessage);
         curl_easy_cleanup(localCurl);
@@ -194,7 +199,7 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
     long statusCode;
     curl_easy_getinfo(localCurl, CURLINFO_RESPONSE_CODE, &statusCode);
     result.statusCode = static_cast<int>(statusCode);
-    LOG_INFO("===> HTTP Response status code: " + std::to_string(result.statusCode) + " for URL: " + url);
+    LOG_INFO("===> HTTP Response status code: " + std::to_string(result.statusCode) + " for URL: " + cleanedUrl);
     
     // Log different status code categories
     if (result.statusCode >= 200 && result.statusCode < 300) {
@@ -240,9 +245,9 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
     LOG_DEBUG("Cleaned up local CURL handle");
     
     // Check if this is a SPA and render if enabled
-    if (result.success && spaRenderingEnabled && isSpaPage(result.content, url)) {
-        LOG_INFO("SPA detected, attempting to render with browserless: " + url);
-        CrawlLogger::broadcastLog("🕷️ SPA detected for: " + url + " - switching to headless browser", "info");
+    if (result.success && spaRenderingEnabled && isSpaPage(result.content, cleanedUrl)) {
+        LOG_INFO("SPA detected, attempting to render with browserless: " + cleanedUrl);
+        CrawlLogger::broadcastLog("🕷️ SPA detected for: " + cleanedUrl + " - switching to headless browser", "info");
         
         if (browserlessClient) {
             try {
@@ -251,7 +256,7 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
                 auto spaStartSys = std::chrono::system_clock::now();
                 long long spaStartMs = std::chrono::duration_cast<std::chrono::milliseconds>(spaStartSys.time_since_epoch()).count();
 
-                auto renderResult = browserlessClient->renderUrl(url, static_cast<int>(timeout.count()));
+                auto renderResult = browserlessClient->renderUrl(cleanedUrl, static_cast<int>(timeout.count()));
 
                 auto spaEndSteady = std::chrono::steady_clock::now();
                 auto spaEndSys = std::chrono::system_clock::now();
@@ -262,7 +267,7 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
                     LOG_INFO("Successfully rendered SPA, content size: " + std::to_string(renderResult.html.size()) +
                              " bytes, render_time_ms=" + std::to_string(renderResult.render_time.count()));
                     CrawlLogger::broadcastLog(
-                        "✅ SPA successfully rendered for: " + url +
+                        "✅ SPA successfully rendered for: " + cleanedUrl +
                         " (size=" + std::to_string(renderResult.html.size()) +
                         " bytes, duration_ms=" + std::to_string(renderResult.render_time.count()) +
                         ", ~" + std::to_string(static_cast<double>(renderResult.render_time.count()) / 1000.0) + "s)",
@@ -277,7 +282,7 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
                     result.statusCode = renderResult.status_code;
                     
                     std::string msg =
-                        "⚠️ SPA rendering failed for: " + url +
+                        "⚠️ SPA rendering failed for: " + cleanedUrl +
                         " - " + renderResult.error +
                         " (using original content)" +
                         " [start_ts_ms=" + std::to_string(spaStartMs) +
@@ -290,7 +295,7 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
                 }
             } catch (const std::exception& e) {
                 LOG_ERROR("Exception during SPA rendering: " + std::string(e.what()) + ", using original content");
-                CrawlLogger::broadcastLog("❌ SPA rendering exception for: " + url + " - " + std::string(e.what()), "error");
+                CrawlLogger::broadcastLog("❌ SPA rendering exception for: " + cleanedUrl + " - " + std::string(e.what()), "error");
             }
         } else {
             LOG_WARNING("BrowserlessClient not available for SPA rendering");
@@ -342,16 +347,29 @@ int PageFetcher::progressCallback(void* clientp, double dltotal, double dlnow, d
     return 0;
 }
 
-void PageFetcher::setSpaRendering(bool enable, const std::string& browserless_url) {
-    LOG_DEBUG("PageFetcher::setSpaRendering called with enable: " + std::string(enable ? "true" : "false") + ", url: " + browserless_url);
+void PageFetcher::setSpaRendering(bool enable, const std::string& browserless_url, bool useWebsocket, size_t wsConnectionsPerCpu) {
+    using namespace search_engine::common;
+    const std::string cleaned = sanitizeUrl(browserless_url);
+    LOG_DEBUG("PageFetcher::setSpaRendering called with enable: " + std::string(enable ? "true" : "false") + ", url: " + cleaned +
+              (cleaned != browserless_url ? (" (sanitized from: " + browserless_url + ")") : ""));
     spaRenderingEnabled = enable;
     
     if (enable) {
-        browserlessClient = std::make_unique<BrowserlessClient>(browserless_url);
+        browserlessClient = std::make_unique<BrowserlessClient>(cleaned);
+        // Also create transport wrapper with WS preferred based on provided params
+        size_t hw = std::thread::hardware_concurrency();
+        if (hw == 0) hw = 2;
+        size_t pool = std::max<size_t>(1, wsConnectionsPerCpu) * hw;
+        browserlessTransport = std::make_unique<search_engine::crawler::BrowserlessTransportClient>(
+            cleaned,
+            useWebsocket,
+            pool
+        );
         LOG_INFO("BrowserlessClient initialized for SPA rendering");
-        CrawlLogger::broadcastLog("🤖 Headless browser enabled for SPA rendering (URL: " + browserless_url + ")", "info");
+        CrawlLogger::broadcastLog("🤖 Headless browser enabled for SPA rendering (URL: " + cleaned + ")", "info");
     } else {
         browserlessClient.reset();
+        browserlessTransport.reset();
         LOG_INFO("BrowserlessClient disabled");
         CrawlLogger::broadcastLog("🚫 Headless browser disabled", "info");
     }

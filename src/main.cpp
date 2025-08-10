@@ -23,8 +23,28 @@
 #include "websocket/CrawlLogsWebSocketHandler.h"
 #include <iostream>
 #include "../include/crawler/CrawlLogger.h"
+#include <csignal>
+#include <execinfo.h>
 
 using namespace std;
+// Crash handler to log a backtrace on segfaults
+void installCrashHandler() {
+    auto handler = [](int sig) {
+        void* array[64];
+        size_t size = backtrace(array, 64);
+        char** messages = backtrace_symbols(array, size);
+        std::cerr << "[FATAL] Signal " << sig << " received. Backtrace (" << size << "):\n";
+        if (messages) {
+            for (size_t i = 0; i < size; ++i) {
+                std::cerr << messages[i] << "\n";
+            }
+        }
+        std::cerr.flush();
+        _exit(128 + sig);
+    };
+    std::signal(SIGSEGV, handler);
+    std::signal(SIGABRT, handler);
+}
 
 
 
@@ -66,6 +86,7 @@ void traceRequest(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
 
 int main() {
     std::cout << "[MAIN-DEBUG] ============== SEARCH ENGINE STARTING ==============" << std::endl;
+    installCrashHandler();
     
     // Initialize logger
     std::cout << "[MAIN-DEBUG] Initializing logger..." << std::endl;

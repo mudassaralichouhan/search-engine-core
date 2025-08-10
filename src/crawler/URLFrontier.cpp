@@ -1,6 +1,8 @@
 #include "URLFrontier.h"
+#include "../../include/search_engine/crawler/FrontierPersistence.h"
 #include "../../include/Logger.h"
 #include "../../include/crawler/CrawlLogger.h"
+#include "../../include/search_engine/common/UrlSanitizer.h"
 #include <algorithm>
 #include <regex>
 #include <sstream>
@@ -15,12 +17,17 @@ URLFrontier::~URLFrontier() {
     LOG_DEBUG("URLFrontier destructor called");
 }
 
+void URLFrontier::setPersistentStorage(search_engine::crawler::FrontierPersistence* persistence, const std::string& sessionId) {
+    persistence_ = persistence;
+    sessionId_ = sessionId;
+}
+
 void URLFrontier::addURL(const std::string& url, bool force, CrawlPriority priority, int depth) {
     LOG_DEBUG("URLFrontier::addURL called with: " + url + (force ? " (force)" : "") +
               ", priority: " + std::to_string(static_cast<int>(priority)) + 
               ", depth: " + std::to_string(depth));
     
-    std::string normalizedURL = normalizeURL(url);
+    std::string normalizedURL = normalizeURL(search_engine::common::sanitizeUrl(url));
     
     if (force) {
         // Remove from visited set if present
@@ -63,6 +70,9 @@ void URLFrontier::addURL(const std::string& url, bool force, CrawlPriority prior
         QueuedURL queuedUrl = createQueuedURL(normalizedURL, priority, depth);
         mainQueue.push(queuedUrl);
         queuedURLs.insert(normalizedURL);
+        if (persistence_) {
+            persistence_->upsertTask(sessionId_, url, normalizedURL, extractDomain(normalizedURL), depth, static_cast<int>(priority), "queued", std::chrono::system_clock::now(), 0);
+        }
         
         LOG_DEBUG("Added URL to main queue: " + normalizedURL + 
                   ", main queue size: " + std::to_string(mainQueue.size()));
@@ -101,6 +111,9 @@ std::string URLFrontier::getNextURL() {
                 queuedURLs.erase(queuedUrl.url);  // Remove from tracking
                 LOG_INFO("Retrieved retry URL: " + queuedUrl.url + 
                         " (attempt " + std::to_string(queuedUrl.retryCount + 1) + ")");
+                if (persistence_) {
+                    persistence_->upsertTask(sessionId_, queuedUrl.url, normalizeURL(queuedUrl.url), extractDomain(queuedUrl.url), queuedUrl.depth, static_cast<int>(queuedUrl.priority), "claimed", std::chrono::system_clock::now(), queuedUrl.retryCount);
+                }
                 CrawlLogger::broadcastLog("Retrying URL: " + queuedUrl.url + 
                                         " (attempt " + std::to_string(queuedUrl.retryCount + 1) + ")", "info");
                 
@@ -144,6 +157,9 @@ std::string URLFrontier::getNextURL() {
             queuedURLs.erase(queuedUrl.url);  // Remove from tracking
             LOG_DEBUG("Retrieved URL from main queue: " + queuedUrl.url + 
                      ", remaining main queue size: " + std::to_string(mainQueue.size()));
+            if (persistence_) {
+                persistence_->upsertTask(sessionId_, queuedUrl.url, normalizeURL(queuedUrl.url), extractDomain(queuedUrl.url), queuedUrl.depth, static_cast<int>(queuedUrl.priority), "claimed", std::chrono::system_clock::now(), queuedUrl.retryCount);
+            }
             return queuedUrl.url;
         }
     }
@@ -162,7 +178,7 @@ void URLFrontier::scheduleRetry(const std::string& url,
              ", delay: " + std::to_string(delay.count()) + "ms" + 
              ", error: " + error);
     
-    std::string normalizedURL = normalizeURL(url);
+    std::string normalizedURL = normalizeURL(search_engine::common::sanitizeUrl(url));
     auto nextRetryTime = std::chrono::system_clock::now() + delay;
     
     QueuedURL retryUrl;
@@ -194,6 +210,9 @@ void URLFrontier::scheduleRetry(const std::string& url,
         
         retryQueue.push(retryUrl);
         queuedURLs.insert(normalizedURL);
+        if (persistence_) {
+            persistence_->updateRetry(sessionId_, normalizedURL, retryCount, nextRetryTime);
+        }
         
         LOG_DEBUG("Added URL to retry queue: " + normalizedURL + 
                   ", retry queue size: " + std::to_string(retryQueue.size()));
@@ -269,7 +288,7 @@ size_t URLFrontier::pendingRetryCount() const {
 
 void URLFrontier::markVisited(const std::string& url) {
     LOG_DEBUG("URLFrontier::markVisited called with: " + url);
-    std::string normalizedURL = normalizeURL(url);
+    std::string normalizedURL = normalizeURL(search_engine::common::sanitizeUrl(url));
     std::string domain = extractDomain(normalizedURL);
     
     std::lock_guard<std::mutex> visitedLock(visitedMutex);
@@ -282,7 +301,7 @@ void URLFrontier::markVisited(const std::string& url) {
 }
 
 bool URLFrontier::isVisited(const std::string& url) const {
-    std::string normalizedURL = normalizeURL(url);
+    std::string normalizedURL = normalizeURL(search_engine::common::sanitizeUrl(url));
     std::lock_guard<std::mutex> lock(visitedMutex);
     bool visited = visitedURLs.find(normalizedURL) != visitedURLs.end();
     LOG_TRACE("URLFrontier::isVisited - URL: " + url + " is " + (visited ? "visited" : "not visited"));
@@ -313,7 +332,7 @@ std::string URLFrontier::extractDomain(const std::string& url) const {
 }
 
 QueuedURL URLFrontier::getQueuedURLInfo(const std::string& url) const {
-    std::string normalizedURL = normalizeURL(url);
+    std::string normalizedURL = normalizeURL(search_engine::common::sanitizeUrl(url));
     
     // Check retry queue first
     {
@@ -370,8 +389,14 @@ void URLFrontier::removeFromMainQueue(const std::string& url) {
     LOG_DEBUG("URLFrontier::removeFromMainQueue called for: " + url + " (lazy removal)");
 }
 
+void URLFrontier::markCompleted(const std::string& url) {
+    if (!persistence_) return;
+    std::string normalized = normalizeURL(url);
+    persistence_->markCompleted(sessionId_, normalized);
+}
+
 std::string URLFrontier::normalizeURL(const std::string& url) const {
-    std::string normalized = url;
+    std::string normalized = search_engine::common::sanitizeUrl(url);
     
     // Convert to lowercase
     std::transform(normalized.begin(), normalized.end(), normalized.begin(), ::tolower);

@@ -148,13 +148,29 @@ RUN echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.
 #Install MongoDB shell for health checks
 RUN apt-get update && apt-get install -y mongodb-mongosh
 
-RUN apt install -y libcurl4-openssl-dev redis-tools
-RUN apt install -y \
+RUN apt-get update && apt-get install -y libcurl4-openssl-dev redis-tools
+
+
+RUN apt-get update && apt-get install -y \
     libwebsocketpp-dev \
     libboost-system-dev \
     libboost-thread-dev \
     libssl-dev \
-    libasio-dev
+    libasio-dev \
+    librdkafka-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+
+# Add ddebs repo
+# RUN tee /etc/apt/sources.list.d/ddebs.list <<EOF
+# deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe multiverse
+# deb http://ddebs.ubuntu.com $(lsb_release -cs)-updates main restricted universe multiverse
+# deb http://ddebs.ubuntu.com $(lsb_release -cs)-security main restricted universe multiverse
+# # Optional -proposed
+# # deb http://ddebs.ubuntu.com $(lsb_release -cs)-proposed main restricted universe multiverse
+# EOF
+# RUN apt update && apt install -y libcurl4-openssl-dev-dbgsym
+
 
 RUN ANTICASH=6
 # Set up project build
@@ -200,7 +216,7 @@ RUN echo "BASE_IMAGE: " ${BASE_IMAGE}
 # Runtime stage
 FROM ${BASE_IMAGE} AS runner
 
-
+RUN apt-get update && apt-get install -y librdkafka1 librdkafka-dev
 
 
 # Set default port

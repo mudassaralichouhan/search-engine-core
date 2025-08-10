@@ -8,6 +8,7 @@
 #include "CrawlMetrics.h"
 #include "../../include/Logger.h"
 #include "../../include/crawler/CrawlLogger.h"
+#include "../storage/MongoDBStorage.h"
 #include <thread>
 #include <chrono>
 #include <sstream>
@@ -25,6 +26,10 @@ Crawler::Crawler(const CrawlConfig& config, std::shared_ptr<search_engine::stora
     LOG_DEBUG("Crawler constructor called");
     
     urlFrontier = std::make_unique<URLFrontier>();
+    if (storage && storage->getMongoStorage()) {
+        static search_engine::storage::MongoFrontierPersistence staticMongoPers(storage->getMongoStorage());
+        urlFrontier->setPersistentStorage(&staticMongoPers, sessionId);
+    }
     robotsParser = std::make_unique<RobotsTxtParser>();
     pageFetcher = std::make_unique<PageFetcher>(
         config.userAgent,
@@ -50,9 +55,32 @@ void Crawler::start() {
     
     LOG_INFO("Starting crawler");
     logToCrawlSession("Starting crawler", "info");
+
+    // Rehydrate pending tasks from persistent frontier (Mongo) if available
+    try {
+        if (storage && storage->getMongoStorage()) {
+            auto pending = storage->getMongoStorage()->frontierLoadPending(sessionId, 2000);
+            if (pending.success) {
+                size_t count = 0;
+                for (const auto& item : pending.value) {
+                    const auto& url = item.first;
+                    int depth = item.second;
+                    urlFrontier->addURL(url, false, CrawlPriority::NORMAL, depth);
+                    count++;
+                }
+                LOG_INFO("Rehydrated " + std::to_string(count) + " pending frontier tasks from Mongo");
+            } else {
+                LOG_WARNING("Failed to load pending frontier tasks: " + pending.message);
+            }
+        }
+    } catch (const std::exception& e) {
+        LOG_WARNING(std::string("Error rehydrating frontier: ") + e.what());
+    }
     isRunning = true;
-    std::thread crawlerThread(&Crawler::crawlLoop, this);
-    crawlerThread.detach();
+    if (workerThread.joinable()) {
+        workerThread.join();
+    }
+    workerThread = std::thread(&Crawler::crawlLoop, this);
 }
 
 void Crawler::stop() {
@@ -62,6 +90,10 @@ void Crawler::stop() {
     // Give a small delay to ensure all results are collected
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     
+    // Wait for worker thread to exit cleanly
+    if (workerThread.joinable()) {
+        workerThread.join();
+    }
     // Log the final results count
     {
         std::lock_guard<std::mutex> lock(resultsMutex);
@@ -488,7 +520,7 @@ CrawlResult Crawler::processURL(const std::string& url) {
     if (pageFetcher->isSpaPage(fetchResult.content, url)) {
         LOG_INFO("SPA detected for URL: " + url + ". Fetching with headless browser...");
         // Ensure SPA rendering is enabled (should be, but double-check)
-        pageFetcher->setSpaRendering(true, "http://browserless:3000");
+        pageFetcher->setSpaRendering(true, config.browserlessUrl, /*useWebsocket=*/config.useWebsocketForBrowserless, /*wsConnectionsPerCpu=*/config.wsConnectionsPerCpu);
         auto spaFetchResult = pageFetcher->fetch(url);
         LOG_DEBUG("[processURL] spaFetchResult.statusCode: " + std::to_string(spaFetchResult.statusCode));
         LOG_DEBUG("[processURL] spaFetchResult.contentType: " + spaFetchResult.contentType);
@@ -638,13 +670,14 @@ void Crawler::extractAndAddURLs(const std::string& content, const std::string& b
     size_t depthSkippedCount = 0;
     size_t pagesLimitSkippedCount = 0;
     
+    // Allow the frontier to grow larger than maxPages to ensure sufficient candidates
+    const size_t frontierCap = std::max<size_t>(config.maxPages * 10, 1000);
     for (const auto& link : links) {
-        // Check if adding this URL would exceed maxPages
+        // Throttle only when the frontier is very large, not at maxPages
         size_t queueSize = urlFrontier->size() + urlFrontier->retryQueueSize();
-        if (queueSize >= config.maxPages) {
-            LOG_DEBUG("Queue size (" + std::to_string(queueSize) + 
-                     ") would exceed maxPages (" + std::to_string(config.maxPages) + 
-                     "), skipping: " + link);
+        if (queueSize >= frontierCap) {
+            LOG_DEBUG("Frontier size (" + std::to_string(queueSize) +
+                      ") reached cap (" + std::to_string(frontierCap) + ") - throttling additions, skipping: " + link);
             pagesLimitSkippedCount++;
             continue;
         }

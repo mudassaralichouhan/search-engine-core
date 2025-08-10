@@ -214,38 +214,42 @@ std::vector<std::string> CrawlerManager::getActiveSessions() {
 }
 
 void CrawlerManager::cleanupCompletedSessions() {
-    std::lock_guard<std::mutex> lock(sessionsMutex_);
-    
+    // First, collect sessions to clean up without holding the lock during join
+    std::vector<std::string> toCleanupIds;
     auto now = std::chrono::system_clock::now();
-    auto it = sessions_.begin();
-    
-    while (it != sessions_.end()) {
-        const auto& session = it->second;
-        
-        // Clean up completed sessions older than 5 minutes
-        bool shouldCleanup = session->isCompleted && 
-            (now - session->createdAt) > std::chrono::minutes(5);
-        
-        if (shouldCleanup) {
-            LOG_INFO("Cleaning up completed session: " + session->id);
-            
-            // Stop crawler if still running
-            if (session->crawler) {
-                session->crawler->stop();
+    {
+        std::lock_guard<std::mutex> lock(sessionsMutex_);
+        for (const auto& [id, session] : sessions_) {
+            bool shouldCleanup = session->isCompleted &&
+                (now - session->createdAt) > std::chrono::minutes(5);
+            if (shouldCleanup) {
+                toCleanupIds.push_back(id);
             }
-            
-            // Wait for thread to complete
-            if (session->crawlThread.joinable()) {
-                // Unlock temporarily to allow thread to complete
-                sessionsMutex_.unlock();
-                session->crawlThread.join();
-                sessionsMutex_.lock();
-            }
-            
-            it = sessions_.erase(it);
-        } else {
-            ++it;
         }
+    }
+
+    for (const auto& id : toCleanupIds) {
+        std::unique_ptr<CrawlSession> sessionCopy;
+        {
+            std::lock_guard<std::mutex> lock(sessionsMutex_);
+            auto it = sessions_.find(id);
+            if (it == sessions_.end()) continue;
+            LOG_INFO("Cleaning up completed session: " + it->second->id);
+            // Move session out so we can operate without holding the map lock
+            sessionCopy = std::move(it->second);
+            sessions_.erase(it);
+        }
+
+        // Stop crawler if still running
+        if (sessionCopy && sessionCopy->crawler) {
+            sessionCopy->crawler->stop();
+        }
+
+        // Join thread outside of the sessions mutex to avoid deadlocks and UB
+        if (sessionCopy && sessionCopy->crawlThread.joinable()) {
+            sessionCopy->crawlThread.join();
+        }
+        // sessionCopy goes out of scope and is destroyed cleanly here
     }
 }
 

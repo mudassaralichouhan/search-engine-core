@@ -88,6 +88,7 @@ endif()
 add_library(common STATIC
     src/common/Logger.cpp
     src/common/JsMinifier.cpp
+    src/common/UrlSanitizer.cpp
 )
 target_include_directories(common 
     PUBLIC 
@@ -126,6 +127,7 @@ list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*test.*\\.cpp$")
 list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*common/.*\\.cpp$")
 list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*scoring/.*\\.cpp$")
 list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*search_core/.*\\.cpp$")
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*kafka/.*\\.cpp$")
 
 file(GLOB_RECURSE HEADERS "include/*.h" "include/*.hpp")
 

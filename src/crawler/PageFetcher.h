@@ -6,6 +6,7 @@
 #include <chrono>
 #include <curl/curl.h>
 #include "BrowserlessClient.h"
+#include "../../include/search_engine/crawler/BrowserlessClient.h"
 
 struct PageFetchResult {
     bool success;
@@ -44,7 +45,10 @@ public:
     void setVerifySSL(bool verify);
     
     // Enable/disable SPA detection and rendering
-    void setSpaRendering(bool enable, const std::string& browserless_url = "http://browserless:3000");
+    void setSpaRendering(bool enable,
+                         const std::string& browserless_url = "http://browserless:3000",
+                         bool useWebsocket = true,
+                         size_t wsConnectionsPerCpu = 1);
     
     // Check if a page is likely a SPA (Single Page Application)
     bool isSpaPage(const std::string& html, const std::string& url);
@@ -76,4 +80,5 @@ private:
     // SPA rendering support
     bool spaRenderingEnabled;
     std::unique_ptr<BrowserlessClient> browserlessClient;
+    std::unique_ptr<search_engine::crawler::BrowserlessTransportClient> browserlessTransport;
 }; 

@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <mutex>
 #include <atomic>
+#include <thread>
 #include "models/CrawlResult.h"
 #include "models/CrawlConfig.h"
 #include "../../include/search_engine/storage/ContentStorage.h"
@@ -85,6 +86,7 @@ private:
     
     CrawlConfig config;
     std::atomic<bool> isRunning;
+    std::thread workerThread;
     mutable std::mutex resultsMutex;
     std::vector<CrawlResult> results;
     std::unordered_set<std::string> visitedURLs;

@@ -34,6 +34,14 @@ set(CRAWLER_SOURCES
 
 # Always add BrowserlessClient.cpp and expose public headers under include/search_engine
 list(APPEND CRAWLER_SOURCES BrowserlessClient.cpp)
+
+# Optionally add Kafka client if librdkafka is available on this system
+find_path(RDKAFKA_INCLUDE_DIR NAMES librdkafka/rdkafka.h PATHS /usr/include /usr/local/include)
+find_library(RDKAFKA_LIBRARY NAMES rdkafka PATHS /usr/lib /usr/local/lib)
+if (RDKAFKA_INCLUDE_DIR AND RDKAFKA_LIBRARY)
+    message(STATUS "librdkafka found: ${RDKAFKA_LIBRARY} with includes at ${RDKAFKA_INCLUDE_DIR}")
+    list(APPEND CRAWLER_SOURCES ../kafka/KafkaProducer.cpp ../kafka/KafkaConsumer.cpp)
+endif()
 file(GLOB_RECURSE CRAWLER_PUBLIC_HEADERS
     ${CMAKE_SOURCE_DIR}/include/search_engine/crawler/*.h
 )
@@ -48,6 +56,7 @@ target_include_directories(crawler
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CURL_INCLUDE_DIRS}
         ${GUMBO_INCLUDE_DIRS}
+        $<$<BOOL:${RDKAFKA_INCLUDE_DIR}>:${RDKAFKA_INCLUDE_DIR}>
 )
 
 # Link libraries
@@ -58,6 +67,7 @@ target_link_libraries(crawler
         ${CURL_LIBRARIES}
         ${GUMBO_LIBRARIES} # Link against system Gumbo found by pkg-config
         Threads::Threads
+        $<$<BOOL:${RDKAFKA_LIBRARY}>:${RDKAFKA_LIBRARY}>
 )
 
 # Set compiler flags (Linux/GCC)
