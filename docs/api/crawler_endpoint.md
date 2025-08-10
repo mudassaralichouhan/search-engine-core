@@ -147,6 +147,7 @@ GET /api/crawl/details?domain=digikala.com
       "contentSize": 583940,
       "contentType": "text/html; charset=UTF-8",
       "crawlTime": 1753444482,
+      "downloadTimeMs": 2783,
       "description": "فروشگاه اینترنتی دیجی‌کالا",
       "domain": "www.digikala.com",
       "httpStatusCode": 200,
@@ -161,6 +162,9 @@ GET /api/crawl/details?domain=digikala.com
   ]
 }
 ```
+
+Note:
+- downloadTimeMs: Total time in milliseconds to download the page (measured from download start to completion). This is recorded for every successfully processed URL.
 
 #### Error Responses
 

@@ -118,7 +118,7 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                 int maxRedirects = jsonBody.value("maxRedirects", 10);  // Increase default to handle cookie redirects
                 bool force = jsonBody.value("force", true);  // Default to true for re-crawling
                 bool extractTextContent = jsonBody.value("extractTextContent", true);  // Default to true for text extraction
-                bool spaRenderingEnabled = jsonBody.value("spaRenderingEnabled", true);  // Default to enabled
+                bool spaRenderingEnabled = jsonBody.value("spaRenderingEnabled", false);  // Default to disabled
                 bool includeFullContent = jsonBody.value("includeFullContent", false);
                 int requestTimeoutMs = jsonBody.value("requestTimeout", 90000); // allow overriding request timeout
                 bool stopPreviousSessions = jsonBody.value("stopPreviousSessions", false);  // Default to false for concurrent crawling
@@ -512,6 +512,7 @@ void SearchController::getCrawlDetails(uWS::HttpResponse<false>* res, uWS::HttpR
                 if (log.errorMessage) logJson["errorMessage"] = *log.errorMessage;
                 if (log.title) logJson["title"] = *log.title;
                 if (log.description) logJson["description"] = *log.description;
+                if (log.downloadTimeMs) logJson["downloadTimeMs"] = *log.downloadTimeMs;
                 logsJson.push_back(logJson);
             }
             response["url"] = urlFilter;
@@ -539,6 +540,7 @@ void SearchController::getCrawlDetails(uWS::HttpResponse<false>* res, uWS::HttpR
                 if (log.errorMessage) logJson["errorMessage"] = *log.errorMessage;
                 if (log.title) logJson["title"] = *log.title;
                 if (log.description) logJson["description"] = *log.description;
+                if (log.downloadTimeMs) logJson["downloadTimeMs"] = *log.downloadTimeMs;
                 logsJson.push_back(logJson);
             }
             response["domain"] = domainFilter;

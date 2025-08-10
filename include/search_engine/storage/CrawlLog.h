@@ -21,6 +21,7 @@ struct CrawlLog {
     std::vector<std::string> links;
     std::optional<std::string> title;
     std::optional<std::string> description;
+    std::optional<int64_t> downloadTimeMs; // Download time in milliseconds
 };
 
 } // namespace storage

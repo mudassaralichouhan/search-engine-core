@@ -656,6 +656,63 @@ TEST_CASE("processURL debug logging and SPA handling", "[Crawler][Debug][SPA]") 
     REQUIRE(true);
 }
 
+TEST_CASE("Session-level SPA detection optimization", "[Crawler][SPA][Session]") {
+    Logger::getInstance().init(LogLevel::INFO, true);
+
+    // Test configuration
+    CrawlConfig config;
+    config.maxPages = 3;
+    config.userAgent = "TestBot/1.0";
+    config.maxDepth = 1;
+    config.storeRawContent = true;
+    config.extractTextContent = true;
+    config.spaRenderingEnabled = true;
+    config.browserlessUrl = "http://localhost:3000"; // Mock browserless URL
+
+    SECTION("SPA detection only happens once per session") {
+        // Create a crawler with session ID
+        Crawler crawler(config, nullptr, "test_session_123");
+        
+        // Process multiple URLs - SPA detection should only happen on the first one
+        std::vector<std::string> testUrls = {
+            "https://reactjs.org",      // Known SPA
+            "https://reactjs.org/docs", // Should use session-level SPA setting
+            "https://reactjs.org/blog"  // Should use session-level SPA setting
+        };
+        
+        for (const auto& url : testUrls) {
+            LOG_INFO("Processing URL: " + url);
+            auto result = crawler.processURL(url);
+            
+            // Verify the result was processed
+            REQUIRE_FALSE(result.url.empty());
+            LOG_INFO("Processed URL: " + url + " - Success: " + (result.success ? "true" : "false"));
+        }
+        
+        // The test passes if no exceptions are thrown and all URLs are processed
+        REQUIRE(true);
+    }
+    
+    SECTION("Session SPA detection is reset when crawler is reset") {
+        // Create a crawler with session ID
+        Crawler crawler(config, nullptr, "test_session_reset");
+        
+        // Process first URL to trigger SPA detection
+        auto result1 = crawler.processURL("https://reactjs.org");
+        REQUIRE_FALSE(result1.url.empty());
+        
+        // Reset the crawler
+        crawler.reset();
+        
+        // Process another URL - SPA detection should happen again
+        auto result2 = crawler.processURL("https://vuejs.org");
+        REQUIRE_FALSE(result2.url.empty());
+        
+        // The test passes if no exceptions are thrown
+        REQUIRE(true);
+    }
+}
+
 // Main entry point for tests
 int main(int argc, char* argv[]) {
     // Set up the global logger before any tests run

@@ -634,6 +634,7 @@ bsoncxx::document::value MongoDBStorage::crawlLogToBson(const CrawlLog& log) con
     if (log.errorMessage) builder << "errorMessage" << *log.errorMessage;
     if (log.title) builder << "title" << *log.title;
     if (log.description) builder << "description" << *log.description;
+    if (log.downloadTimeMs) builder << "downloadTimeMs" << *log.downloadTimeMs;
     auto linksArray = array{};
     for (const auto& link : log.links) linksArray << link;
     builder << "links" << linksArray;
@@ -653,6 +654,7 @@ CrawlLog MongoDBStorage::bsonToCrawlLog(const bsoncxx::document::view& doc) cons
     if (doc["errorMessage"]) log.errorMessage = std::string(doc["errorMessage"].get_string().value);
     if (doc["title"]) log.title = std::string(doc["title"].get_string().value);
     if (doc["description"]) log.description = std::string(doc["description"].get_string().value);
+    if (doc["downloadTimeMs"]) log.downloadTimeMs = doc["downloadTimeMs"].get_int64().value;
     if (doc["links"]) {
         for (const auto& link : doc["links"].get_array().value) {
             log.links.push_back(std::string(link.get_string().value));

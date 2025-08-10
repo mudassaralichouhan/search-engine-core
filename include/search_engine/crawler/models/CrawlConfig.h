@@ -18,7 +18,7 @@ struct CrawlConfig {
     bool storeRawContent = true;
     bool extractTextContent = true;
     bool restrictToSeedDomain = true;
-    bool spaRenderingEnabled = true;
+    bool spaRenderingEnabled = false;
     std::string browserlessUrl = "http://browserless:3000";
     // When true, prefer WebSocket/CDP transport to Browserless; falls back to HTTP on failure
     bool useWebsocketForBrowserless = true;

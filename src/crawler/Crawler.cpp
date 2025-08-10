@@ -20,7 +20,9 @@ Crawler::Crawler(const CrawlConfig& config, std::shared_ptr<search_engine::stora
     : storage(storage)
     , config(config)
     , isRunning(false)
-    , sessionId(sessionId) {
+    , sessionId(sessionId)
+    , sessionSpaDetected(false)
+    , sessionSpaChecked(false) {
     // Initialize logger with DEBUG level to troubleshoot textContent issue
     Logger::getInstance().init(LogLevel::DEBUG, true);
     LOG_DEBUG("Crawler constructor called");
@@ -120,6 +122,10 @@ void Crawler::reset() {
     if (urlFrontier) {
         urlFrontier = std::make_unique<URLFrontier>();
     }
+    
+    // Reset session-level SPA detection flags
+    sessionSpaDetected.store(false);
+    sessionSpaChecked.store(false);
     
     LOG_INFO("Crawler state reset completed");
 }
@@ -232,6 +238,17 @@ void Crawler::crawlLoop() {
         
         result.finishedAt = std::chrono::system_clock::now();
         result.domain = urlFrontier->extractDomain(url);
+        
+        // Copy startedAt from the results vector
+        {
+            std::lock_guard<std::mutex> lock(resultsMutex);
+            for (const auto& r : results) {
+                if (r.url == url) {
+                    result.startedAt = r.startedAt;
+                    break;
+                }
+            }
+        }
         
         // Record metrics for this request (after domain is set)
         metrics->recordRequest();
@@ -378,16 +395,26 @@ void Crawler::crawlLoop() {
             
             // Enhanced WebSocket log for successful downloads
             std::string wsMessage;
+            // Calculate download time for display
+            std::string downloadTimeStr = "";
+            if (result.startedAt.time_since_epoch().count() > 0 && result.finishedAt.time_since_epoch().count() > 0) {
+                auto downloadDuration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    result.finishedAt - result.startedAt);
+                downloadTimeStr = " | Time: " + std::to_string(downloadDuration.count()) + "ms";
+            }
+            
             if (isRetryAttempt) {
                 wsMessage = "✅ SUCCESS (Retry " + std::to_string(result.retryCount) + ") " + url + 
                            " - HTTP " + std::to_string(result.statusCode) + 
                            " | Domain: " + result.domain +
-                           " | Size: " + std::to_string(result.contentSize) + " bytes";
+                           " | Size: " + std::to_string(result.contentSize) + " bytes" +
+                           downloadTimeStr;
             } else {
                 wsMessage = "✅ SUCCESS " + url + 
                            " - HTTP " + std::to_string(result.statusCode) + 
                            " | Domain: " + result.domain +
-                           " | Size: " + std::to_string(result.contentSize) + " bytes";
+                           " | Size: " + std::to_string(result.contentSize) + " bytes" +
+                           downloadTimeStr;
             }
             
             logToCrawlSession(wsMessage, "info");
@@ -427,6 +454,12 @@ void Crawler::crawlLoop() {
             log.links = result.links;
             log.title = result.title;
             log.description = result.metaDescription;
+            // Calculate and store download time in milliseconds
+            if (result.startedAt.time_since_epoch().count() > 0 && result.finishedAt.time_since_epoch().count() > 0) {
+                auto downloadDuration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    result.finishedAt - result.startedAt);
+                log.downloadTimeMs = downloadDuration.count();
+            }
             auto logResult = storage->storeCrawlLog(log);
             if (logResult.success) {
                 LOG_INFO("Crawl log entry saved for URL: " + url);
@@ -516,11 +549,33 @@ CrawlResult Crawler::processURL(const std::string& url) {
     // Get CURL error code directly from fetch result
     CURLcode curlErrorCode = fetchResult.curlCode;
 
-    // If SPA rendering is enabled and the page is detected as SPA, fetch again with headless browser
-    if (pageFetcher->isSpaPage(fetchResult.content, url)) {
-        LOG_INFO("SPA detected for URL: " + url + ". Fetching with headless browser...");
-        // Ensure SPA rendering is enabled (should be, but double-check)
-        pageFetcher->setSpaRendering(true, config.browserlessUrl, /*useWebsocket=*/config.useWebsocketForBrowserless, /*wsConnectionsPerCpu=*/config.wsConnectionsPerCpu);
+    // Session-level SPA detection: only check once per session
+    bool shouldUseSpaRendering = false;
+    
+    if (!sessionSpaChecked.load()) {
+        // First URL in session - check if it's an SPA
+        if (pageFetcher->isSpaPage(fetchResult.content, url)) {
+            LOG_INFO("SPA detected for first URL in session: " + url + ". Enabling SPA rendering for entire session.");
+            sessionSpaDetected.store(true);
+            sessionSpaChecked.store(true);
+            shouldUseSpaRendering = true;
+            
+            // Enable SPA rendering for the entire session
+            pageFetcher->setSpaRendering(true, config.browserlessUrl, /*useWebsocket=*/config.useWebsocketForBrowserless, /*wsConnectionsPerCpu=*/config.wsConnectionsPerCpu);
+            logToCrawlSession("SPA detected for session - enabling SPA rendering for all URLs", "info");
+        } else {
+            LOG_INFO("No SPA detected for first URL in session: " + url + ". SPA rendering disabled for session.");
+            sessionSpaDetected.store(false);
+            sessionSpaChecked.store(true);
+        }
+    } else if (sessionSpaDetected.load()) {
+        // SPA was already detected for this session, use SPA rendering
+        shouldUseSpaRendering = true;
+    }
+    
+    // If SPA rendering is enabled for the session, fetch with headless browser
+    if (shouldUseSpaRendering) {
+        LOG_INFO("Using SPA rendering for URL: " + url + " (session-level SPA detected)");
         auto spaFetchResult = pageFetcher->fetch(url);
         LOG_DEBUG("[processURL] spaFetchResult.statusCode: " + std::to_string(spaFetchResult.statusCode));
         LOG_DEBUG("[processURL] spaFetchResult.contentType: " + spaFetchResult.contentType);
@@ -619,8 +674,26 @@ CrawlResult Crawler::processURL(const std::string& url) {
         QueuedURL queuedInfo = urlFrontier->getQueuedURLInfo(url);
         int currentDepth = queuedInfo.depth;
         
-        // Add new URLs to the frontier
-        extractAndAddURLs(fetchResult.content, url, currentDepth);
+        // Check if we should extract links based on current progress
+        size_t currentSuccessfulDownloads = 0;
+        {
+            std::lock_guard<std::mutex> lock(resultsMutex);
+            for (const auto& r : results) {
+                if (r.success && r.crawlStatus == "downloaded") {
+                    currentSuccessfulDownloads++;
+                }
+            }
+        }
+        
+        // Only extract links if we haven't reached the limit and don't have too many queued
+        size_t queueSize = urlFrontier->size() + urlFrontier->retryQueueSize();
+        if (currentSuccessfulDownloads < config.maxPages && queueSize < config.maxPages * 3) {
+            extractAndAddURLs(fetchResult.content, url, currentDepth);
+        } else {
+            LOG_INFO("Skipping link extraction - already have " + std::to_string(currentSuccessfulDownloads) + 
+                    " downloads and " + std::to_string(queueSize) + " queued URLs (limit: " + 
+                    std::to_string(config.maxPages) + ")");
+        }
     } else {
         LOG_INFO("🔍 TEXTCONTENT DEBUG: ❌ Content is NOT HTML, skipping parsing. Content-Type: " + fetchResult.contentType);
     }
@@ -660,6 +733,16 @@ void Crawler::extractAndAddURLs(const std::string& content, const std::string& b
         return;
     }
     
+    // Additional check: if we have enough URLs in queue to potentially reach maxPages, stop adding more
+    size_t queueSize = urlFrontier->size() + urlFrontier->retryQueueSize();
+    if (currentSuccessfulDownloads + queueSize >= config.maxPages) {
+        LOG_INFO("Queue already has enough URLs to potentially reach maxPages (" + 
+                std::to_string(currentSuccessfulDownloads) + " downloaded + " + 
+                std::to_string(queueSize) + " queued >= " + std::to_string(config.maxPages) + 
+                "), skipping link extraction from: " + baseUrl);
+        return;
+    }
+    
     auto links = contentParser->extractLinks(content, baseUrl);
     LOG_DEBUG("Extracted " + std::to_string(links.size()) + " links from " + baseUrl + 
               " at depth " + std::to_string(currentDepth) + " (next depth would be " + 
@@ -670,11 +753,21 @@ void Crawler::extractAndAddURLs(const std::string& content, const std::string& b
     size_t depthSkippedCount = 0;
     size_t pagesLimitSkippedCount = 0;
     
-    // Allow the frontier to grow larger than maxPages to ensure sufficient candidates
-    const size_t frontierCap = std::max<size_t>(config.maxPages * 10, 1000);
+    // Very restrictive frontier cap - only allow 1.5x maxPages to prevent excessive queue buildup
+    const size_t frontierCap = std::max<size_t>(config.maxPages * 3 / 2, 10);
     for (const auto& link : links) {
-        // Throttle only when the frontier is very large, not at maxPages
+        // Check current successful downloads and queue size
         size_t queueSize = urlFrontier->size() + urlFrontier->retryQueueSize();
+        
+        // If we're already close to maxPages in successful downloads, be very restrictive
+        if (currentSuccessfulDownloads >= config.maxPages * 0.6) {
+            LOG_DEBUG("Close to maxPages limit (" + std::to_string(currentSuccessfulDownloads) + 
+                      "/" + std::to_string(config.maxPages) + ") - skipping URL: " + link);
+            pagesLimitSkippedCount++;
+            continue;
+        }
+        
+        // Throttle when frontier gets large
         if (queueSize >= frontierCap) {
             LOG_DEBUG("Frontier size (" + std::to_string(queueSize) +
                       ") reached cap (" + std::to_string(frontierCap) + ") - throttling additions, skipping: " + link);
@@ -693,6 +786,22 @@ void Crawler::extractAndAddURLs(const std::string& content, const std::string& b
             
             // Add URL with proper depth tracking
             urlFrontier->addURL(link, false, CrawlPriority::NORMAL, nextDepth);
+            
+            // Also add to results vector for timing tracking
+            {
+                std::lock_guard<std::mutex> lock(resultsMutex);
+                // Check if URL already exists in results
+                auto it = std::find_if(results.begin(), results.end(), [&](const CrawlResult& r) { return r.url == link; });
+                if (it == results.end()) {
+                    CrawlResult result;
+                    result.url = link;
+                    result.domain = urlFrontier->extractDomain(link);
+                    result.crawlStatus = "queued";
+                    result.queuedAt = std::chrono::system_clock::now();
+                    results.push_back(result);
+                }
+            }
+            
             addedCount++;
         }
     }

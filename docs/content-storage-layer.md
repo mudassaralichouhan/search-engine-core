@@ -105,6 +105,25 @@ Result<std::vector<SiteProfile>> getSiteProfilesByCrawlStatus(CrawlStatus status
 Result<int64_t> getTotalSiteCount();
 Result<int64_t> getSiteCountByStatus(CrawlStatus status);
 ```
+### Crawl Logs Schema (MongoDB `crawl_logs` collection)
+
+The crawler writes a lightweight history record for each processed URL. Fields include:
+
+- url: string
+- domain: string
+- crawlTime: date
+- status: string (e.g., SUCCESS, FAILED)
+- httpStatusCode: int
+- errorMessage: string? (optional)
+- contentSize: int64
+- contentType: string
+- links: string[]
+- title: string? (optional)
+- description: string? (optional)
+- downloadTimeMs: int64? (optional) — total time in milliseconds from download start to completion
+
+This record is used by the `/api/crawl/details` endpoint and for operational monitoring.
+
 
 #### MongoDB Indexes:
 - `url`: Unique index for fast URL lookups

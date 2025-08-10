@@ -4,6 +4,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <algorithm>
+#include <numeric>
 #include <thread>
 #include <filesystem>
 #include <regex>
@@ -376,6 +377,8 @@ void PageFetcher::setSpaRendering(bool enable, const std::string& browserless_ur
 }
 
 bool PageFetcher::isSpaPage(const std::string& html, const std::string& url) {
+    LOG_DEBUG("SPA detection called for URL: " + url + " with HTML size: " + std::to_string(html.size()));
+    
     // Only check for VERY specific SPA framework patterns that are DEFINITIVE and UNAMBIGUOUS
     std::vector<std::string> definiteSpaIndicators = {
         // React specific - these are only found in actual React SPAs
@@ -410,23 +413,29 @@ bool PageFetcher::isSpaPage(const std::string& html, const std::string& url) {
         
         // State management objects that are SPA-specific
         "window.__REDUX_DEVTOOLS_EXTENSION__", "window.__PRELOADED_STATE__",
-        "window.store", "window.__STATE__", "window.__INITIAL_STATE__"
+        "window.__STATE__", "window.__INITIAL_STATE__"
     };
     
     // Count definitive indicators
     int definitiveCount = 0;
+    std::vector<std::string> foundIndicators;
+    
     for (const auto& indicator : definiteSpaIndicators) {
         if (html.find(indicator) != std::string::npos) {
             definitiveCount++;
-            LOG_DEBUG("Definitive SPA indicator found: " + indicator + " in URL: " + url);
+            foundIndicators.push_back(indicator);
+            LOG_INFO("🚨 SPA indicator found: " + indicator + " in URL: " + url);
         }
     }
     
     // Only return true if we have DEFINITIVE proof it's a SPA
     if (definitiveCount > 0) {
-        LOG_DEBUG("SPA detected by " + std::to_string(definitiveCount) + " definitive indicators in URL: " + url);
+        LOG_INFO("🚨 SPA detected by " + std::to_string(definitiveCount) + " definitive indicators in URL: " + url);
+        LOG_INFO("🚨 Found indicators: " + std::accumulate(foundIndicators.begin(), foundIndicators.end(), std::string(), 
+            [](const std::string& a, const std::string& b) { return a + (a.empty() ? "" : ", ") + b; }));
         return true;
     }
     
+    LOG_DEBUG("No SPA indicators found for URL: " + url);
     return false;
 } 

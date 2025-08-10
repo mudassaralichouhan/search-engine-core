@@ -92,4 +92,8 @@ private:
     std::unordered_set<std::string> visitedURLs;
     std::string seedDomain;  // Domain of the first seed URL
     std::string sessionId;   // Session ID for logging
+    
+    // Session-level SPA detection tracking
+    std::atomic<bool> sessionSpaDetected{false};  // Track if SPA was detected for this session
+    std::atomic<bool> sessionSpaChecked{false};   // Track if SPA detection has been performed for this session
 }; 
