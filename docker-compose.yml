@@ -93,12 +93,13 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - "MAX_CONCURRENT_SESSIONS=30"
-      - "PREBOOT_CHROME=true"
-      - "CONNECTION_TIMEOUT=60000"
-      - "QUEUE_LIMIT=100"
-      - "MAX_CPU_PERCENT=95"
-      - "MAX_MEMORY_PERCENT=95"
+      - "MAX_CONCURRENT_SESSIONS=5"
+      - "PREBOOT_CHROME=false"
+      - "CONNECTION_TIMEOUT=30000"
+      - "CHROME_REFRESH_TIME=30000"
+      - "QUEUE_LIMIT=50"
+      - "MAX_CPU_PERCENT=80"
+      - "MAX_MEMORY_PERCENT=80"
     networks:
       - search-network
     dns:
@@ -108,9 +109,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
-        reservations:
           memory: 1G
+        reservations:
+          memory: 512M
 
   # mongodb-test:
   #   build:

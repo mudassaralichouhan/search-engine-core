@@ -236,18 +236,18 @@ void Crawler::crawlLoop() {
         CrawlResult result = processURL(url);
         auto processEndTime = std::chrono::steady_clock::now();
         
-        result.finishedAt = std::chrono::system_clock::now();
         result.domain = urlFrontier->extractDomain(url);
         
-        // Copy startedAt from the results vector
-        {
-            std::lock_guard<std::mutex> lock(resultsMutex);
-            for (const auto& r : results) {
-                if (r.url == url) {
-                    result.startedAt = r.startedAt;
-                    break;
-                }
-            }
+        // Use the startedAt time from the processURL result
+        // The startedAt is now set at the beginning of processURL
+        LOG_DEBUG("Using timing from processURL result for URL: " + url + 
+                  " - startedAt: " + std::to_string(result.startedAt.time_since_epoch().count()) + 
+                  " - finishedAt: " + std::to_string(result.finishedAt.time_since_epoch().count()));
+        
+        // Ensure timing is set even if not found in results vector
+        if (result.startedAt.time_since_epoch().count() == 0) {
+            LOG_WARNING("startedAt not found in processURL result for URL: " + url + ", using processStartTime");
+            result.startedAt = std::chrono::system_clock::now() - (processEndTime - processStartTime);
         }
         
         // Record metrics for this request (after domain is set)
@@ -459,6 +459,11 @@ void Crawler::crawlLoop() {
                 auto downloadDuration = std::chrono::duration_cast<std::chrono::milliseconds>(
                     result.finishedAt - result.startedAt);
                 log.downloadTimeMs = downloadDuration.count();
+                LOG_DEBUG("Crawl log timing for URL: " + url + " - downloadTimeMs: " + std::to_string(*log.downloadTimeMs));
+            } else {
+                LOG_WARNING("Missing timing data for URL: " + url + 
+                           " - startedAt: " + std::to_string(result.startedAt.time_since_epoch().count()) + 
+                           " - finishedAt: " + std::to_string(result.finishedAt.time_since_epoch().count()));
             }
             auto logResult = storage->storeCrawlLog(log);
             if (logResult.success) {
@@ -513,7 +518,12 @@ CrawlResult Crawler::processURL(const std::string& url) {
     CrawlResult result;
     result.url = url;
     result.crawlTime = std::chrono::system_clock::now();
-    LOG_DEBUG("[processURL] Initialized CrawlResult");
+    
+    // Set startedAt time at the beginning of processURL to ensure timing is captured
+    auto processStartTime = std::chrono::system_clock::now();
+    result.startedAt = processStartTime;
+    
+    LOG_DEBUG("[processURL] Initialized CrawlResult with startedAt: " + std::to_string(result.startedAt.time_since_epoch().count()));
     
     LOG_INFO("Processing URL: " + url);
     
@@ -587,6 +597,13 @@ CrawlResult Crawler::processURL(const std::string& url) {
             LOG_WARNING("Failed to fetch SPA-rendered HTML for URL: " + url + ". Using original content.");
         }
     }
+    
+    // Set finishedAt time after all fetching is complete
+    result.finishedAt = std::chrono::system_clock::now();
+    LOG_DEBUG("[processURL] SPA timing for URL: " + url + 
+              " - startedAt: " + std::to_string(result.startedAt.time_since_epoch().count()) + 
+              " - finishedAt: " + std::to_string(result.finishedAt.time_since_epoch().count()) +
+              " - SPA rendering used: " + (shouldUseSpaRendering ? "true" : "false"));
     
     // Always store the result data, regardless of status code
     result.statusCode = fetchResult.statusCode;

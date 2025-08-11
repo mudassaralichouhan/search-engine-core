@@ -24,7 +24,7 @@ public:
     
     BrowserlessRenderResult renderUrl(const std::string& url, 
                                      int timeout_ms = 60000, 
-                                     bool wait_for_network_idle = true);
+                                     bool wait_for_network_idle = false);
     bool isAvailable();
     void setHeaders(const std::map<std::string, std::string>& headers);
     void setUserAgent(const std::string& user_agent);

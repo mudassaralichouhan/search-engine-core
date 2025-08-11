@@ -142,7 +142,7 @@ Manages full-text search capabilities with RediSearch:
 - **Highlighting**: Search term highlighting in results
 - **Suggestions**: Autocomplete functionality
 
-#### Search Schema:
+#### Search Schema
 ```
 Field         Type      Weight  Features
 url           TEXT      -       SORTABLE, NOINDEX
