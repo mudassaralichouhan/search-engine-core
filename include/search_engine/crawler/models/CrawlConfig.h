@@ -8,10 +8,10 @@
 struct CrawlConfig {
     size_t maxPages = 1000;
     size_t maxDepth = 5;
-    std::chrono::milliseconds politenessDelay{1000};
+    std::chrono::milliseconds politenessDelay{500};
     std::string userAgent = "Hatefbot/1.0";
     size_t maxConcurrentConnections = 5;
-    std::chrono::milliseconds requestTimeout{30000};
+    std::chrono::milliseconds requestTimeout{15000};
     bool respectRobotsTxt = true;
     bool followRedirects = true;
     size_t maxRedirects = 5;

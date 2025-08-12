@@ -51,11 +51,19 @@ public:
             std::string browserless_endpoint = browserless_url_ + "/content";
             
             // Create JSON payload for browserless (best-practice defaults)
-            // Use 20s for network-idle waits, 5s for simple waits
+            // Use 8s for network-idle waits, 2s for simple waits (optimized for speed)
             json payload = {
                 {"url", cleanedUrl},
-                {"waitFor", wait_for_network_idle ? 20000 : 3000},
-                {"rejectResourceTypes", json::array({"image", "media", "font"})}
+                {"waitFor", wait_for_network_idle ? 8000 : 2000},
+                {"rejectResourceTypes", json::array({"image", "media", "font"})},
+                {"gotoOptions", {
+                    {"waitUntil", "domcontentloaded"},
+                    {"timeout", 10000}
+                }},
+                {"viewport", {
+                    {"width", 1280},
+                    {"height", 720}
+                }}
             };
             
             // Add custom headers if any
@@ -80,7 +88,7 @@ public:
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_payload.c_str());
             curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(json_payload.size()));
             curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, static_cast<long>(timeout_ms));
-            curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 5000L);  // Reduced connection timeout
+            curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 3000L);  // Reduced connection timeout for speed
             curl_easy_setopt(curl, CURLOPT_PROTOCOLS, static_cast<long>(CURLPROTO_HTTP | CURLPROTO_HTTPS));
             curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
             char errbuf[CURL_ERROR_SIZE] = {0};

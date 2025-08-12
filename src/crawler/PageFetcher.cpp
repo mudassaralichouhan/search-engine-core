@@ -257,7 +257,9 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
                 auto spaStartSys = std::chrono::system_clock::now();
                 long long spaStartMs = std::chrono::duration_cast<std::chrono::milliseconds>(spaStartSys.time_since_epoch()).count();
 
-                auto renderResult = browserlessClient->renderUrl(cleanedUrl, static_cast<int>(timeout.count()));
+                // Use optimized timeout for SPA rendering (15 seconds max for speed)
+                int spaTimeout = std::min(static_cast<int>(timeout.count()), 15000);
+                auto renderResult = browserlessClient->renderUrl(cleanedUrl, spaTimeout);
 
                 auto spaEndSteady = std::chrono::steady_clock::now();
                 auto spaEndSys = std::chrono::system_clock::now();
