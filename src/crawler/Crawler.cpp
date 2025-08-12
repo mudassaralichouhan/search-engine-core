@@ -704,12 +704,15 @@ CrawlResult Crawler::processURL(const std::string& url) {
         
         // Only extract links if we haven't reached the limit and don't have too many queued
         size_t queueSize = urlFrontier->size() + urlFrontier->retryQueueSize();
-        if (currentSuccessfulDownloads < config.maxPages && queueSize < config.maxPages * 3) {
+        size_t totalQueued = currentSuccessfulDownloads + queueSize;
+        
+        // More permissive link extraction - only skip if we have significantly more URLs than needed
+        if (currentSuccessfulDownloads < config.maxPages && totalQueued < config.maxPages * 3) {
             extractAndAddURLs(fetchResult.content, url, currentDepth);
         } else {
             LOG_INFO("Skipping link extraction - already have " + std::to_string(currentSuccessfulDownloads) + 
-                    " downloads and " + std::to_string(queueSize) + " queued URLs (limit: " + 
-                    std::to_string(config.maxPages) + ")");
+                    " downloads and " + std::to_string(queueSize) + " queued URLs (total: " + 
+                    std::to_string(totalQueued) + ", limit: " + std::to_string(config.maxPages * 3) + ")");
         }
     } else {
         LOG_INFO("🔍 TEXTCONTENT DEBUG: ❌ Content is NOT HTML, skipping parsing. Content-Type: " + fetchResult.contentType);
@@ -750,13 +753,17 @@ void Crawler::extractAndAddURLs(const std::string& content, const std::string& b
         return;
     }
     
-    // Additional check: if we have enough URLs in queue to potentially reach maxPages, stop adding more
+    // More permissive queue size check - only stop if we have significantly more URLs than needed
+    // This accounts for potential failures and ensures we have enough URLs to reach maxPages
     size_t queueSize = urlFrontier->size() + urlFrontier->retryQueueSize();
-    if (currentSuccessfulDownloads + queueSize >= config.maxPages) {
-        LOG_INFO("Queue already has enough URLs to potentially reach maxPages (" + 
+    size_t totalQueued = currentSuccessfulDownloads + queueSize;
+    
+    // Only stop adding if we have more than 3x maxPages in total (allowing for failures)
+    if (totalQueued >= config.maxPages * 3) {
+        LOG_INFO("Queue has sufficient URLs to reach maxPages with failure margin (" + 
                 std::to_string(currentSuccessfulDownloads) + " downloaded + " + 
-                std::to_string(queueSize) + " queued >= " + std::to_string(config.maxPages) + 
-                "), skipping link extraction from: " + baseUrl);
+                std::to_string(queueSize) + " queued = " + std::to_string(totalQueued) + 
+                " >= " + std::to_string(config.maxPages * 3) + "), skipping link extraction from: " + baseUrl);
         return;
     }
     
@@ -770,21 +777,22 @@ void Crawler::extractAndAddURLs(const std::string& content, const std::string& b
     size_t depthSkippedCount = 0;
     size_t pagesLimitSkippedCount = 0;
     
-    // Very restrictive frontier cap - only allow 1.5x maxPages to prevent excessive queue buildup
-    const size_t frontierCap = std::max<size_t>(config.maxPages * 3 / 2, 10);
+    // More permissive frontier cap - allow up to 5x maxPages to ensure we have enough URLs
+    const size_t frontierCap = std::max<size_t>(config.maxPages * 5, 50);
     for (const auto& link : links) {
         // Check current successful downloads and queue size
         size_t queueSize = urlFrontier->size() + urlFrontier->retryQueueSize();
+        size_t totalQueued = currentSuccessfulDownloads + queueSize;
         
-        // If we're already close to maxPages in successful downloads, be very restrictive
-        if (currentSuccessfulDownloads >= config.maxPages * 0.6) {
-            LOG_DEBUG("Close to maxPages limit (" + std::to_string(currentSuccessfulDownloads) + 
+        // Only be restrictive when we're very close to maxPages in successful downloads
+        if (currentSuccessfulDownloads >= config.maxPages * 0.9) {
+            LOG_DEBUG("Very close to maxPages limit (" + std::to_string(currentSuccessfulDownloads) + 
                       "/" + std::to_string(config.maxPages) + ") - skipping URL: " + link);
             pagesLimitSkippedCount++;
             continue;
         }
         
-        // Throttle when frontier gets large
+        // Throttle when frontier gets very large
         if (queueSize >= frontierCap) {
             LOG_DEBUG("Frontier size (" + std::to_string(queueSize) +
                       ") reached cap (" + std::to_string(frontierCap) + ") - throttling additions, skipping: " + link);

@@ -54,7 +54,7 @@ public:
             // Use 20s for network-idle waits, 5s for simple waits
             json payload = {
                 {"url", cleanedUrl},
-                {"waitFor", wait_for_network_idle ? 20000 : 5000},
+                {"waitFor", wait_for_network_idle ? 20000 : 3000},
                 {"rejectResourceTypes", json::array({"image", "media", "font"})}
             };
             

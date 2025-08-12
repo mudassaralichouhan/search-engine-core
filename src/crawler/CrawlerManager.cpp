@@ -91,10 +91,13 @@ std::string CrawlerManager::startCrawl(const std::string& url, const CrawlConfig
                     // Check if crawler is still running by looking at results
                     auto results = crawler->getResults();
                     bool hasActiveDownloads = false;
+                    size_t successfulDownloads = 0;
                     for (const auto& result : results) {
                         if (result.crawlStatus == "queued" || result.crawlStatus == "downloading") {
                             hasActiveDownloads = true;
-                            break;
+                        }
+                        if (result.success && result.crawlStatus == "downloaded") {
+                            successfulDownloads++;
                         }
                     }
                     
@@ -104,8 +107,8 @@ std::string CrawlerManager::startCrawl(const std::string& url, const CrawlConfig
                         break;
                     }
                     
-                    if (results.size() >= crawler->getConfig().maxPages) {
-                        LOG_INFO("Reached max pages for session: " + sessionId);
+                    if (successfulDownloads >= crawler->getConfig().maxPages) {
+                        LOG_INFO("Reached max pages for session: " + sessionId + " (successful downloads: " + std::to_string(successfulDownloads) + ")");
                         break;
                     }
                 }
