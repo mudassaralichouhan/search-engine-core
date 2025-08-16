@@ -2,7 +2,8 @@
 
 ## Current Setup
 
-The Dockerfile now installs CMake 3.24.0 from official releases instead of Ubuntu's repository version (3.22.1).
+The Dockerfile now installs CMake 3.24.0 from official releases instead of
+Ubuntu's repository version (3.22.1).
 
 ## Option 1: Install Latest CMake (3.31.0)
 
@@ -53,6 +54,7 @@ RUN apt-get update && apt-get install -y \
 Check available versions at: https://github.com/Kitware/CMake/releases
 
 Common versions:
+
 - 3.24.0 - Stable, good C++20 support
 - 3.28.0 - Newer features
 - 3.31.0 - Latest as of late 2024
@@ -64,4 +66,4 @@ After changing the CMake installation in Dockerfile:
 1. Go to GitHub Actions
 2. Run "CI/CD Pipeline" manually
 3. Change "Cache version" from `1` to `2`
-4. This forces Docker to rebuild from the CMake installation layer 
+4. This forces Docker to rebuild from the CMake installation layer

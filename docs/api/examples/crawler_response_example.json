@@ -79,12 +79,7 @@
     "confidence": 0.95,
     "scriptToContentRatio": 0.85,
     "hasStateObjects": true,
-    "detectedPatterns": [
-      "__NEXT_DATA__",
-      "data-reactroot",
-      "_app-",
-      "react"
-    ]
+    "detectedPatterns": ["__NEXT_DATA__", "data-reactroot", "_app-", "react"]
   },
   "errorResponses": {
     "badRequest": {
@@ -99,4 +94,4 @@
       "message": "Please provide a 'domain' or 'url' query parameter to fetch crawl details."
     }
   }
-} 
+}

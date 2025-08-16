@@ -1,10 +1,13 @@
 # Storage Layer Testing Guide
 
-This guide covers building and testing the storage layer of the search engine, which includes MongoDB storage, RedisSearch integration, and unified content storage.
+This guide covers building and testing the storage layer of the search engine,
+which includes MongoDB storage, RedisSearch integration, and unified content
+storage.
 
 ## Overview
 
 The storage layer provides a dual-storage architecture:
+
 - **MongoDB**: Structured metadata storage with rich querying capabilities
 - **RedisSearch**: Full-text search indexing with real-time search performance
 - **ContentStorage**: Unified interface coordinating both storage systems
@@ -23,6 +26,7 @@ The storage layer provides a dual-storage architecture:
 ### MongoDB Setup
 
 #### Windows Installation
+
 ```powershell
 # Download and install MongoDB Community Server
 # https://www.mongodb.com/try/download/community
@@ -35,6 +39,7 @@ mongod --dbpath "C:\data\db"
 ```
 
 #### Verification
+
 ```powershell
 # Test MongoDB connection
 mongo --eval "db.runCommand({ping: 1})"
@@ -43,6 +48,7 @@ mongo --eval "db.runCommand({ping: 1})"
 ### Redis Setup
 
 #### Windows Installation
+
 ```powershell
 # Option 1: Redis for Windows (Microsoft Open Tech)
 # Download from: https://github.com/microsoftarchive/redis/releases
@@ -56,6 +62,7 @@ wsl --install
 ```
 
 #### Verification
+
 ```powershell
 # Test Redis connection
 redis-cli ping
@@ -72,6 +79,7 @@ redis-cli "FT.INFO" "test_index"
 **File**: `build_and_test_storage.bat`
 
 **Usage**:
+
 ```cmd
 # Run all tests
 build_and_test_storage.bat
@@ -93,6 +101,7 @@ build_and_test_storage.bat verbose
 **File**: `build_and_test_storage.ps1`
 
 **Basic Usage**:
+
 ```powershell
 # Run all tests
 .\build_and_test_storage.ps1
@@ -111,6 +120,7 @@ build_and_test_storage.bat verbose
 ```
 
 **Advanced Options**:
+
 ```powershell
 # Run with code coverage
 .\build_and_test_storage.ps1 all -Coverage
@@ -135,6 +145,7 @@ Tests the MongoDB storage layer functionality:
 - **Data Integrity**: BSON conversion, data consistency
 
 **Key Test Cases**:
+
 - Site profile storage and retrieval
 - Domain-based queries
 - Crawl status filtering
@@ -152,6 +163,7 @@ Tests the RedisSearch integration:
 - **Batch Operations**: Bulk indexing and deletion
 
 **Key Test Cases**:
+
 - Document indexing and search
 - Search query parsing
 - Result ranking and scoring
@@ -169,6 +181,7 @@ Integration tests for the unified storage interface:
 - **Statistics and Monitoring**: Health checks, performance metrics
 
 **Key Test Cases**:
+
 - CrawlResult to SiteProfile conversion
 - Dual storage consistency
 - Search result ranking
@@ -213,11 +226,13 @@ $env:LOG_LEVEL = "DEBUG"  # TRACE, DEBUG, INFO, WARN, ERROR
 #### 1. vcpkg Dependencies
 
 **Problem**: Redis dependencies fail to build
+
 ```
 Error: Failed to build redis-plus-plus, hiredis
 ```
 
 **Solution**:
+
 ```powershell
 # Update vcpkg
 git -C vcpkg pull
@@ -231,11 +246,13 @@ git -C vcpkg pull
 #### 2. MongoDB Driver Issues
 
 **Problem**: MongoDB C++ driver not found
+
 ```
 Error: Could not find mongocxx, bsoncxx
 ```
 
 **Solution**:
+
 ```powershell
 # Install MongoDB C++ driver via vcpkg
 .\vcpkg\vcpkg install mongo-cxx-driver --triplet x64-windows
@@ -247,11 +264,13 @@ Error: Could not find mongocxx, bsoncxx
 #### 3. CMake Configuration Failures
 
 **Problem**: CMake cannot find dependencies
+
 ```
 Error: Could not find package mongocxx
 ```
 
 **Solution**:
+
 ```powershell
 # Set vcpkg toolchain
 cmake .. -DCMAKE_TOOLCHAIN_FILE=vcpkg\scripts\buildsystems\vcpkg.cmake
@@ -267,7 +286,9 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
 **Problem**: Tests skip with "MongoDB not available"
 
 **Solutions**:
+
 1. **Check MongoDB service**:
+
    ```powershell
    net start mongodb
    # or
@@ -275,6 +296,7 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
    ```
 
 2. **Manual start**:
+
    ```powershell
    mongod --dbpath "C:\data\db"
    ```
@@ -290,13 +312,16 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
 **Problem**: Redis tests fail with connection errors
 
 **Solutions**:
+
 1. **Check Redis process**:
+
    ```powershell
    netstat -an | findstr 6379
    redis-cli ping
    ```
 
 2. **Start Redis**:
+
    ```powershell
    redis-server
    # or
@@ -304,10 +329,11 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
    ```
 
 3. **RediSearch module**:
+
    ```powershell
    # Check if RediSearch is loaded
    redis-cli MODULE LIST
-   
+
    # Use Redis with RediSearch
    docker run -d -p 6379:6379 redislabs/redisearch:latest
    ```
@@ -317,6 +343,7 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
 **Problem**: Access denied errors
 
 **Solutions**:
+
 1. **Run as Administrator**: Right-click PowerShell → "Run as Administrator"
 2. **File permissions**: Ensure build directory is writable
 3. **Antivirus**: Add project directory to antivirus exclusions
@@ -328,6 +355,7 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
 **Problem**: Tests complete too quickly or timeout
 
 **Solutions**:
+
 - Increase timeout: `-Timeout 600`
 - Check service availability
 - Verify test data cleanup
@@ -338,6 +366,7 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
 **Problem**: Out of memory during large batch tests
 
 **Solutions**:
+
 - Reduce batch size in tests
 - Increase available RAM
 - Check for memory leaks
@@ -348,6 +377,7 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
 **Problem**: Search index creation fails
 
 **Solutions**:
+
 - Verify Redis memory settings
 - Check RediSearch module availability
 - Ensure proper cleanup between tests
@@ -358,6 +388,7 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
 ### Build Performance
 
 1. **Parallel Building**:
+
    ```powershell
    .\build_and_test_storage.ps1 all -Parallel
    ```
@@ -385,11 +416,12 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
    - Avoid resource contention
 
 3. **Targeted Testing**:
+
    ```powershell
    # Test specific components
    .\build_and_test_storage.ps1 mongodb
    .\build_and_test_storage.ps1 redis
-   
+
    # Quick essential tests only
    .\build_and_test_storage.ps1 quick
    ```
@@ -426,16 +458,18 @@ jobs:
 ### Local Development Workflow
 
 1. **Initial Setup**:
+
    ```powershell
    # One-time setup
    .\build_and_test_storage.ps1 clean
    ```
 
 2. **Development Cycle**:
+
    ```powershell
    # Quick iteration
    .\build_and_test_storage.ps1 mongodb -SkipBuild
-   
+
    # Full validation
    .\build_and_test_storage.ps1 all
    ```
@@ -463,6 +497,7 @@ jobs:
 ### Debug Information
 
 Enable verbose logging:
+
 ```powershell
 # PowerShell script
 .\build_and_test_storage.ps1 verbose
@@ -476,6 +511,7 @@ $env:LOG_LEVEL = "DEBUG"
 ### Getting Help
 
 1. **Script Help**:
+
    ```powershell
    .\build_and_test_storage.ps1 help
    ```
@@ -491,4 +527,6 @@ $env:LOG_LEVEL = "DEBUG"
 - **Check services**: Verify MongoDB and Redis are running
 - **Environment**: Ensure proper Visual Studio and CMake setup
 
-This guide should help you successfully build and test the storage layer components. For additional support, refer to the main project documentation or create an issue with specific error details. 
+This guide should help you successfully build and test the storage layer
+components. For additional support, refer to the main project documentation or
+create an issue with specific error details.

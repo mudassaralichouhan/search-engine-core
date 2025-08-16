@@ -60,4 +60,4 @@
     "rebuild_on_clean": true,
     "vcpkg_triplet": "x64-windows"
   }
-} 
+}

@@ -2,7 +2,11 @@
 
 ## Overview
 
-The Content Storage Layer is a critical component of the search engine that manages the storage and retrieval of crawled web data. It provides a dual-storage architecture that separates structured metadata (MongoDB) from full-text searchable content (RedisSearch), enabling both fast search capabilities and flexible data querying.
+The Content Storage Layer is a critical component of the search engine that
+manages the storage and retrieval of crawled web data. It provides a
+dual-storage architecture that separates structured metadata (MongoDB) from
+full-text searchable content (RedisSearch), enabling both fast search
+capabilities and flexible data querying.
 
 ## Architecture
 
@@ -11,7 +15,8 @@ The Content Storage Layer is a critical component of the search engine that mana
 The Content Storage Layer implements a sophisticated dual-storage architecture:
 
 1. **MongoDB**: Stores structured site profiles with detailed metadata
-2. **RedisSearch**: Handles full-text search indexing and real-time search queries
+2. **RedisSearch**: Handles full-text search indexing and real-time search
+   queries
 3. **ContentStorage**: Unified interface that coordinates both storage systems
 
 ```
@@ -46,31 +51,31 @@ struct SiteProfile {
     std::string url;                         // Full URL
     std::string title;                       // Page title
     std::optional<std::string> description;  // Meta description
-    
+
     // Content categorization
     std::vector<std::string> keywords;       // Extracted keywords
     std::optional<std::string> language;     // Detected language
     std::optional<std::string> category;     // Site category
-    
+
     // Technical metadata
     CrawlMetadata crawlMetadata;             // Crawl-specific data
-    
+
     // SEO and content metrics
     std::optional<int> pageRank;             // PageRank score
     std::optional<double> contentQuality;    // Quality score (0-1)
     std::optional<int> wordCount;            // Word count
     std::optional<bool> isMobile;            // Mobile-friendly
     std::optional<bool> hasSSL;              // SSL certificate
-    
+
     // Link analysis
     std::vector<std::string> outboundLinks;  // Found links
     std::optional<int> inboundLinkCount;     // Backlink count
-    
+
     // Search relevance
     bool isIndexed;                          // In search index
     std::chrono::system_clock::time_point lastModified;
     std::chrono::system_clock::time_point indexedAt;
-    
+
     // Additional metadata
     std::optional<std::string> author;       // Content author
     std::optional<std::string> publisher;    // Publisher name
@@ -83,12 +88,14 @@ struct SiteProfile {
 Handles structured data storage with the following features:
 
 #### Key Features:
+
 - **BSON Conversion**: Automatic conversion between C++ objects and MongoDB BSON
 - **Index Management**: Automatic creation of performance indexes
 - **Connection Pooling**: Efficient connection management
 - **Error Handling**: Comprehensive error reporting
 
 #### Core Operations:
+
 ```cpp
 // Store and retrieve site profiles
 Result<std::string> storeSiteProfile(const SiteProfile& profile);
@@ -105,9 +112,11 @@ Result<std::vector<SiteProfile>> getSiteProfilesByCrawlStatus(CrawlStatus status
 Result<int64_t> getTotalSiteCount();
 Result<int64_t> getSiteCountByStatus(CrawlStatus status);
 ```
+
 ### Crawl Logs Schema (MongoDB `crawl_logs` collection)
 
-The crawler writes a lightweight history record for each processed URL. Fields include:
+The crawler writes a lightweight history record for each processed URL. Fields
+include:
 
 - url: string
 - domain: string
@@ -120,12 +129,14 @@ The crawler writes a lightweight history record for each processed URL. Fields i
 - links: string[]
 - title: string? (optional)
 - description: string? (optional)
-- downloadTimeMs: int64? (optional) — total time in milliseconds from download start to completion
+- downloadTimeMs: int64? (optional) — total time in milliseconds from download
+  start to completion
 
-This record is used by the `/api/crawl/details` endpoint and for operational monitoring.
-
+This record is used by the `/api/crawl/details` endpoint and for operational
+monitoring.
 
 #### MongoDB Indexes:
+
 - `url`: Unique index for fast URL lookups
 - `domain`: Index for domain-based queries
 - `crawlMetadata.lastCrawlStatus`: Index for status filtering
@@ -136,6 +147,7 @@ This record is used by the `/api/crawl/details` endpoint and for operational mon
 Manages full-text search capabilities with RediSearch:
 
 #### Key Features:
+
 - **Full-Text Indexing**: Advanced text search with ranking
 - **Real-Time Search**: Sub-millisecond search response times
 - **Faceted Search**: Filter by domain, language, category
@@ -143,6 +155,7 @@ Manages full-text search capabilities with RediSearch:
 - **Suggestions**: Autocomplete functionality
 
 #### Search Schema
+
 ```
 Field         Type      Weight  Features
 url           TEXT      -       SORTABLE, NOINDEX
@@ -158,6 +171,7 @@ score         NUMERIC   -       SORTABLE
 ```
 
 #### Search Operations:
+
 ```cpp
 // Document management
 Result<bool> indexDocument(const SearchDocument& document);
@@ -177,15 +191,19 @@ Result<int64_t> getDocumentCount();
 
 ### 4. ContentStorage (Unified Interface)
 
-The `ContentStorage` class provides a high-level interface that coordinates both storage systems:
+The `ContentStorage` class provides a high-level interface that coordinates both
+storage systems:
 
 #### Key Features:
-- **Automatic Conversion**: Converts `CrawlResult` to `SiteProfile` and `SearchDocument`
+
+- **Automatic Conversion**: Converts `CrawlResult` to `SiteProfile` and
+  `SearchDocument`
 - **Dual Storage**: Automatically stores in both MongoDB and RedisSearch
 - **Consistency Management**: Ensures data consistency across storage systems
 - **Error Recovery**: Graceful handling of partial failures
 
 #### High-Level Operations:
+
 ```cpp
 // Primary operations
 Result<std::string> storeCrawlResult(const CrawlResult& crawlResult);
@@ -219,7 +237,8 @@ CrawlResult → ContentStorage → {
 1. **Input**: `CrawlResult` from crawler
 2. **Conversion**: Transform to `SiteProfile` with metadata extraction
 3. **MongoDB Storage**: Store structured data with indexes
-4. **Content Extraction**: Create searchable text from title, description, and content
+4. **Content Extraction**: Create searchable text from title, description, and
+   content
 5. **Redis Indexing**: Index for full-text search
 6. **Result**: Return MongoDB ObjectId
 
@@ -256,6 +275,7 @@ MongoDBStorage storage(
 ```
 
 **Connection String Examples:**
+
 - Local: `mongodb://localhost:27017`
 - Authenticated: `mongodb://user:pass@localhost:27017/dbname`
 - Replica Set: `mongodb://host1:27017,host2:27017/dbname?replicaSet=rs0`
@@ -271,6 +291,7 @@ RedisSearchStorage storage(
 ```
 
 **Connection String Examples:**
+
 - Local: `tcp://127.0.0.1:6379`
 - Authenticated: `tcp://user:pass@127.0.0.1:6379`
 - SSL: `tls://127.0.0.1:6380`
@@ -294,12 +315,14 @@ RedisSearchStorage storage(
 ### Recommended Settings
 
 **MongoDB:**
+
 - Use SSD storage for better I/O performance
 - Configure appropriate connection pool size
 - Enable compression for network traffic
 - Use read preferences for scaling
 
 **Redis:**
+
 - Allocate sufficient memory for search index
 - Configure appropriate maxmemory policy
 - Use Redis persistence for data durability
@@ -384,6 +407,7 @@ cmake --build . --target storage_tests
 ### Test Environment
 
 Tests are designed to work with:
+
 - Local MongoDB instance (localhost:27017)
 - Local Redis instance with RediSearch (localhost:6379)
 - Automatic test database/index cleanup
@@ -432,7 +456,7 @@ query.highlight = true;
 auto searchResult = storage.search(query);
 if (searchResult.isSuccess()) {
     auto response = searchResult.getValue();
-    std::cout << "Found " << response.totalResults << " results in " 
+    std::cout << "Found " << response.totalResults << " results in "
               << response.queryTime << "ms" << std::endl;
 }
 ```
@@ -499,4 +523,6 @@ if (batchResult.isSuccess()) {
 4. **Compression**: Reduce storage footprint
 5. **Archival**: Move old data to cold storage
 
-This documentation provides a comprehensive overview of the Content Storage Layer, enabling developers to effectively use and maintain this critical component of the search engine. 
+This documentation provides a comprehensive overview of the Content Storage
+Layer, enabling developers to effectively use and maintain this critical
+component of the search engine.

@@ -74,6 +74,68 @@ std::string HomeController::renderTemplate(const std::string& templateName, cons
     }
 }
 
+void HomeController::sponsorPage(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
+    LOG_INFO("HomeController::sponsorPage called");
+    try {
+        std::string defaultLang = getDefaultLocale();
+        std::string localeData = loadFile("locales/" + defaultLang + ".json");
+        if (localeData.empty()) {
+            serverError(res, "Failed to load localization data");
+            return;
+        }
+        nlohmann::json localeJson = nlohmann::json::parse(localeData);
+        nlohmann::json templateData = {
+            {"t", localeJson},
+            {"base_url", "http://localhost:3000"}
+        };
+        std::string renderedHtml = renderTemplate("sponsor.inja", templateData);
+        if (renderedHtml.empty()) {
+            serverError(res, "Failed to render sponsor template");
+            return;
+        }
+        html(res, renderedHtml);
+    } catch (const std::exception& e) {
+        LOG_ERROR("Error in sponsorPage: " + std::string(e.what()));
+        serverError(res, "Failed to load sponsor page");
+    }
+}
+
+void HomeController::sponsorPageWithLang(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
+    LOG_INFO("HomeController::sponsorPageWithLang called");
+    try {
+        std::string url = std::string(req->getUrl());
+        size_t lastSlash = url.find_last_of('/');
+        std::string langCode;
+        if (lastSlash != std::string::npos && lastSlash < url.length() - 1) {
+            langCode = url.substr(lastSlash + 1);
+        }
+        std::string localeFile = "locales/" + langCode + ".json";
+        if (!std::filesystem::exists(localeFile)) {
+            langCode = getDefaultLocale();
+            localeFile = "locales/" + langCode + ".json";
+        }
+        std::string localeData = loadFile(localeFile);
+        if (localeData.empty()) {
+            serverError(res, "Failed to load localization data for language: " + langCode);
+            return;
+        }
+        nlohmann::json localeJson = nlohmann::json::parse(localeData);
+        nlohmann::json templateData = {
+            {"t", localeJson},
+            {"base_url", "http://localhost:3000"}
+        };
+        std::string renderedHtml = renderTemplate("sponsor.inja", templateData);
+        if (renderedHtml.empty()) {
+            serverError(res, "Failed to render sponsor template");
+            return;
+        }
+        html(res, renderedHtml);
+    } catch (const std::exception& e) {
+        LOG_ERROR("Error in sponsorPageWithLang: " + std::string(e.what()));
+        serverError(res, "Failed to load sponsor page with language");
+    }
+}
+
 void HomeController::crawlRequestPage(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
     LOG_INFO("HomeController::crawlRequestPage called");
     

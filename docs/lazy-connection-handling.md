@@ -2,13 +2,18 @@
 
 ## Overview
 
-This document describes the implementation of lazy/asynchronous connection handling in the search engine core (MongoDB, Redis, Browserless, and Kafka), following microservices best practices for **loose coupling**, **fault tolerance**, **self-healing**, and **fast startup**.
+This document describes the implementation of lazy/asynchronous connection
+handling in the search engine core (MongoDB, Redis, Browserless, and Kafka),
+following microservices best practices for **loose coupling**, **fault
+tolerance**, **self-healing**, and **fast startup**.
 
 ## Problem Statement
 
-The original implementation had tight coupling between the search engine core and its service dependencies:
+The original implementation had tight coupling between the search engine core
+and its service dependencies:
 
-1. **Blocking Startup**: Service wouldn't start if MongoDB/Redis were unavailable
+1. **Blocking Startup**: Service wouldn't start if MongoDB/Redis were
+   unavailable
 2. **Tight Coupling**: Direct dependency on service availability at startup
 3. **No Self-Healing**: Required manual restart if databases recovered
 4. **Slow Startup**: Waited for all database connections before starting
@@ -17,18 +22,19 @@ The original implementation had tight coupling between the search engine core an
 
 ### Key Principles Implemented
 
-| Principle | Implementation | Benefits |
-|-----------|----------------|----------|
-| **Loose Coupling** | Service starts immediately, connects to DBs when needed | Service can start without DBs |
-| **Fault Tolerance** | Graceful degradation when DBs are unavailable | Service continues operating |
-| **Self-Healing** | Automatic reconnection attempts on each operation | No manual restart needed |
-| **Fast Startup** | No blocking connection tests during initialization | Immediate service availability |
+| Principle           | Implementation                                          | Benefits                       |
+| ------------------- | ------------------------------------------------------- | ------------------------------ |
+| **Loose Coupling**  | Service starts immediately, connects to DBs when needed | Service can start without DBs  |
+| **Fault Tolerance** | Graceful degradation when DBs are unavailable           | Service continues operating    |
+| **Self-Healing**    | Automatic reconnection attempts on each operation       | No manual restart needed       |
+| **Fast Startup**    | No blocking connection tests during initialization      | Immediate service availability |
 
 ### Implementation Details
 
 #### 1. Modified Startup Script (`start.sh`)
 
 **Before:**
+
 ```bash
 # Blocking connection test
 until mongosh --eval "db.runCommand('ping')" > /dev/null 2>&1; do
@@ -38,6 +44,7 @@ done
 ```
 
 **After:**
+
 ```bash
 # Non-blocking startup
 echo "Starting search engine core..."
@@ -48,6 +55,7 @@ echo "MongoDB will be connected lazily at: ${MONGO_HOST}:${MONGO_PORT}"
 #### 2. ContentStorage Lazy Initialization
 
 **Connection State Tracking:**
+
 ```cpp
 class ContentStorage {
 private:
@@ -56,11 +64,11 @@ private:
     std::string mongoDatabaseName_;
     std::string redisConnectionString_;
     std::string redisIndexName_;
-    
+
     // Connection state tracking
     bool mongoConnected_;
     bool redisConnected_;
-    
+
     // Lazy connection methods
     void ensureMongoConnection();
     void ensureRedisConnection();
@@ -68,6 +76,7 @@ private:
 ```
 
 **Lazy Connection Methods:**
+
 ```cpp
 void ContentStorage::ensureMongoConnection() {
     if (!mongoConnected_ || !mongoStorage_) {
@@ -75,7 +84,7 @@ void ContentStorage::ensureMongoConnection() {
             LOG_DEBUG("Initializing MongoDB connection...");
             mongoStorage_ = std::make_unique<MongoDBStorage>(
                 mongoConnectionString_, mongoDatabaseName_);
-            
+
             auto mongoTest = mongoStorage_->testConnection();
             if (mongoTest.success) {
                 mongoConnected_ = true;
@@ -93,9 +102,13 @@ void ContentStorage::ensureMongoConnection() {
 ```
 
 #### 3. Operation-Level Connection Handling
+
 #### 4. Kafka Frontier Lazy Initialization
 
-Kafka producer and consumer clients are created on first use and re-used across the process lifetime. Delivery reports and error callbacks are registered at initialization time. Consumer subscribes lazily and commits offsets only after successful processing.
+Kafka producer and consumer clients are created on first use and re-used across
+the process lifetime. Delivery reports and error callbacks are registered at
+initialization time. Consumer subscribes lazily and commits offsets only after
+successful processing.
 
 ```cpp
 // Pseudocode
@@ -107,8 +120,8 @@ class KafkaFrontier {
 };
 ```
 
-
 **Before:**
+
 ```cpp
 Result<SiteProfile> ContentStorage::getSiteProfile(const std::string& url) {
     return mongoStorage_->getSiteProfile(url); // Could fail if not connected
@@ -116,6 +129,7 @@ Result<SiteProfile> ContentStorage::getSiteProfile(const std::string& url) {
 ```
 
 **After:**
+
 ```cpp
 Result<SiteProfile> ContentStorage::getSiteProfile(const std::string& url) {
     ensureMongoConnection();
@@ -129,24 +143,29 @@ Result<SiteProfile> ContentStorage::getSiteProfile(const std::string& url) {
 ## Benefits Achieved
 
 ### 1. Fast Startup
+
 - **Before**: 60+ second startup delay waiting for DBs
 - **After**: Immediate startup, DBs connect when needed
 
 ### 2. Fault Tolerance
+
 - **Before**: Service crashes if DBs unavailable
 - **After**: Service starts and operates with graceful degradation
 
 ### 3. Self-Healing
+
 - **Before**: Manual restart required when DBs recover
 - **After**: Automatic reconnection on next operation
 
 ### 4. Loose Coupling
+
 - **Before**: Tight dependency on DB availability
 - **After**: Service independent of DB availability
 
 ## Usage Examples
 
 ### Service Startup
+
 ```bash
 # Service starts immediately
 ./start.sh
@@ -156,6 +175,7 @@ Result<SiteProfile> ContentStorage::getSiteProfile(const std::string& url) {
 ```
 
 ### Database Operations
+
 ```cpp
 // First operation - establishes connection
 auto profile = storage.getSiteProfile("https://example.com");
@@ -168,6 +188,7 @@ auto profiles = storage.getSiteProfilesByDomain("example.com");
 ```
 
 ### Graceful Degradation
+
 ```cpp
 // When MongoDB is down
 auto result = storage.getSiteProfile("https://example.com");
@@ -184,6 +205,7 @@ auto result = storage.getSiteProfile("https://example.com");
 ## Configuration
 
 ### Environment Variables
+
 ```bash
 # MongoDB connection (optional - defaults to localhost:27017)
 MONGO_HOST=mongodb-container
@@ -198,6 +220,7 @@ REDIS_PORT=6379
 ```
 
 ### Docker Compose Example
+
 ```yaml
 services:
   search-engine:
@@ -221,6 +244,7 @@ services:
 ## Monitoring and Observability
 
 ### Connection Status
+
 ```cpp
 // Check connection health
 auto stats = storage.getStorageStats();
@@ -228,12 +252,14 @@ auto stats = storage.getStorageStats();
 ```
 
 ### Logging
+
 - **DEBUG**: Connection initialization attempts
 - **INFO**: Successful connections established
 - **WARNING**: Connection failures (non-blocking)
 - **ERROR**: Connection errors (non-blocking)
 
 ### Health Checks
+
 ```cpp
 // Health check endpoint
 auto health = storage.testConnections();
@@ -243,21 +269,25 @@ auto health = storage.testConnections();
 ## Best Practices
 
 ### 1. Error Handling
+
 - Always check operation results for connection failures
 - Implement retry logic for transient failures
 - Provide fallback behavior when databases are unavailable
 
 ### 2. Monitoring
+
 - Monitor connection success/failure rates
 - Alert on persistent connection issues
 - Track operation latency with/without database connections
 
 ### 3. Configuration
+
 - Use environment variables for connection parameters
 - Provide sensible defaults for local development
 - Support different connection strings for different environments
 
 ### 4. Testing
+
 - Test with databases available and unavailable
 - Verify graceful degradation behavior
 - Test automatic reconnection scenarios
@@ -294,11 +324,14 @@ TEST_CASE("Database operations with unavailable DB") {
 
 ## Conclusion
 
-The lazy connection handling implementation transforms the search engine core from a tightly coupled, database-dependent service into a resilient, fault-tolerant microservice that can:
+The lazy connection handling implementation transforms the search engine core
+from a tightly coupled, database-dependent service into a resilient,
+fault-tolerant microservice that can:
 
 - Start immediately regardless of database availability
 - Operate with graceful degradation when databases are down
 - Automatically recover when databases become available
 - Provide better user experience with faster startup times
 
-This approach follows modern microservices best practices and makes the system more robust and maintainable. 
+This approach follows modern microservices best practices and makes the system
+more robust and maintainable.

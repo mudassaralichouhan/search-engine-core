@@ -2,11 +2,15 @@
 
 ## Overview
 
-The crawler API provides comprehensive web crawling capabilities with enhanced SPA (Single Page Application) rendering support. The system automatically detects JavaScript-heavy websites and uses headless browser rendering to extract fully rendered content.
+The crawler API provides comprehensive web crawling capabilities with enhanced
+SPA (Single Page Application) rendering support. The system automatically
+detects JavaScript-heavy websites and uses headless browser rendering to extract
+fully rendered content.
 
 ## Performance Optimizations (Latest)
 
 ### ⚡ **Speed Improvements**
+
 - **Render Time**: 8-12 seconds per page (vs 22-24 seconds before)
 - **Wait Times**: 8s network idle, 2s simple wait (60% faster)
 - **Timeouts**: 15s max SPA rendering (50% faster)
@@ -14,6 +18,7 @@ The crawler API provides comprehensive web crawling capabilities with enhanced S
 - **Memory**: 2GB allocation (100% more)
 
 ### 📊 **Expected Performance**
+
 - **Before**: 3+ minutes for 5 pages
 - **After**: 1-2 minutes for 5 pages (50-70% faster)
 
@@ -40,16 +45,16 @@ Add a new site to the crawl queue with optimized SPA rendering.
 
 #### Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `url` | string | **required** | Seed URL to start crawling |
-| `maxPages` | integer | 1000 | Maximum pages to crawl |
-| `maxDepth` | integer | 5 | Maximum crawl depth |
-| `spaRenderingEnabled` | boolean | true | Enable SPA rendering |
-| `includeFullContent` | boolean | false | Store full HTML content |
-| `browserlessUrl` | string | "http://browserless:3000" | Browserless service URL |
-| `timeout` | integer | 15000 | Request timeout in milliseconds |
-| `politenessDelay` | integer | 500 | Delay between requests in milliseconds |
+| Parameter             | Type    | Default                   | Description                            |
+| --------------------- | ------- | ------------------------- | -------------------------------------- |
+| `url`                 | string  | **required**              | Seed URL to start crawling             |
+| `maxPages`            | integer | 1000                      | Maximum pages to crawl                 |
+| `maxDepth`            | integer | 5                         | Maximum crawl depth                    |
+| `spaRenderingEnabled` | boolean | true                      | Enable SPA rendering                   |
+| `includeFullContent`  | boolean | false                     | Store full HTML content                |
+| `browserlessUrl`      | string  | "http://browserless:3000" | Browserless service URL                |
+| `timeout`             | integer | 15000                     | Request timeout in milliseconds        |
+| `politenessDelay`     | integer | 500                       | Delay between requests in milliseconds |
 
 #### Response
 
@@ -101,10 +106,10 @@ Get detailed information about a specific crawl session or URL.
 
 #### Query Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
+| Parameter   | Type   | Description                   |
+| ----------- | ------ | ----------------------------- |
 | `sessionId` | string | Session ID to get details for |
-| `url` | string | URL to get details for |
+| `url`       | string | URL to get details for        |
 
 #### Response
 
@@ -148,20 +153,20 @@ The crawler uses an optimized browserless configuration for maximum performance:
 browserless:
   image: browserless/chrome:latest
   environment:
-    - MAX_CONCURRENT_SESSIONS=10      # Doubled from 5
-    - PREBOOT_CHROME=true             # Enabled for faster startup
-    - CONNECTION_TIMEOUT=15000        # Reduced from 30000
-    - CHROME_REFRESH_TIME=60000       # Increased from 30000
-    - QUEUE_LIMIT=100                 # Doubled from 50
-    - MAX_CPU_PERCENT=90              # Increased from 80
-    - MAX_MEMORY_PERCENT=90           # Increased from 80
-    - KEEP_ALIVE=true                 # Enabled for connection reuse
+    - MAX_CONCURRENT_SESSIONS=10 # Doubled from 5
+    - PREBOOT_CHROME=true # Enabled for faster startup
+    - CONNECTION_TIMEOUT=15000 # Reduced from 30000
+    - CHROME_REFRESH_TIME=60000 # Increased from 30000
+    - QUEUE_LIMIT=100 # Doubled from 50
+    - MAX_CPU_PERCENT=90 # Increased from 80
+    - MAX_MEMORY_PERCENT=90 # Increased from 80
+    - KEEP_ALIVE=true # Enabled for connection reuse
   deploy:
     resources:
       limits:
-        memory: 2G                    # Doubled from 1G
+        memory: 2G # Doubled from 1G
       reservations:
-        memory: 1G                    # Doubled from 512M
+        memory: 1G # Doubled from 512M
 ```
 
 ### Optimized Payload
@@ -189,30 +194,30 @@ json payload = {
 
 ### Content Size Comparison
 
-| Mode | Content Size | Storage | Use Case |
-|------|-------------|---------|----------|
-| **Preview Mode** (`includeFullContent: false`) | ~500 bytes | Minimal | Discovery crawling |
-| **Full Content Mode** (`includeFullContent: true`) | ~580KB | 74x larger | Search indexing |
+| Mode                                               | Content Size | Storage    | Use Case           |
+| -------------------------------------------------- | ------------ | ---------- | ------------------ |
+| **Preview Mode** (`includeFullContent: false`)     | ~500 bytes   | Minimal    | Discovery crawling |
+| **Full Content Mode** (`includeFullContent: true`) | ~580KB       | 74x larger | Search indexing    |
 
 ### Rendering Performance (Optimized)
 
-| Metric | Static HTML | SPA Rendered (Before) | SPA Rendered (After) | Improvement |
-|--------|-------------|----------------------|---------------------|-------------|
-| **Content Size** | ~7KB | ~580KB | ~580KB | **74x larger** |
-| **Title Extraction** | Often empty | ✅ Dynamic titles | ✅ Dynamic titles | **Success** |
-| **Render Time** | 1-2s | 25-35s | **8-12s** | **60% faster** |
-| **Success Rate** | 100% | 95% (with fallback) | 95% (with fallback) | High reliability |
+| Metric               | Static HTML | SPA Rendered (Before) | SPA Rendered (After) | Improvement      |
+| -------------------- | ----------- | --------------------- | -------------------- | ---------------- |
+| **Content Size**     | ~7KB        | ~580KB                | ~580KB               | **74x larger**   |
+| **Title Extraction** | Often empty | ✅ Dynamic titles     | ✅ Dynamic titles    | **Success**      |
+| **Render Time**      | 1-2s        | 25-35s                | **8-12s**            | **60% faster**   |
+| **Success Rate**     | 100%        | 95% (with fallback)   | 95% (with fallback)  | High reliability |
 
 ## Configuration Options
 
 ### Environment Variables
 
-| Variable | Description | Default | Optimized Value |
-|----------|-------------|---------|-----------------|
-| `BROWSERLESS_URL` | Browserless service URL | http://browserless:3000 | http://browserless:3000 |
-| `SPA_RENDERING_ENABLED` | Global SPA rendering toggle | true | true |
-| `DEFAULT_TIMEOUT` | Default rendering timeout (ms) | 30000 | **15000** |
-| `POLITENESS_DELAY` | Delay between requests (ms) | 1000 | **500** |
+| Variable                | Description                    | Default                 | Optimized Value         |
+| ----------------------- | ------------------------------ | ----------------------- | ----------------------- |
+| `BROWSERLESS_URL`       | Browserless service URL        | http://browserless:3000 | http://browserless:3000 |
+| `SPA_RENDERING_ENABLED` | Global SPA rendering toggle    | true                    | true                    |
+| `DEFAULT_TIMEOUT`       | Default rendering timeout (ms) | 30000                   | **15000**               |
+| `POLITENESS_DELAY`      | Delay between requests (ms)    | 1000                    | **500**                 |
 
 ### Docker Compose Configuration
 
@@ -247,21 +252,25 @@ services:
 ## Best Practices
 
 ### 1. Timeout Configuration
+
 - **Standard sites**: 15 seconds (optimized)
 - **Complex SPAs**: 15 seconds (capped for speed)
 - **Heavy JavaScript sites**: 15 seconds (capped for speed)
 
 ### 2. Content Storage Strategy
+
 - **Discovery crawling**: `includeFullContent: false`
 - **Search indexing**: `includeFullContent: true`
 - **Monitor storage**: 580KB vs 7KB per page
 
 ### 3. Error Handling
+
 - Always implements graceful fallback to static HTML
 - Detailed error logging for debugging
 - Non-blocking operation when browserless unavailable
 
 ### 4. Performance Monitoring
+
 - Track SPA detection accuracy
 - Monitor rendering success rates
 - Watch browserless resource usage
@@ -311,4 +320,4 @@ services:
 - **Before Optimization**: 3+ minutes for 5 pages
 - **After Optimization**: 1-2 minutes for 5 pages
 - **Render Time**: 8-12 seconds per page (vs 22-24 seconds)
-- **Success Rate**: Maintained at 95%+ 
+- **Success Rate**: Maintained at 95%+

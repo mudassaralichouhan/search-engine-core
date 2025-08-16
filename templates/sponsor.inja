@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="{{ t.language.code }}" dir="{{ t.language.direction }}">
+<head>
+    <meta charset="utf-8">
+    <title>Sponsor Hatef — Open Search, Open Future</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Support Hatef — independent, open-source search. Sponsorship has zero influence on ranking. We publish financial transparency.">
+    <meta name="robots" content="index,follow">
+    <meta name="color-scheme" content="dark light">
+    <meta property="og:title" content="Sponsor Hatef — Open Search, Open Future">
+    <meta property="og:description" content="Support Hatef — independent, open-source search. Sponsorship has zero influence on ranking. We publish financial transparency.">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Sponsor Hatef — Open Search, Open Future">
+    <meta name="twitter:description" content="Support Hatef — independent, open-source search. Sponsorship has zero influence on ranking. We publish financial transparency.">
+    <link rel="stylesheet" href="/sponsor.css">
+</head>
+<body>
+    <a href="#main" class="skip-link">Skip to content</a>
+    <header class="site-header" id="site-header" role="banner">
+        <div class="container site-header-inner">
+            <a href="#about" class="brand" aria-label="Hatef home">
+                <svg class="wordmark" viewBox="0 0 80 24" aria-hidden="true" focusable="false">
+                    <text x="0" y="17" fill="currentColor" font-size="16" font-weight="700" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, 'Noto Sans'">Hatef</text>
+                </svg>
+            </a>
+            <nav aria-label="Primary">
+                <ul>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#tiers">Tiers</a></li>
+                    <li><a href="#payment">Payment</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                    <li><a href="#transparency">Transparency</a></li>
+                </ul>
+            </nav>
+            <div class="header-cta">
+                <a class="btn btn-outline" href="#payment">Pay in IRR</a>
+                <a class="btn btn-primary" href="#payment">Pay with Bitcoin</a>
+                <button id="themeToggle" class="icon-btn" type="button" aria-pressed="false" aria-label="Switch to dark mode" title="Toggle theme">🌙</button>
+            </div>
+        </div>
+    </header>
+
+    <main id="main" tabindex="-1">
+        <section id="about" class="hero">
+            <div class="container">
+                <h1>Support Hatef — independent, open-source search.</h1>
+                <p class="muted">Sponsorship has zero influence on ranking. We publish financial transparency.</p>
+                <div class="hero-actions">
+                    <a class="btn btn-primary btn-lg" href="#payment">Pay in IRR</a>
+                    <a class="btn btn-outline btn-lg" href="#payment">Pay with Bitcoin</a>
+                </div>
+                <figure class="founder-note" aria-label="Founder's note">
+                    <blockquote>
+                        <p>I started Hatef to prove that search can be open, privacy-respecting, and accountable. Our code and ranking signals are transparent, and sponsorship never affects results.</p>
+                        <p>Your support helps us scale infrastructure and research so we can deliver fast, relevant, and responsible search for everyone.</p>
+                    </blockquote>
+                    <figcaption>— Hatef Rostamkhani</figcaption>
+                </figure>
+            </div>
+        </section>
+
+        <section id="tiers" class="section">
+            <div class="container">
+                <h2>Sponsorship tiers</h2>
+                <p class="muted">Choose the level that fits you. All support is deeply appreciated, and none impacts ranking.</p>
+                <div class="tiers-grid" id="tiersGrid" aria-live="polite" aria-busy="true"></div>
+            </div>
+        </section>
+
+        <section id="payment" class="section" aria-labelledby="payment-title">
+            <div class="container">
+                <h2 id="payment-title">Payment</h2>
+                <div class="payment-ctas">
+                    <div class="cta-box">
+                        <h3>Pay in IRR</h3>
+                        <p class="muted">Local currency payment via invoice or gateway. Select your tier and amount.</p>
+                        <div class="cta-actions">
+                            <a class="btn btn-primary" href="#pay-irr" data-open="irr-modal">
+                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18L19 6v5c0 4.66-3.2 8.96-7 10-3.8-1.04-7-5.34-7-10V6l7-2.82z"/></svg>
+                                Pay in IRR
+                            </a>
+                        </div>
+                        <p class="legal-note">Invoices/receipts provided. For contracts or wire, contact sponsors@hatef.ir</p>
+                    </div>
+                    <div class="cta-box">
+                        <h3>Pay with Bitcoin</h3>
+                        <p class="muted">Send BTC to our address. Please email us for a receipt.</p>
+                        <div class="cta-actions">
+                            <a class="btn btn-outline" href="#pay-btc" data-open="btc-modal">
+                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 100 20 10 10 0 000-20zm.7 4.5c1.7 0 3.5.9 3.5 2.8 0 1.2-.6 2-1.6 2.5 1.4.4 2.2 1.4 2.2 2.9 0 2.1-1.8 3.3-4.2 3.3H11v1.6H9.9v-1.6H8v-1.2h1.9v-2.5H8v-1.2h1.9V7.3H8V6.1h1.9V4.5H11v1.6h1.7zm-.9 1.2h-1v3.9h1.2c1.2 0 2.2-.5 2.2-1.9 0-1.3-1-2-2.4-2zm.3 5.1H10.8v4.1H12c1.4 0 2.7-.6 2.7-2.1 0-1.6-1.2-2-2.6-2z"/></svg>
+                                Pay with Bitcoin
+                            </a>
+                        </div>
+                        <p class="legal-note">Invoices/receipts provided. For contracts or wire, contact sponsors@hatef.ir</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="faq" class="section">
+            <div class="container">
+                <h2>FAQ</h2>
+                <div class="accordion" id="faqAcc">
+                    <div class="acc-item" aria-expanded="false">
+                        <button class="acc-btn" aria-controls="faq1" aria-expanded="false">Does sponsorship influence ranking?<span aria-hidden="true">▾</span></button>
+                        <div id="faq1" class="acc-panel">No. Sponsorship never affects ranking or results.</div>
+                    </div>
+                    <div class="acc-item" aria-expanded="false">
+                        <button class="acc-btn" aria-controls="faq2" aria-expanded="false">Can I stay anonymous?<span aria-hidden="true">▾</span></button>
+                        <div id="faq2" class="acc-panel">Yes. Choose public or anonymous listing.</div>
+                    </div>
+                    <div class="acc-item" aria-expanded="false">
+                        <button class="acc-btn" aria-controls="faq3" aria-expanded="false">Do you offer contracts and NDAs?<span aria-hidden="true">▾</span></button>
+                        <div id="faq3" class="acc-panel">For Gold+ we can sign a standard sponsorship agreement.</div>
+                    </div>
+                    <div class="acc-item" aria-expanded="false">
+                        <button class="acc-btn" aria-controls="faq4" aria-expanded="false">Can I pay in crypto besides BTC?<span aria-hidden="true">▾</span></button>
+                        <div id="faq4" class="acc-panel">Contact us for options.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="transparency" class="section">
+            <div class="container">
+                <h2>Transparency</h2>
+                <div class="stack">
+                    <p class="muted">We publish periodic financial updates and maintain a strict separation between funding and search ranking. Learn how funds are used across infrastructure, research, and community programs.</p>
+                    <div class="cta-actions">
+                        <a class="btn btn-primary" href="#">View Financial Transparency</a>
+                        <a class="btn btn-outline" href="#">Read Ranking Independence Charter</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer role="contentinfo">
+        <div class="container" style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+            <div>© <span id="year"></span> Hatef</div>
+            <nav aria-label="Footer">
+                <a href="https://github.com/hatef-project" target="_blank" rel="noopener">GitHub</a>
+                · <a href="#">Terms</a>
+                · <a href="#">Privacy</a>
+                · <a href="mailto:sponsors@hatef.ir">sponsors@hatef.ir</a>
+            </nav>
+        </div>
+    </footer>
+
+    <!-- IRR Modal -->
+    <dialog id="irr-modal" class="modal" aria-modal="true" aria-labelledby="irr-title" aria-describedby="irr-desc">
+        <div class="modal-backdrop" data-close></div>
+        <div class="modal-card" role="dialog">
+            <div class="modal-header">
+                <h3 id="irr-title" class="modal-title">Pay in IRR</h3>
+                <button class="modal-close" type="button" data-close aria-label="Close">✕</button>
+            </div>
+            <p id="irr-desc" class="muted">Fill the form to receive a payment link or invoice in IRR.</p>
+            <form action="#" method="post" class="form-grid" id="irrForm">
+                <label>
+                    Name
+                    <input type="text" name="name" autocomplete="name" required>
+                </label>
+                <label>
+                    Email
+                    <input type="email" name="email" autocomplete="email" required>
+                </label>
+                <label>
+                    Company (optional)
+                    <input type="text" name="company" autocomplete="organization">
+                </label>
+                <label>
+                    Tier
+                    <select name="tier" id="tierSelect" required></select>
+                </label>
+                <label class="full">
+                    Amount (IRR)
+                    <input type="number" name="amount" inputmode="numeric" min="0" step="1" placeholder="e.g., 50000000" required>
+                </label>
+                <div class="full" style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+                    <button class="btn btn-primary" type="submit">Request Payment Link</button>
+                    <button class="btn btn-outline" type="button" data-close>Cancel</button>
+                </div>
+            </form>
+            <p class="legal-note">Invoices/receipts provided. For contracts or wire, contact sponsors@hatef.ir</p>
+        </div>
+    </dialog>
+
+    <!-- BTC Modal -->
+    <dialog id="btc-modal" class="modal" aria-modal="true" aria-labelledby="btc-title" aria-describedby="btc-desc">
+        <div class="modal-backdrop" data-close></div>
+        <div class="modal-card" role="dialog">
+            <div class="modal-header">
+                <h3 id="btc-title" class="modal-title">Pay with Bitcoin</h3>
+                <button class="modal-close" type="button" data-close aria-label="Close">✕</button>
+            </div>
+            <div id="btc-desc" class="btc-box">
+                <div class="qr" aria-hidden="true">
+                    <svg viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="QR placeholder">
+                        <rect x="0" y="0" width="120" height="120" fill="currentColor" opacity=".06"/>
+                        <rect x="8" y="8" width="24" height="24" fill="currentColor"/>
+                        <rect x="88" y="8" width="24" height="24" fill="currentColor"/>
+                        <rect x="8" y="88" width="24" height="24" fill="currentColor"/>
+                        <rect x="40" y="40" width="16" height="16" fill="currentColor"/>
+                        <rect x="60" y="58" width="10" height="10" fill="currentColor"/>
+                        <rect x="76" y="40" width="12" height="12" fill="currentColor"/>
+                        <rect x="40" y="76" width="12" height="12" fill="currentColor"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="muted">Send BTC to the address below, then email your receipt for confirmation.</p>
+                    <div class="addr">
+                        <strong>BTC Address:</strong>
+                        <code id="btcAddr" class="mono">bc1qexampleaddress0000000000000000000000</code>
+                        <button class="btn btn-outline" id="copyBtc">Copy</button>
+                    </div>
+                </div>
+            </div>
+            <p class="legal-note">Invoices/receipts provided. For contracts or wire, contact sponsors@hatef.ir</p>
+        </div>
+    </dialog>
+
+    <script src="/sponsor.js" defer></script>
+</body>
+</html>
+

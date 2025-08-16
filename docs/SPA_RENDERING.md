@@ -1,10 +1,16 @@
 # SPA Rendering with Browserless/Chrome
 
-This document explains how to set up and use the Single Page Application (SPA) rendering functionality in the search engine crawler with enhanced integration and performance optimizations.
+This document explains how to set up and use the Single Page Application (SPA)
+rendering functionality in the search engine crawler with enhanced integration
+and performance optimizations.
 
 ## Overview
 
-Many modern websites (like digikala.com, React apps, Vue applications) use client-side rendering (CSR) and are single-page applications (SPA). Traditional crawlers only fetch the initial HTML skeleton, missing the dynamically loaded content. This implementation uses browserless/chrome to render SPAs and extract the fully rendered HTML with proper title extraction and content processing.
+Many modern websites (like digikala.com, React apps, Vue applications) use
+client-side rendering (CSR) and are single-page applications (SPA). Traditional
+crawlers only fetch the initial HTML skeleton, missing the dynamically loaded
+content. This implementation uses browserless/chrome to render SPAs and extract
+the fully rendered HTML with proper title extraction and content processing.
 
 ## Architecture
 
@@ -22,18 +28,25 @@ Many modern websites (like digikala.com, React apps, Vue applications) use clien
 ## Enhanced Features (Latest Updates)
 
 ### 🚀 **Intelligent SPA Detection**
+
 - **Framework Detection**: React, Vue, Angular, Ember, Svelte, Next.js patterns
 - **DOM Pattern Analysis**: `data-reactroot`, `ng-*`, `v-*`, `__nuxt` attributes
 - **Content Analysis**: Script-heavy pages with minimal initial HTML
-- **State Object Detection**: `window.__initial_state__`, `window.__data__`, `window.__NEXT_DATA__`
+- **State Object Detection**: `window.__initial_state__`, `window.__data__`,
+  `window.__NEXT_DATA__`
 
 ### 🎯 **Enhanced Content Processing**
-- **Dynamic Title Extraction**: Successfully extracts titles from JavaScript-rendered content
-- **Full Content Support**: `includeFullContent` parameter for complete HTML storage
+
+- **Dynamic Title Extraction**: Successfully extracts titles from
+  JavaScript-rendered content
+- **Full Content Support**: `includeFullContent` parameter for complete HTML
+  storage
 - **Content Size Optimization**: Preview mode (500 chars) vs full content mode
-- **Unicode Support**: Proper handling of Persian, Arabic, Chinese, and other Unicode content
+- **Unicode Support**: Proper handling of Persian, Arabic, Chinese, and other
+  Unicode content
 
 ### ⚡ **Performance Optimizations**
+
 - **30-second default timeout** for complex JavaScript sites
 - **Selective rendering** - only processes detected SPAs
 - **Connection pooling** to browserless service
@@ -57,7 +70,8 @@ sudo yum install libcurl-devel nlohmann-json-devel
 
 ### 2. Enhanced Docker Compose (with Kafka Frontier)
 
-The `docker-compose.yml` includes browserless for SPA rendering and Kafka/Zookeeper for the durable crawl frontier:
+The `docker-compose.yml` includes browserless for SPA rendering and
+Kafka/Zookeeper for the durable crawl frontier:
 
 ```yaml
 services:
@@ -156,6 +170,7 @@ POST /api/crawl/add-site
 ```
 
 **Response with SPA data:**
+
 ```json
 {
   "success": true,
@@ -182,6 +197,7 @@ POST /api/spa/render
 ```
 
 **Enhanced Response:**
+
 ```json
 {
   "success": true,
@@ -233,7 +249,7 @@ The system detects SPAs using comprehensive pattern matching:
 - "_app-"
 - "react"
 
-// Vue/Nuxt Detection  
+// Vue/Nuxt Detection
 - "data-server-rendered"
 - "__NUXT__"
 - "v-"
@@ -256,16 +272,16 @@ The system detects SPAs using comprehensive pattern matching:
 bool PageFetcher::isSpaPage(const std::string& html, const std::string& url) {
     // Check for framework indicators
     if (containsFrameworkPatterns(html)) return true;
-    
+
     // Analyze script-to-content ratio
     if (getScriptToContentRatio(html) > 0.3) return true;
-    
+
     // Check for state objects
     if (containsStateObjects(html)) return true;
-    
+
     // Domain-specific patterns
     if (isDomainKnownSpa(url)) return true;
-    
+
     return false;
 }
 ```
@@ -274,12 +290,12 @@ bool PageFetcher::isSpaPage(const std::string& html, const std::string& url) {
 
 ### Rendering Performance
 
-| Site Type | Static HTML | SPA Rendered | Improvement |
-|-----------|-------------|--------------|-------------|
-| **Content Size** | ~7KB | ~580KB | **74x larger** |
-| **Title Extraction** | ❌ Empty | ✅ "فروشگاه اینترنتی دیجی‌کالا" | **Success** |
-| **Render Time** | 1-2s | 25-35s | Expected for JS execution |
-| **Success Rate** | 100% | 95% (with fallback) | High reliability |
+| Site Type            | Static HTML | SPA Rendered                    | Improvement               |
+| -------------------- | ----------- | ------------------------------- | ------------------------- |
+| **Content Size**     | ~7KB        | ~580KB                          | **74x larger**            |
+| **Title Extraction** | ❌ Empty    | ✅ "فروشگاه اینترنتی دیجی‌کالا" | **Success**               |
+| **Render Time**      | 1-2s        | 25-35s                          | Expected for JS execution |
+| **Success Rate**     | 100%        | 95% (with fallback)             | High reliability          |
 
 ### Timeout Configuration
 
@@ -345,17 +361,19 @@ class BrowserlessClient {
 ### Digikala.com Case Study
 
 **Before SPA Rendering:**
+
 ```json
 {
   "title": "",
   "contentSize": 7865,
-  "status": "SUCCESS", 
+  "status": "SUCCESS",
   "httpStatusCode": 200,
   "renderingMethod": "direct_fetch"
 }
 ```
 
 **After SPA Rendering:**
+
 ```json
 {
   "title": "فروشگاه اینترنتی دیجی‌کالا",
@@ -368,6 +386,7 @@ class BrowserlessClient {
 ```
 
 **Key Improvements:**
+
 - ✅ **Title extracted**: Persian title properly captured
 - ✅ **74x content increase**: 7KB → 580KB rich content
 - ✅ **Search indexable**: Full content available for search
@@ -378,6 +397,7 @@ class BrowserlessClient {
 ### Common Issues and Solutions
 
 #### 1. **Timeout Errors**
+
 ```bash
 # Symptoms
 [ERROR] CURL error: Timeout was reached
@@ -389,7 +409,8 @@ class BrowserlessClient {
 - Verify network connectivity
 ```
 
-#### 2. **Title Not Extracted**  
+#### 2. **Title Not Extracted**
+
 ```bash
 # Check if SPA detection worked
 curl "http://localhost:3000/api/crawl/details?url=https://example.com" | jq '.logs[0] | {title, status, contentSize}'
@@ -397,19 +418,20 @@ curl "http://localhost:3000/api/crawl/details?url=https://example.com" | jq '.lo
 # Expected for successful SPA rendering:
 {
   "title": "Actual Site Title",
-  "status": "SUCCESS", 
+  "status": "SUCCESS",
   "contentSize": 500000+
 }
 ```
 
 #### 3. **Browserless Connection Issues**
+
 ```bash
 # Test browserless directly
 curl -X POST http://localhost:3001/content \
   -H "Content-Type: application/json" \
   -d '{"url": "https://example.com"}'
 
-# Check browserless logs  
+# Check browserless logs
 docker logs browserless
 ```
 
@@ -433,7 +455,7 @@ Logger::setLevel(LogLevel::DEBUG);
 # Check service health
 curl http://localhost:3000/api/crawl/status
 
-# Monitor browserless sessions  
+# Monitor browserless sessions
 curl http://localhost:3001/metrics
 
 # Check content storage
@@ -483,13 +505,13 @@ bool PageFetcher::isSpaPage(const std::string& html, const std::string& url) {
         "my-framework",
         "custom-state-object"
     };
-    
+
     for (const auto& pattern : customPatterns) {
         if (html.find(pattern) != std::string::npos) {
             return true;
         }
     }
-    
+
     return standardSpaDetection(html, url);
 }
 ```
@@ -497,21 +519,25 @@ bool PageFetcher::isSpaPage(const std::string& html, const std::string& url) {
 ## Best Practices
 
 ### 1. **Timeout Configuration**
+
 - Use 30+ seconds for complex SPAs
 - Start with 60 seconds for unknown sites
 - Monitor actual render times and adjust
 
 ### 2. **Content Storage Strategy**
+
 - Use `includeFullContent: false` for discovery crawling
 - Enable `includeFullContent: true` for final indexing
 - Monitor storage usage (580KB vs 7KB per page)
 
 ### 3. **Performance Monitoring**
+
 - Track SPA detection accuracy
 - Monitor browserless session usage
 - Watch for timeout patterns by domain
 
 ### 4. **Error Handling**
+
 - Always implement fallback to static HTML
 - Log detailed error information
 - Provide graceful degradation
@@ -534,4 +560,6 @@ bool PageFetcher::isSpaPage(const std::string& html, const std::string& url) {
 4. **Resource Optimization**: Memory and CPU usage improvements
 5. **Network Optimization**: Reduce bandwidth usage for large SPAs
 
-This comprehensive SPA rendering system successfully transforms static HTML crawling into dynamic content extraction, achieving 74x content improvement and proper title extraction from JavaScript-heavy websites like www.digikala.com. 
+This comprehensive SPA rendering system successfully transforms static HTML
+crawling into dynamic content extraction, achieving 74x content improvement and
+proper title extraction from JavaScript-heavy websites like www.digikala.com.

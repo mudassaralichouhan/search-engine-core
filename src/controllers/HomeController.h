@@ -22,6 +22,12 @@ public:
     // GET /crawl-request/{lang}
     void crawlRequestPageWithLang(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
 
+    // GET /sponsor
+    void sponsorPage(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
+    
+    // GET /sponsor/{lang}
+    void sponsorPageWithLang(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
+
 private:
     std::string getAvailableLocales();
     std::string getDefaultLocale();
@@ -37,5 +43,8 @@ ROUTE_CONTROLLER(HomeController) {
     REGISTER_ROUTE(HttpMethod::GET, "/crawl-request", crawlRequestPage, HomeController);
     REGISTER_ROUTE(HttpMethod::GET, "/crawl-request.html", crawlRequestPage, HomeController);
     REGISTER_ROUTE(HttpMethod::GET, "/crawl-request/*", crawlRequestPageWithLang, HomeController);
+    REGISTER_ROUTE(HttpMethod::GET, "/sponsor", sponsorPage, HomeController);
+    REGISTER_ROUTE(HttpMethod::GET, "/sponsor.html", sponsorPage, HomeController);
+    REGISTER_ROUTE(HttpMethod::GET, "/sponsor/*", sponsorPageWithLang, HomeController);
     REGISTER_ROUTE(HttpMethod::POST, "/api/v2/email-subscribe", emailSubscribe, HomeController);
 } 

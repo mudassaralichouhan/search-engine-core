@@ -2,32 +2,34 @@
 
 ## Overview
 
-This document summarizes the comprehensive performance optimizations applied to the search engine crawler, resulting in **50-70% faster crawling speeds** and significantly improved resource utilization.
+This document summarizes the comprehensive performance optimizations applied to
+the search engine crawler, resulting in **50-70% faster crawling speeds** and
+significantly improved resource utilization.
 
 ## Performance Improvements
 
 ### ⚡ **Speed Improvements**
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Render Time per Page** | 22-24 seconds | 8-12 seconds | **60% faster** |
-| **Total Crawl Time (5 pages)** | 3+ minutes | 1-2 minutes | **50-70% faster** |
-| **Network Idle Wait** | 20 seconds | 8 seconds | **60% faster** |
-| **Simple Wait** | 3 seconds | 2 seconds | **33% faster** |
-| **Connection Timeout** | 5 seconds | 3 seconds | **40% faster** |
-| **Default Request Timeout** | 30 seconds | 15 seconds | **50% faster** |
-| **Politeness Delay** | 1000ms | 500ms | **50% faster** |
+| Metric                         | Before        | After        | Improvement       |
+| ------------------------------ | ------------- | ------------ | ----------------- |
+| **Render Time per Page**       | 22-24 seconds | 8-12 seconds | **60% faster**    |
+| **Total Crawl Time (5 pages)** | 3+ minutes    | 1-2 minutes  | **50-70% faster** |
+| **Network Idle Wait**          | 20 seconds    | 8 seconds    | **60% faster**    |
+| **Simple Wait**                | 3 seconds     | 2 seconds    | **33% faster**    |
+| **Connection Timeout**         | 5 seconds     | 3 seconds    | **40% faster**    |
+| **Default Request Timeout**    | 30 seconds    | 15 seconds   | **50% faster**    |
+| **Politeness Delay**           | 1000ms        | 500ms        | **50% faster**    |
 
 ### 📊 **Resource Improvements**
 
-| Resource | Before | After | Improvement |
-|----------|--------|-------|-------------|
-| **Concurrent Sessions** | 5 Chrome instances | 10 Chrome instances | **100% more** |
-| **Memory Allocation** | 1GB | 2GB | **100% more** |
-| **Memory Reservation** | 512MB | 1GB | **100% more** |
-| **Queue Limit** | 50 | 100 | **100% more** |
-| **CPU Usage** | 80% | 90% | **12.5% more** |
-| **Memory Usage** | 80% | 90% | **12.5% more** |
+| Resource                | Before             | After               | Improvement    |
+| ----------------------- | ------------------ | ------------------- | -------------- |
+| **Concurrent Sessions** | 5 Chrome instances | 10 Chrome instances | **100% more**  |
+| **Memory Allocation**   | 1GB                | 2GB                 | **100% more**  |
+| **Memory Reservation**  | 512MB              | 1GB                 | **100% more**  |
+| **Queue Limit**         | 50                 | 100                 | **100% more**  |
+| **CPU Usage**           | 80%                | 90%                 | **12.5% more** |
+| **Memory Usage**        | 80%                | 90%                 | **12.5% more** |
 
 ## Optimizations Applied
 
@@ -36,23 +38,23 @@ This document summarizes the comprehensive performance optimizations applied to 
 ```yaml
 browserless:
   environment:
-    - MAX_CONCURRENT_SESSIONS=10      # Doubled from 5
-    - PREBOOT_CHROME=true             # Enabled for faster startup
-    - CONNECTION_TIMEOUT=15000        # Reduced from 30000
-    - CHROME_REFRESH_TIME=60000       # Increased from 30000
-    - QUEUE_LIMIT=100                 # Doubled from 50
-    - MAX_CPU_PERCENT=90              # Increased from 80
-    - MAX_MEMORY_PERCENT=90           # Increased from 80
-    - KEEP_ALIVE=true                 # Enabled for connection reuse
-    - ENABLE_DEBUGGER=false           # Disabled for performance
+    - MAX_CONCURRENT_SESSIONS=10 # Doubled from 5
+    - PREBOOT_CHROME=true # Enabled for faster startup
+    - CONNECTION_TIMEOUT=15000 # Reduced from 30000
+    - CHROME_REFRESH_TIME=60000 # Increased from 30000
+    - QUEUE_LIMIT=100 # Doubled from 50
+    - MAX_CPU_PERCENT=90 # Increased from 80
+    - MAX_MEMORY_PERCENT=90 # Increased from 80
+    - KEEP_ALIVE=true # Enabled for connection reuse
+    - ENABLE_DEBUGGER=false # Disabled for performance
     - FUNCTION_ENABLE_INCOGNITO=false # Disabled for performance
-    - FUNCTION_KEEP_ALIVE=true        # Enabled for connection reuse
+    - FUNCTION_KEEP_ALIVE=true # Enabled for connection reuse
   deploy:
     resources:
       limits:
-        memory: 2G                    # Doubled from 1G
+        memory: 2G # Doubled from 1G
       reservations:
-        memory: 1G                    # Doubled from 512M
+        memory: 1G # Doubled from 512M
 ```
 
 ### 2. **Wait Time Optimizations** (`src/crawler/BrowserlessClient.cpp`)
@@ -100,12 +102,14 @@ std::chrono::milliseconds politenessDelay{500};   // 500ms (vs 1000ms)
 ## Performance Impact
 
 ### **Before Optimization**
+
 - **5 pages**: 3 minutes 40 seconds
 - **Per page**: 22-24 seconds
 - **Resource usage**: Conservative settings
 - **Concurrent processing**: Limited to 5 sessions
 
 ### **After Optimization**
+
 - **5 pages**: 1-2 minutes (50-70% faster)
 - **Per page**: 8-12 seconds (60% faster)
 - **Resource usage**: Optimized for performance
@@ -115,54 +119,61 @@ std::chrono::milliseconds politenessDelay{500};   // 500ms (vs 1000ms)
 
 ### Environment Variables
 
-| Variable | Before | After | Impact |
-|----------|--------|-------|--------|
-| `DEFAULT_TIMEOUT` | 30000ms | 15000ms | 50% faster |
-| `POLITENESS_DELAY` | 1000ms | 500ms | 50% faster |
-| `MAX_CONCURRENT_SESSIONS` | 5 | 10 | 100% more |
-| `CONNECTION_TIMEOUT` | 30000ms | 15000ms | 50% faster |
+| Variable                  | Before  | After   | Impact     |
+| ------------------------- | ------- | ------- | ---------- |
+| `DEFAULT_TIMEOUT`         | 30000ms | 15000ms | 50% faster |
+| `POLITENESS_DELAY`        | 1000ms  | 500ms   | 50% faster |
+| `MAX_CONCURRENT_SESSIONS` | 5       | 10      | 100% more  |
+| `CONNECTION_TIMEOUT`      | 30000ms | 15000ms | 50% faster |
 
 ### Browserless Settings
 
-| Setting | Before | After | Impact |
-|---------|--------|-------|--------|
-| `PREBOOT_CHROME` | false | true | Faster startup |
-| `KEEP_ALIVE` | false | true | Connection reuse |
-| `MAX_CPU_PERCENT` | 80 | 90 | Better utilization |
-| `MAX_MEMORY_PERCENT` | 80 | 90 | Better utilization |
-| `QUEUE_LIMIT` | 50 | 100 | Higher throughput |
+| Setting              | Before | After | Impact             |
+| -------------------- | ------ | ----- | ------------------ |
+| `PREBOOT_CHROME`     | false  | true  | Faster startup     |
+| `KEEP_ALIVE`         | false  | true  | Connection reuse   |
+| `MAX_CPU_PERCENT`    | 80     | 90    | Better utilization |
+| `MAX_MEMORY_PERCENT` | 80     | 90    | Better utilization |
+| `QUEUE_LIMIT`        | 50     | 100   | Higher throughput  |
 
 ## Best Practices Applied
 
 ### 1. **Resource Blocking**
+
 - Block images, media, and fonts for faster rendering
 - Reduce bandwidth usage and processing time
 
 ### 2. **Connection Optimization**
+
 - Enable keep-alive for connection reuse
 - Reduce connection timeouts for faster establishment
 
 ### 3. **Viewport Optimization**
+
 - Use 1280x720 viewport for faster rendering
 - Balance between quality and performance
 
 ### 4. **Wait Strategy**
+
 - Use `domcontentloaded` instead of `networkidle`
 - Reduce wait times while maintaining content quality
 
 ### 5. **Memory Management**
+
 - Increase memory allocation for better performance
 - Enable preboot for faster Chrome startup
 
 ## Monitoring and Validation
 
 ### **Success Metrics**
+
 - ✅ **No validation errors**: Fixed HTTP 400 errors from browserless
 - ✅ **Faster rendering**: 8-12 seconds per page achieved
 - ✅ **Better resource utilization**: 90% CPU/Memory usage
 - ✅ **Higher concurrency**: 10 Chrome instances running
 
 ### **Log Monitoring**
+
 ```bash
 # Monitor render times
 grep "Headless browser rendering completed" logs | tail -5
@@ -179,6 +190,7 @@ grep "duration_ms" logs | tail -5
 ### **For Existing Deployments**
 
 1. **Update Docker Compose**:
+
    ```bash
    docker-compose down
    # Update docker-compose.yml with new browserless config
@@ -186,6 +198,7 @@ grep "duration_ms" logs | tail -5
    ```
 
 2. **Rebuild Application**:
+
    ```bash
    cd build && make server
    docker-compose restart search-engine
@@ -269,7 +282,8 @@ grep "duration_ms" logs | tail -5
 
 ## Conclusion
 
-These optimizations have successfully transformed the crawler performance, achieving:
+These optimizations have successfully transformed the crawler performance,
+achieving:
 
 - **50-70% faster crawling speeds**
 - **60% faster page rendering**
@@ -277,4 +291,6 @@ These optimizations have successfully transformed the crawler performance, achie
 - **Better resource utilization**
 - **Maintained content quality**
 
-The optimizations maintain the same high-quality content extraction while significantly improving speed and efficiency, making the crawler much more practical for production use.
+The optimizations maintain the same high-quality content extraction while
+significantly improving speed and efficiency, making the crawler much more
+practical for production use.

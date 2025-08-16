@@ -1,13 +1,16 @@
 # Search Engine Core - C++20 Implementation
 
-This document describes the `search_core` module implementation for the Search Engine API project.
+This document describes the `search_core` module implementation for the Search
+Engine API project.
 
 ## Overview
 
-The `search_core` module provides a high-level, type-safe interface to RedisSearch with the following components:
+The `search_core` module provides a high-level, type-safe interface to
+RedisSearch with the following components:
 
 - **SearchClient**: RAII-safe, connection-pooled Redis wrapper
-- **QueryParser**: DSL for converting user queries to RedisSearch syntax with AST
+- **QueryParser**: DSL for converting user queries to RedisSearch syntax with
+  AST
 - **Scorer**: Pluggable ranking policy system with JSON configuration
 
 ## Architecture
@@ -28,7 +31,8 @@ search_core/
 
 ### SearchClient
 
-- **Connection Pooling**: Round-robin pool of Redis connections for thread safety
+- **Connection Pooling**: Round-robin pool of Redis connections for thread
+  safety
 - **Exception Safety**: Translates Redis errors to typed exceptions
 - **PIMPL Pattern**: Hides redis-plus-plus implementation details
 - **Thread Safe**: Multiple threads can search concurrently
@@ -139,6 +143,7 @@ ctest -L "performance"
 ## Configuration
 
 ### Redis Configuration (`config/redis.json`)
+
 ```json
 {
   "uri": "tcp://127.0.0.1:6379",
@@ -149,6 +154,7 @@ ctest -L "performance"
 ```
 
 ### Scoring Configuration (`config/scoring.json`)
+
 ```json
 {
   "field_weights": {
@@ -162,6 +168,7 @@ ctest -L "performance"
 ## Usage Examples
 
 ### Basic Search
+
 ```cpp
 #include "search_core/SearchClient.hpp"
 #include "search_core/QueryParser.hpp"
@@ -184,6 +191,7 @@ auto result = client.search("papers_index", redis_query, scoring_args);
 ```
 
 ### Advanced Usage
+
 ```cpp
 // Custom Redis configuration
 RedisConfig config {
@@ -239,10 +247,12 @@ target_link_libraries(server PRIVATE search_core)
 
 ## Next Steps
 
-The next implementation slice will wrap this `search_core` in a uWebSockets HTTP endpoint:
+The next implementation slice will wrap this `search_core` in a uWebSockets HTTP
+endpoint:
 
 ```
 GET /search?q="machine learning"&limit=10
 ```
 
-This will provide a REST API interface for the search functionality while keeping the core logic decoupled and testable. 
+This will provide a REST API interface for the search functionality while
+keeping the core logic decoupled and testable.

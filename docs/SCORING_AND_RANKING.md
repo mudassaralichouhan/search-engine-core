@@ -1,14 +1,18 @@
 # Search Result Scoring and Ranking
 
-This document describes the scoring and ranking system that ranks search results based on term frequency, field weights, and RedisSearch's built-in scoring.
+This document describes the scoring and ranking system that ranks search results
+based on term frequency, field weights, and RedisSearch's built-in scoring.
 
 ## Overview
 
-The scoring system provides multiple algorithms and customizable configurations to rank search results effectively:
+The scoring system provides multiple algorithms and customizable configurations
+to rank search results effectively:
 
 - **BM25 Algorithm** - State-of-the-art probabilistic ranking function
-- **TF-IDF Algorithm** - Classic term frequency-inverse document frequency scoring
-- **Combined Scoring** - Integrates custom algorithms with RedisSearch's built-in scores
+- **TF-IDF Algorithm** - Classic term frequency-inverse document frequency
+  scoring
+- **Combined Scoring** - Integrates custom algorithms with RedisSearch's
+  built-in scores
 - **Customizable Field Weights** - Title > Body > Other fields
 - **Boost Factors** - Exact matches, domain authority, freshness
 
@@ -16,13 +20,14 @@ The scoring system provides multiple algorithms and customizable configurations 
 
 ### 1. Field Weighting (Title > Body)
 
-The system implements configurable field weights where title matches are valued more than body content:
+The system implements configurable field weights where title matches are valued
+more than body content:
 
 ```cpp
 struct FieldWeights {
     double title = 5.0;        // Highest weight
-    double keywords = 4.0;     
-    double description = 3.0;  
+    double keywords = 4.0;
+    double description = 3.0;
     double content = 1.0;      // Body content
     double url = 0.5;
     double domain = 0.8;
@@ -44,6 +49,7 @@ struct TFParams {
 ### 3. BM25 Algorithm
 
 The BM25 implementation uses:
+
 - **k1 = 1.2** - Term frequency saturation
 - **b = 0.75** - Length normalization
 - IDF calculation: `log((N - df + 0.5) / (df + 0.5))`
@@ -111,23 +117,27 @@ auto combinedScorer = SearchScorer::createRedisSearchScorer();
 ## Configuration Presets
 
 ### Default Configuration
+
 - Balanced weights across fields
 - Standard BM25 parameters
 - Moderate boost factors
 
 ### Title-Heavy Configuration
+
 ```cpp
 auto config = ScoringConfig::createTitleHeavy();
 // title weight = 10.0, content weight = 0.5
 ```
 
 ### Content-Heavy Configuration
+
 ```cpp
 auto config = ScoringConfig::createContentHeavy();
 // title weight = 3.0, content weight = 2.0
 ```
 
 ### Balanced Configuration
+
 ```cpp
 auto config = ScoringConfig::createBalanced();
 // Moderate weights across all fields
@@ -136,24 +146,29 @@ auto config = ScoringConfig::createBalanced();
 ## Scoring Components
 
 ### 1. Term Frequency Score
+
 - Counts occurrences of query terms
 - Applies log normalization
 - Caps maximum frequency
 
 ### 2. Field Weight Score
+
 - Multiplies term scores by field importance
 - Title matches get 5x boost by default
 
 ### 3. Exact Match Score
+
 - Detects quoted phrases
 - Applies exactMatchBoost (2x by default)
 
 ### 4. Boost Score
+
 - Domain authority (github.com, stackoverflow.com)
 - Title match boost
 - Freshness boost (if timestamp available)
 
 ### 5. Coverage Score
+
 - Percentage of query terms matched
 - Used for relevance assessment
 
@@ -223,6 +238,7 @@ Comprehensive unit tests are provided in `tests/scoring/test_search_scorer.cpp`:
 - Edge case handling
 
 Run tests:
+
 ```bash
 ./build/tests/scoring/test_search_scorer
 ```
@@ -241,7 +257,7 @@ public:
     ) const override {
         // Implement custom scoring logic
     }
-    
+
     std::string getName() const override { return "MyCustom"; }
 };
 
@@ -256,4 +272,4 @@ scorer->setAlgorithm(std::make_unique<MyCustomAlgorithm>());
 - **Personalized Scoring**: User-specific preferences
 - **Semantic Scoring**: Vector similarity for semantic search
 - **Click-through Rate Integration**: Learn from user behavior
-- **A/B Testing Framework**: Compare scoring algorithms 
+- **A/B Testing Framework**: Compare scoring algorithms
