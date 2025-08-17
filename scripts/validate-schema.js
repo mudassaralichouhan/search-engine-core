@@ -9,15 +9,15 @@ const addFormats = require('ajv-formats');
 const ajv = new Ajv({ strict: true });
 addFormats(ajv);
 
-// Load the schema
-const schemaPath = path.join(__dirname, '..', 'docs', 'api', 'search_response.schema.json');
-const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
-
-// Compile the schema
-const validate = ajv.compile(schema);
+// Schema mapping for different example files
+const schemaMapping = {
+  'search_response_example.json': 'search_response.schema.json',
+  'crawler_response_example.json': 'crawler_response.schema.json'
+};
 
 // Find all example JSON files
 const examplesDir = path.join(__dirname, '..', 'docs', 'api', 'examples');
+const schemasDir = path.join(__dirname, '..', 'docs', 'api');
 let hasErrors = false;
 
 // Create examples directory if it doesn't exist
@@ -63,7 +63,29 @@ exampleFiles.forEach(file => {
   const filePath = path.join(examplesDir, file);
   console.log(`\nValidating ${file}...`);
   
+  // Get the corresponding schema for this file
+  const schemaName = schemaMapping[file];
+  if (!schemaName) {
+    console.log(`⚠️  No schema mapping found for ${file}, skipping validation`);
+    return;
+  }
+  
+  const schemaPath = path.join(schemasDir, schemaName);
+  
+  // Check if schema exists
+  if (!fs.existsSync(schemaPath)) {
+    console.log(`⚠️  Schema ${schemaName} not found for ${file}, skipping validation`);
+    return;
+  }
+  
   try {
+    // Load the schema
+    const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+    
+    // Compile the schema
+    const validate = ajv.compile(schema);
+    
+    // Load and validate the example data
     const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     const valid = validate(data);
     

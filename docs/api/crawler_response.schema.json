@@ -1,0 +1,360 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/crawler_response.schema.json",
+  "title": "Crawler Response",
+  "description": "Schema for crawler API responses",
+  "type": "object",
+  "properties": {
+    "addSiteResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether the operation was successful"
+        },
+        "message": {
+          "type": "string",
+          "description": "Response message"
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "description": "The URL to be crawled"
+            },
+            "maxPages": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum number of pages to crawl"
+            },
+            "maxDepth": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum crawl depth"
+            },
+            "restrictToSeedDomain": {
+              "type": "boolean",
+              "description": "Whether to restrict crawling to the seed domain"
+            },
+            "followRedirects": {
+              "type": "boolean",
+              "description": "Whether to follow redirects"
+            },
+            "maxRedirects": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Maximum number of redirects to follow"
+            },
+            "spaRenderingEnabled": {
+              "type": "boolean",
+              "description": "Whether SPA rendering is enabled"
+            },
+            "includeFullContent": {
+              "type": "boolean",
+              "description": "Whether to include full content"
+            },
+            "browserlessUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "Browserless service URL"
+            },
+            "status": {
+              "type": "string",
+              "enum": ["queued", "running", "completed", "failed"],
+              "description": "Current crawl status"
+            }
+          },
+          "required": ["url", "status"]
+        }
+      },
+      "required": ["success", "message"]
+    },
+    "crawlStatusResponse": {
+      "type": "object",
+      "properties": {
+        "statistics": {
+          "type": "object",
+          "properties": {
+            "failedCrawls": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of failed crawls"
+            },
+            "successRate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Success rate percentage"
+            },
+            "successfulCrawls": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of successful crawls"
+            },
+            "totalLinksFound": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total number of links found"
+            }
+          }
+        },
+        "status": {
+          "type": "object",
+          "properties": {
+            "isRunning": {
+              "type": "boolean",
+              "description": "Whether crawling is currently running"
+            },
+            "lastUpdate": {
+              "type": "integer",
+              "description": "Unix timestamp of last update"
+            },
+            "totalCrawled": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total number of pages crawled"
+            }
+          }
+        }
+      }
+    },
+    "crawlDetailsResponse": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "The crawled URL"
+        },
+        "logs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "contentSize": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Size of the content in bytes"
+              },
+              "contentType": {
+                "type": "string",
+                "description": "MIME type of the content"
+              },
+              "crawlTime": {
+                "type": "integer",
+                "description": "Unix timestamp of when the page was crawled"
+              },
+              "downloadTimeMs": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Download time in milliseconds"
+              },
+              "description": {
+                "type": "string",
+                "description": "Page description or meta description"
+              },
+              "domain": {
+                "type": "string",
+                "description": "Domain of the crawled page"
+              },
+              "httpStatusCode": {
+                "type": "integer",
+                "minimum": 100,
+                "maximum": 599,
+                "description": "HTTP status code"
+              },
+              "id": {
+                "type": "string",
+                "description": "Unique identifier for the crawl log entry"
+              },
+              "links": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "description": "Links found on the page"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["SUCCESS", "FAILED", "PENDING", "TIMEOUT"],
+                "description": "Crawl status"
+              },
+              "title": {
+                "type": "string",
+                "description": "Page title"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "URL of the crawled page"
+              },
+              "renderingMethod": {
+                "type": "string",
+                "enum": ["headless_browser", "simple_fetch"],
+                "description": "Method used for rendering"
+              },
+              "spaDetected": {
+                "type": "boolean",
+                "description": "Whether SPA was detected"
+              },
+              "fetchDuration": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Fetch duration in milliseconds"
+              }
+            },
+            "required": ["url", "status", "httpStatusCode"]
+          }
+        }
+      },
+      "required": ["url"]
+    },
+    "spaRenderResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether SPA rendering was successful"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "The rendered URL"
+        },
+        "fetchDuration": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Fetch duration in milliseconds"
+        },
+        "httpStatusCode": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599,
+          "description": "HTTP status code"
+        },
+        "contentType": {
+          "type": "string",
+          "description": "MIME type of the content"
+        },
+        "contentSize": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Size of the content in bytes"
+        },
+        "contentPreview": {
+          "type": "string",
+          "description": "Preview of the rendered content"
+        },
+        "isSpa": {
+          "type": "boolean",
+          "description": "Whether the page is a SPA"
+        },
+        "renderingMethod": {
+          "type": "string",
+          "enum": ["headless_browser", "simple_fetch"],
+          "description": "Method used for rendering"
+        }
+      },
+      "required": ["success", "url"]
+    },
+    "spaDetectResponse": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean",
+          "description": "Whether SPA detection was successful"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "The analyzed URL"
+        },
+        "isSpa": {
+          "type": "boolean",
+          "description": "Whether the page is a SPA"
+        },
+        "detectionReasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Reasons why SPA was detected"
+        },
+        "framework": {
+          "type": "string",
+          "description": "Detected framework"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Confidence score for SPA detection"
+        },
+        "scriptToContentRatio": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Ratio of script content to total content"
+        },
+        "hasStateObjects": {
+          "type": "boolean",
+          "description": "Whether state objects were found"
+        },
+        "detectedPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Patterns detected in the page"
+        }
+      },
+      "required": ["success", "url", "isSpa"]
+    },
+    "errorResponses": {
+      "type": "object",
+      "properties": {
+        "badRequest": {
+          "type": "object",
+          "properties": {
+            "error": {
+              "type": "string",
+              "description": "Error message"
+            },
+            "success": {
+              "type": "boolean",
+              "description": "Success status (should be false for errors)"
+            }
+          },
+          "required": ["error", "success"]
+        },
+        "serverError": {
+          "type": "object",
+          "properties": {
+            "error": {
+              "type": "string",
+              "description": "Error message"
+            },
+            "success": {
+              "type": "boolean",
+              "description": "Success status (should be false for errors)"
+            }
+          },
+          "required": ["error", "success"]
+        },
+        "missingParameter": {
+          "type": "object",
+          "properties": {
+            "message": {
+              "type": "string",
+              "description": "Error message for missing parameter"
+            }
+          },
+          "required": ["message"]
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
