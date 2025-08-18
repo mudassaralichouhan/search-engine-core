@@ -4,6 +4,41 @@
 #include <filesystem>
 #include <nlohmann/json.hpp>
 
+// Deep merge helper: fill missing keys in dst with values from src (recursively for objects)
+static void jsonDeepMergeMissing(nlohmann::json &dst, const nlohmann::json &src) {
+    if (!dst.is_object() || !src.is_object()) return;
+    for (auto it = src.begin(); it != src.end(); ++it) {
+        const std::string &key = it.key();
+        if (dst.contains(key)) {
+            if (dst[key].is_object() && it.value().is_object()) {
+                jsonDeepMergeMissing(dst[key], it.value());
+            }
+        } else {
+            dst[key] = it.value();
+        }
+    }
+}
+
+// Format integer with thousands separators (e.g., 1000000 -> 1,000,000)
+static std::string formatThousands(long long value) {
+    bool isNegative = value < 0;
+    unsigned long long v = isNegative ? static_cast<unsigned long long>(-value) : static_cast<unsigned long long>(value);
+    std::string digits = std::to_string(v);
+    std::string out;
+    out.reserve(digits.size() + digits.size() / 3);
+    int count = 0;
+    for (int i = static_cast<int>(digits.size()) - 1; i >= 0; --i) {
+        out.push_back(digits[static_cast<size_t>(i)]);
+        count++;
+        if (i > 0 && count % 3 == 0) {
+            out.push_back(',');
+        }
+    }
+    std::reverse(out.begin(), out.end());
+    if (isNegative) out.insert(out.begin(), '-');
+    return out;
+}
+
 std::string HomeController::loadFile(const std::string& path) {
     LOG_DEBUG("Attempting to load file: " + path);
     
@@ -78,14 +113,46 @@ void HomeController::sponsorPage(uWS::HttpResponse<false>* res, uWS::HttpRequest
     LOG_INFO("HomeController::sponsorPage called");
     try {
         std::string defaultLang = getDefaultLocale();
-        std::string localeData = loadFile("locales/" + defaultLang + ".json");
-        if (localeData.empty()) {
-            serverError(res, "Failed to load localization data");
+        // Load language metadata (code/dir) from root locale file
+        std::string metaData = loadFile("locales/" + defaultLang + ".json");
+        if (metaData.empty()) {
+            serverError(res, "Failed to load localization metadata");
             return;
         }
-        nlohmann::json localeJson = nlohmann::json::parse(localeData);
+        nlohmann::json metaJson = nlohmann::json::parse(metaData);
+
+        // Load sponsor page translations (primary=default for base route)
+        std::string sponsorPrimaryStr = loadFile("locales/" + defaultLang + "/sponsor.json");
+        std::string sponsorFallbackStr = loadFile("locales/" + getDefaultLocale() + "/sponsor.json");
+        nlohmann::json sponsorPrimary = sponsorPrimaryStr.empty() ? nlohmann::json::object() : nlohmann::json::parse(sponsorPrimaryStr);
+        nlohmann::json sponsorFallback = sponsorFallbackStr.empty() ? nlohmann::json::object() : nlohmann::json::parse(sponsorFallbackStr);
+        jsonDeepMergeMissing(sponsorPrimary, sponsorFallback);
+
+        // Pre-format tier prices with thousands separators
+        try {
+            if (sponsorPrimary.contains("tiers") && sponsorPrimary["tiers"].is_array()) {
+                for (auto &tier : sponsorPrimary["tiers"]) {
+                    if (tier.contains("priceUsdYear") && tier["priceUsdYear"].is_number_integer()) {
+                        long long py = tier["priceUsdYear"].get<long long>();
+                        tier["priceUsdYearFmt"] = formatThousands(py);
+                    }
+                    if (tier.contains("priceUsdMonth") && (tier["priceUsdMonth"].is_number_integer() || tier["priceUsdMonth"].is_number_float())) {
+                        // treat as integer display
+                        long long pm = 0;
+                        if (tier["priceUsdMonth"].is_number_integer()) pm = tier["priceUsdMonth"].get<long long>();
+                        else pm = static_cast<long long>(tier["priceUsdMonth"].get<double>());
+                        tier["priceUsdMonthFmt"] = formatThousands(pm);
+                    }
+                }
+            }
+        } catch (...) { /* ignore formatting errors */ }
+
+        nlohmann::json t;
+        if (metaJson.contains("language")) t["language"] = metaJson["language"];
+        t["sponsor"] = sponsorPrimary;
+
         nlohmann::json templateData = {
-            {"t", localeJson},
+            {"t", t},
             {"base_url", "http://localhost:3000"}
         };
         std::string renderedHtml = renderTemplate("sponsor.inja", templateData);
@@ -109,19 +176,49 @@ void HomeController::sponsorPageWithLang(uWS::HttpResponse<false>* res, uWS::Htt
         if (lastSlash != std::string::npos && lastSlash < url.length() - 1) {
             langCode = url.substr(lastSlash + 1);
         }
-        std::string localeFile = "locales/" + langCode + ".json";
-        if (!std::filesystem::exists(localeFile)) {
+        std::string metaFile = "locales/" + langCode + ".json";
+        if (!std::filesystem::exists(metaFile)) {
             langCode = getDefaultLocale();
-            localeFile = "locales/" + langCode + ".json";
+            metaFile = "locales/" + langCode + ".json";
         }
-        std::string localeData = loadFile(localeFile);
-        if (localeData.empty()) {
-            serverError(res, "Failed to load localization data for language: " + langCode);
+        std::string metaData = loadFile(metaFile);
+        if (metaData.empty()) {
+            serverError(res, "Failed to load localization metadata for language: " + langCode);
             return;
         }
-        nlohmann::json localeJson = nlohmann::json::parse(localeData);
+        nlohmann::json metaJson = nlohmann::json::parse(metaData);
+
+        // Load sponsor translations for requested lang with fallback to default
+        std::string sponsorPrimaryStr = loadFile("locales/" + langCode + "/sponsor.json");
+        std::string sponsorFallbackStr = loadFile("locales/" + getDefaultLocale() + "/sponsor.json");
+        nlohmann::json sponsorPrimary = sponsorPrimaryStr.empty() ? nlohmann::json::object() : nlohmann::json::parse(sponsorPrimaryStr);
+        nlohmann::json sponsorFallback = sponsorFallbackStr.empty() ? nlohmann::json::object() : nlohmann::json::parse(sponsorFallbackStr);
+        jsonDeepMergeMissing(sponsorPrimary, sponsorFallback);
+
+        // Pre-format tier prices with thousands separators
+        try {
+            if (sponsorPrimary.contains("tiers") && sponsorPrimary["tiers"].is_array()) {
+                for (auto &tier : sponsorPrimary["tiers"]) {
+                    if (tier.contains("priceUsdYear") && tier["priceUsdYear"].is_number_integer()) {
+                        long long py = tier["priceUsdYear"].get<long long>();
+                        tier["priceUsdYearFmt"] = formatThousands(py);
+                    }
+                    if (tier.contains("priceUsdMonth") && (tier["priceUsdMonth"].is_number_integer() || tier["priceUsdMonth"].is_number_float())) {
+                        long long pm = 0;
+                        if (tier["priceUsdMonth"].is_number_integer()) pm = tier["priceUsdMonth"].get<long long>();
+                        else pm = static_cast<long long>(tier["priceUsdMonth"].get<double>());
+                        tier["priceUsdMonthFmt"] = formatThousands(pm);
+                    }
+                }
+            }
+        } catch (...) { /* ignore formatting errors */ }
+
+        nlohmann::json t;
+        if (metaJson.contains("language")) t["language"] = metaJson["language"];
+        t["sponsor"] = sponsorPrimary;
+
         nlohmann::json templateData = {
-            {"t", localeJson},
+            {"t", t},
             {"base_url", "http://localhost:3000"}
         };
         std::string renderedHtml = renderTemplate("sponsor.inja", templateData);
@@ -140,21 +237,27 @@ void HomeController::crawlRequestPage(uWS::HttpResponse<false>* res, uWS::HttpRe
     LOG_INFO("HomeController::crawlRequestPage called");
     
     try {
-        // Load default localization data (English)
+        // Load default language metadata
         std::string defaultLang = getDefaultLocale();
-        std::string localeData = loadFile("locales/" + defaultLang + ".json");
-        if (localeData.empty()) {
-            serverError(res, "Failed to load localization data");
-            return;
-        }
-        
-        // Parse JSON data
-        nlohmann::json localeJson = nlohmann::json::parse(localeData);
+        std::string metaStr = loadFile("locales/" + defaultLang + ".json");
+        if (metaStr.empty()) { serverError(res, "Failed to load localization metadata"); return; }
+        nlohmann::json metaJson = nlohmann::json::parse(metaStr);
+
+        // Load page-specific translations for default lang with fallback to default root (for compatibility)
+        std::string pagePrimaryStr = loadFile("locales/" + defaultLang + "/crawl-request.json");
+        std::string pageFallbackStr = loadFile("locales/" + defaultLang + ".json");
+        nlohmann::json pagePrimary = pagePrimaryStr.empty() ? nlohmann::json::object() : nlohmann::json::parse(pagePrimaryStr);
+        nlohmann::json pageFallback = pageFallbackStr.empty() ? nlohmann::json::object() : nlohmann::json::parse(pageFallbackStr);
+        jsonDeepMergeMissing(pagePrimary, pageFallback);
+
+        // Compose template data
+        nlohmann::json t = pagePrimary;
+        if (metaJson.contains("language")) t["language"] = metaJson["language"];
         nlohmann::json templateData = {
-            {"t", localeJson},
+            {"t", t},
             {"base_url", "http://localhost:3000"}
         };
-        
+
         // Render template with data
         std::string renderedHtml = renderTemplate("crawl-request-full.inja", templateData);
         
@@ -188,28 +291,37 @@ void HomeController::crawlRequestPageWithLang(uWS::HttpResponse<false>* res, uWS
         
         LOG_INFO("Extracted language code: " + langCode);
         
-        // Check if language file exists, fallback to default if not
-        std::string localeFile = "locales/" + langCode + ".json";
-        if (!std::filesystem::exists(localeFile)) {
-            LOG_WARNING("Language file not found: " + localeFile + ", falling back to default");
+        // Check if language meta file exists, fallback to default if not
+        std::string metaFile = "locales/" + langCode + ".json";
+        if (!std::filesystem::exists(metaFile)) {
+            LOG_WARNING("Language file not found: " + metaFile + ", falling back to default");
             langCode = getDefaultLocale();
-            localeFile = "locales/" + langCode + ".json";
+            metaFile = "locales/" + langCode + ".json";
         }
-        
-        // Load localization data
-        std::string localeData = loadFile(localeFile);
-        if (localeData.empty()) {
-            serverError(res, "Failed to load localization data for language: " + langCode);
-            return;
-        }
-        
-        // Parse JSON data
-        nlohmann::json localeJson = nlohmann::json::parse(localeData);
+
+        // Load language metadata
+        std::string metaStr = loadFile(metaFile);
+        if (metaStr.empty()) { serverError(res, "Failed to load localization metadata for language: " + langCode); return; }
+        nlohmann::json metaJson = nlohmann::json::parse(metaStr);
+
+        // Load page-specific translations with layered fallback: page(lang) <- root(lang) <- page(default) <- root(default)
+        std::string pagePrimaryStr = loadFile("locales/" + langCode + "/crawl-request.json");
+        std::string rootLangStr    = loadFile("locales/" + langCode + ".json");
+        std::string pageDefaultStr = loadFile("locales/" + getDefaultLocale() + "/crawl-request.json");
+        std::string rootDefaultStr = loadFile("locales/" + getDefaultLocale() + ".json");
+        nlohmann::json j = nlohmann::json::object();
+        if (!rootDefaultStr.empty()) j = nlohmann::json::parse(rootDefaultStr);
+        if (!pageDefaultStr.empty()) jsonDeepMergeMissing(j, nlohmann::json::parse(pageDefaultStr));
+        if (!rootLangStr.empty())    jsonDeepMergeMissing(j, nlohmann::json::parse(rootLangStr));
+        if (!pagePrimaryStr.empty()) jsonDeepMergeMissing(j, nlohmann::json::parse(pagePrimaryStr));
+
+        nlohmann::json t = j;
+        if (metaJson.contains("language")) t["language"] = metaJson["language"];
         nlohmann::json templateData = {
-            {"t", localeJson},
+            {"t", t},
             {"base_url", "http://localhost:3000"}
         };
-        
+
         // Render template with data
         std::string renderedHtml = renderTemplate("crawl-request-full.inja", templateData);
         

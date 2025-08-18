@@ -1,0 +1,137 @@
+{
+  "skip_to_content": "Skip to content",
+  "nav_about": "About",
+  "nav_tiers": "Tiers",
+  "nav_payment": "Payment",
+  "nav_faq": "FAQ",
+  "nav_transparency": "Transparency",
+  "hero_title": "Support Hatef — independent, open-source search.",
+  "hero_subtext": "Sponsorship has zero influence on ranking. We publish financial transparency.",
+  "founder_p1": "I started Hatef to prove that search can be open, privacy-respecting, and accountable. Our code and ranking signals are transparent, and sponsorship never affects results.",
+  "founder_p2": "Your support helps us scale infrastructure and research so we can deliver fast, relevant, and responsible search for everyone.",
+  "founder_signature": "Hatef Rostamkhani",
+  "tiers_title": "Sponsorship tiers",
+  "tiers_subtitle": "Choose the level that fits you. All support is deeply appreciated, and none impacts ranking.",
+  "payment_title": "Payment",
+  "pay_irr_title": "Pay in IRR",
+  "pay_irr_desc": "Local currency payment via invoice or gateway. Select your tier and amount.",
+  "pay_irr_cta": "Pay in IRR",
+  "pay_btc_title": "Pay with Bitcoin",
+  "pay_btc_desc": "Send BTC to our address. Please email us for a receipt.",
+  "see_all_tiers": "See all tiers",
+  "sponsor_now": "Sponsor now",
+  "select_tier": "Select a tier…",
+  "in_kind": "In-kind support",
+  "copy": "Copy",
+  "copied": "Copied",
+  "copy_failed": "Copy failed",
+  "legal_note": "Invoices/receipts provided. For contracts or wire, contact sponsors@hatef.ir",
+  "faq_title": "FAQ",
+  "faq_q1": "Does sponsorship influence ranking?",
+  "faq_a1": "No. Sponsorship never affects ranking or results.",
+  "faq_q2": "Can I stay anonymous?",
+  "faq_a2": "Yes. Choose public or anonymous listing.",
+  "faq_q3": "Do you offer contracts and NDAs?",
+  "faq_a3": "For Gold+ we can sign a standard sponsorship agreement.",
+  "faq_q4": "Can I pay in crypto besides BTC?",
+  "faq_a4": "Contact us for options.",
+  "transparency_title": "Transparency",
+  "transparency_paragraph": "We publish periodic financial updates and maintain a strict separation between funding and search ranking. Learn how funds are used across infrastructure, research, and community programs.",
+  "transparency_financial_cta": "View Financial Transparency",
+  "transparency_charter_cta": "Read Ranking Independence Charter",
+  "footer_terms": "Terms",
+  "footer_privacy": "Privacy",
+  "irr_modal_title": "Pay in IRR",
+  "irr_form_name_label": "Name",
+  "irr_form_email_label": "Email",
+  "irr_form_company_label": "Company (optional)",
+  "irr_form_tier_label": "Tier",
+  "irr_form_amount_label": "Amount (IRR)",
+  "irr_form_request_link_btn": "Request Payment Link",
+  "irr_form_cancel_btn": "Cancel",
+  "btc_address_label": "BTC Address:",
+  "pay_btc_cta": "Pay with Bitcoin",
+  "btc_modal_desc": "Send BTC to the address below, then email your receipt for confirmation.",
+  "currency_prefix": "$",
+  "currency_suffix": "",
+  "per_year": "/yr",
+  "per_month": "/mo",
+  "meta_title": "Sponsor Hatef — Open Search, Open Future",
+  "meta_description": "Support Hatef — independent, open-source search. Sponsorship has zero influence on ranking. We publish financial transparency.",
+  "irr_modal_desc": "Fill the form to receive a payment link or invoice in IRR.",
+  "tiers": [
+    {
+      "id": "individual",
+      "name": "Individual Backer",
+      "priceUsdYear": 99,
+      "priceUsdMonth": 9,
+      "priceNote": "",
+      "benefits": [
+        "Backer badge on profile",
+        "Early access to new features",
+        "Community voting on public RFCs (non-ranking)"
+      ]
+    },
+    {
+      "id": "startup",
+      "name": "Startup",
+      "priceUsdYear": 1000,
+      "priceUsdMonth": null,
+      "priceNote": "",
+      "benefits": [
+        "Logo on sponsor wall",
+        "Webmaster Pro (limited quotas)",
+        "Quarterly roadmap call invite"
+      ]
+    },
+    {
+      "id": "silver",
+      "name": "Silver",
+      "priceUsdYear": 20000,
+      "priceUsdMonth": null,
+      "priceNote": "",
+      "benefits": [
+        "Expanded API quota",
+        "Co-marketing (blog/webinar slot)",
+        "Access to working groups"
+      ]
+    },
+    {
+      "id": "gold",
+      "name": "Gold",
+      "priceUsdYear": 100000,
+      "priceUsdMonth": null,
+      "priceNote": "",
+      "benefits": [
+        "Engineering office hours (priority)",
+        "Feature requests (non-ranking) consideration",
+        "Major brand placement on site"
+      ]
+    },
+    {
+      "id": "platinum",
+      "name": "Platinum / Strategic",
+      "priceUsdYear": 250000,
+      "priceUsdMonth": null,
+      "priceNote": "minimum",
+      "benefits": [
+        "Advisory Council seat (non-governance over ranking)",
+        "Joint research initiatives (Privacy/Crawling)",
+        "Highest API quota & co-marketing"
+      ]
+    },
+    {
+      "id": "infrastructure",
+      "name": "Infrastructure Sponsor",
+      "priceUsdYear": 0,
+      "priceUsdMonth": null,
+      "priceNote": "In-kind hardware/bandwidth (USD equivalent agreed)",
+      "benefits": [
+        "“Powered by …” attribution",
+        "Sponsor wall with usage reports",
+        "Public acknowledgment in release notes"
+      ]
+    }
+  ]
+}
+

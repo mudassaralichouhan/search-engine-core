@@ -2,21 +2,25 @@
 <html lang="{{ t.language.code }}" dir="{{ t.language.direction }}">
 <head>
     <meta charset="utf-8">
-    <title>Sponsor Hatef — Open Search, Open Future</title>
+    <title>{{ t.sponsor.meta_title }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Support Hatef — independent, open-source search. Sponsorship has zero influence on ranking. We publish financial transparency.">
+    <meta name="description" content="{{ t.sponsor.meta_description }}">
     <meta name="robots" content="index,follow">
     <meta name="color-scheme" content="dark light">
-    <meta property="og:title" content="Sponsor Hatef — Open Search, Open Future">
-    <meta property="og:description" content="Support Hatef — independent, open-source search. Sponsorship has zero influence on ranking. We publish financial transparency.">
+    <meta property="og:title" content="{{ t.sponsor.meta_title }}">
+    <meta property="og:description" content="{{ t.sponsor.meta_description }}">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Sponsor Hatef — Open Search, Open Future">
-    <meta name="twitter:description" content="Support Hatef — independent, open-source search. Sponsorship has zero influence on ranking. We publish financial transparency.">
+    <meta name="twitter:title" content="{{ t.sponsor.meta_title }}">
+    <meta name="twitter:description" content="{{ t.sponsor.meta_description }}">
+    {% if t.language.code == "fa" %}
+    <link rel="preload" href="/assets/fonts/vazirmatn/fonts/webfonts/Vazirmatn-FD-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/assets/fonts/vazirmatn/Vazirmatn-FD-font-face.css">
+    {% endif %}
     <link rel="stylesheet" href="/sponsor.css">
 </head>
 <body>
-    <a href="#main" class="skip-link">Skip to content</a>
+    <a href="#main" class="skip-link">{{ t.sponsor.skip_to_content }}</a>
     <header class="site-header" id="site-header" role="banner">
         <div class="container site-header-inner">
             <a href="#about" class="brand" aria-label="Hatef home">
@@ -26,16 +30,16 @@
             </a>
             <nav aria-label="Primary">
                 <ul>
-                    <li><a href="#about">About</a></li>
-                    <li><a href="#tiers">Tiers</a></li>
-                    <li><a href="#payment">Payment</a></li>
-                    <li><a href="#faq">FAQ</a></li>
-                    <li><a href="#transparency">Transparency</a></li>
+                    <li><a href="#about">{{ t.sponsor.nav_about }}</a></li>
+                    <li><a href="#tiers">{{ t.sponsor.nav_tiers }}</a></li>
+                    <li><a href="#payment">{{ t.sponsor.nav_payment }}</a></li>
+                    <li><a href="#faq">{{ t.sponsor.nav_faq }}</a></li>
+                    <li><a href="#transparency">{{ t.sponsor.nav_transparency }}</a></li>
                 </ul>
             </nav>
             <div class="header-cta">
-                <a class="btn btn-outline" href="#payment">Pay in IRR</a>
-                <a class="btn btn-primary" href="#payment">Pay with Bitcoin</a>
+                <a class="btn btn-outline" href="#payment">{{ t.sponsor.pay_irr_cta }}</a>
+                <a class="btn btn-primary" href="#payment">{{ t.sponsor.pay_btc_cta }}</a>
                 <button id="themeToggle" class="icon-btn" type="button" aria-pressed="false" aria-label="Switch to dark mode" title="Toggle theme">🌙</button>
             </div>
         </div>
@@ -44,55 +48,80 @@
     <main id="main" tabindex="-1">
         <section id="about" class="hero">
             <div class="container">
-                <h1>Support Hatef — independent, open-source search.</h1>
-                <p class="muted">Sponsorship has zero influence on ranking. We publish financial transparency.</p>
+                <h1>{{ t.sponsor.hero_title }}</h1>
+                <p class="muted">{{ t.sponsor.hero_subtext }}</p>
                 <div class="hero-actions">
-                    <a class="btn btn-primary btn-lg" href="#payment">Pay in IRR</a>
-                    <a class="btn btn-outline btn-lg" href="#payment">Pay with Bitcoin</a>
+                    <a class="btn btn-primary btn-lg" href="#payment">{{ t.sponsor.pay_irr_cta }}</a>
+                    <a class="btn btn-outline btn-lg" href="#payment">{{ t.sponsor.pay_btc_cta }}</a>
                 </div>
                 <figure class="founder-note" aria-label="Founder's note">
                     <blockquote>
-                        <p>I started Hatef to prove that search can be open, privacy-respecting, and accountable. Our code and ranking signals are transparent, and sponsorship never affects results.</p>
-                        <p>Your support helps us scale infrastructure and research so we can deliver fast, relevant, and responsible search for everyone.</p>
+                        <p>{{ t.sponsor.founder_p1 }}</p>
+                        <p>{{ t.sponsor.founder_p2 }}</p>
                     </blockquote>
-                    <figcaption>— Hatef Rostamkhani</figcaption>
+                    <figcaption>— {{ t.sponsor.founder_signature }}</figcaption>
                 </figure>
             </div>
         </section>
 
         <section id="tiers" class="section">
             <div class="container">
-                <h2>Sponsorship tiers</h2>
-                <p class="muted">Choose the level that fits you. All support is deeply appreciated, and none impacts ranking.</p>
-                <div class="tiers-grid" id="tiersGrid" aria-live="polite" aria-busy="true"></div>
+                <h2>{{ t.sponsor.tiers_title }}</h2>
+                <p class="muted">{{ t.sponsor.tiers_subtitle }}</p>
+                <div class="tiers-grid" id="tiersGrid" aria-live="polite" aria-busy="false" data-copy="{{ t.sponsor.copy }}" data-copied="{{ t.sponsor.copied }}" data-copyFailed="{{ t.sponsor.copy_failed }}" data-selectTier="{{ t.sponsor.select_tier }}" data-inKind="{{ t.sponsor.in_kind }}">
+                    {% for tier in t.sponsor.tiers %}
+                    <article class="card" id="{{ tier.id }}">
+                        <div class="tier-anchor"><a href="#{{ tier.id }}" aria-label="Link to {{ tier.name }}">#{{ tier.id }}</a></div>
+                        <h3>{{ tier.name }}</h3>
+                        <div class="price">
+                            {% if tier.priceUsdYear > 0 %}
+                                {{ t.sponsor.currency_prefix }}{% if tier.priceUsdYearFmt %}{{ tier.priceUsdYearFmt }}{% else %}{{ tier.priceUsdYear }}{% endif %}{{ t.sponsor.currency_suffix }}<span class="per">{{ t.sponsor.per_year }}</span>
+                                {% if tier.priceUsdMonth %} <span class="note">({{ t.sponsor.currency_prefix }}{% if tier.priceUsdMonthFmt %}{{ tier.priceUsdMonthFmt }}{% else %}{{ tier.priceUsdMonth }}{% endif %}{{ t.sponsor.currency_suffix }}{{ t.sponsor.per_month }})</span>{% endif %}
+                                {% if tier.priceNote and tier.priceNote != "" %} <span class="note">({{ tier.priceNote }})</span>{% endif %}
+                            {% else %}
+                                <span class="note">{% if tier.priceNote and tier.priceNote != "" %}{{ tier.priceNote }}{% else %}{{ t.sponsor.in_kind }}{% endif %}</span>
+                            {% endif %}
+                        </div>
+                        <ul class="benefits">
+                            {% for b in tier.benefits %}
+                            <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" style="vertical-align: -3px; margin-right:.35rem"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>{{ b }}</li>
+                            {% endfor %}
+                        </ul>
+                        <div>
+                            <a class="btn btn-primary" href="#payment" data-tier="{{ tier.id }}">{{ t.sponsor.sponsor_now }}</a>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+                <div class="see-all"><a href="#tiers" class="btn btn-outline" id="seeAllTiers">{{ t.sponsor.see_all_tiers }}</a></div>
             </div>
         </section>
 
         <section id="payment" class="section" aria-labelledby="payment-title">
             <div class="container">
-                <h2 id="payment-title">Payment</h2>
+                <h2 id="payment-title">{{ t.sponsor.payment_title }}</h2>
                 <div class="payment-ctas">
                     <div class="cta-box">
-                        <h3>Pay in IRR</h3>
-                        <p class="muted">Local currency payment via invoice or gateway. Select your tier and amount.</p>
+                        <h3>{{ t.sponsor.pay_irr_title }}</h3>
+                        <p class="muted">{{ t.sponsor.pay_irr_desc }}</p>
                         <div class="cta-actions">
                             <a class="btn btn-primary" href="#pay-irr" data-open="irr-modal">
                                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18L19 6v5c0 4.66-3.2 8.96-7 10-3.8-1.04-7-5.34-7-10V6l7-2.82z"/></svg>
-                                Pay in IRR
+                                {{ t.sponsor.pay_irr_cta }}
                             </a>
                         </div>
-                        <p class="legal-note">Invoices/receipts provided. For contracts or wire, contact sponsors@hatef.ir</p>
+                        <p class="legal-note">{{ t.sponsor.legal_note }}</p>
                     </div>
                     <div class="cta-box">
-                        <h3>Pay with Bitcoin</h3>
-                        <p class="muted">Send BTC to our address. Please email us for a receipt.</p>
+                        <h3>{{ t.sponsor.pay_btc_title }}</h3>
+                        <p class="muted">{{ t.sponsor.pay_btc_desc }}</p>
                         <div class="cta-actions">
                             <a class="btn btn-outline" href="#pay-btc" data-open="btc-modal">
                                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 100 20 10 10 0 000-20zm.7 4.5c1.7 0 3.5.9 3.5 2.8 0 1.2-.6 2-1.6 2.5 1.4.4 2.2 1.4 2.2 2.9 0 2.1-1.8 3.3-4.2 3.3H11v1.6H9.9v-1.6H8v-1.2h1.9v-2.5H8v-1.2h1.9V7.3H8V6.1h1.9V4.5H11v1.6h1.7zm-.9 1.2h-1v3.9h1.2c1.2 0 2.2-.5 2.2-1.9 0-1.3-1-2-2.4-2zm.3 5.1H10.8v4.1H12c1.4 0 2.7-.6 2.7-2.1 0-1.6-1.2-2-2.6-2z"/></svg>
-                                Pay with Bitcoin
+                                {{ t.sponsor.pay_btc_cta }}
                             </a>
                         </div>
-                        <p class="legal-note">Invoices/receipts provided. For contracts or wire, contact sponsors@hatef.ir</p>
+                        <p class="legal-note">{{ t.sponsor.legal_note }}</p>
                     </div>
                 </div>
             </div>
@@ -100,23 +129,23 @@
 
         <section id="faq" class="section">
             <div class="container">
-                <h2>FAQ</h2>
+                <h2>{{ t.sponsor.faq_title }}</h2>
                 <div class="accordion" id="faqAcc">
                     <div class="acc-item" aria-expanded="false">
-                        <button class="acc-btn" aria-controls="faq1" aria-expanded="false">Does sponsorship influence ranking?<span aria-hidden="true">▾</span></button>
-                        <div id="faq1" class="acc-panel">No. Sponsorship never affects ranking or results.</div>
+                        <button class="acc-btn" aria-controls="faq1" aria-expanded="false">{{ t.sponsor.faq_q1 }}<span aria-hidden="true">▾</span></button>
+                        <div id="faq1" class="acc-panel">{{ t.sponsor.faq_a1 }}</div>
                     </div>
                     <div class="acc-item" aria-expanded="false">
-                        <button class="acc-btn" aria-controls="faq2" aria-expanded="false">Can I stay anonymous?<span aria-hidden="true">▾</span></button>
-                        <div id="faq2" class="acc-panel">Yes. Choose public or anonymous listing.</div>
+                        <button class="acc-btn" aria-controls="faq2" aria-expanded="false">{{ t.sponsor.faq_q2 }}<span aria-hidden="true">▾</span></button>
+                        <div id="faq2" class="acc-panel">{{ t.sponsor.faq_a2 }}</div>
                     </div>
                     <div class="acc-item" aria-expanded="false">
-                        <button class="acc-btn" aria-controls="faq3" aria-expanded="false">Do you offer contracts and NDAs?<span aria-hidden="true">▾</span></button>
-                        <div id="faq3" class="acc-panel">For Gold+ we can sign a standard sponsorship agreement.</div>
+                        <button class="acc-btn" aria-controls="faq3" aria-expanded="false">{{ t.sponsor.faq_q3 }}<span aria-hidden="true">▾</span></button>
+                        <div id="faq3" class="acc-panel">{{ t.sponsor.faq_a3 }}</div>
                     </div>
                     <div class="acc-item" aria-expanded="false">
-                        <button class="acc-btn" aria-controls="faq4" aria-expanded="false">Can I pay in crypto besides BTC?<span aria-hidden="true">▾</span></button>
-                        <div id="faq4" class="acc-panel">Contact us for options.</div>
+                        <button class="acc-btn" aria-controls="faq4" aria-expanded="false">{{ t.sponsor.faq_q4 }}<span aria-hidden="true">▾</span></button>
+                        <div id="faq4" class="acc-panel">{{ t.sponsor.faq_a4 }}</div>
                     </div>
                 </div>
             </div>
@@ -124,12 +153,12 @@
 
         <section id="transparency" class="section">
             <div class="container">
-                <h2>Transparency</h2>
+                <h2>{{ t.sponsor.transparency_title }}</h2>
                 <div class="stack">
-                    <p class="muted">We publish periodic financial updates and maintain a strict separation between funding and search ranking. Learn how funds are used across infrastructure, research, and community programs.</p>
+                    <p class="muted">{{ t.sponsor.transparency_paragraph }}</p>
                     <div class="cta-actions">
-                        <a class="btn btn-primary" href="#">View Financial Transparency</a>
-                        <a class="btn btn-outline" href="#">Read Ranking Independence Charter</a>
+                        <a class="btn btn-primary" href="#">{{ t.sponsor.transparency_financial_cta }}</a>
+                        <a class="btn btn-outline" href="#">{{ t.sponsor.transparency_charter_cta }}</a>
                     </div>
                 </div>
             </div>
@@ -141,8 +170,8 @@
             <div>© <span id="year"></span> Hatef</div>
             <nav aria-label="Footer">
                 <a href="https://github.com/hatef-project" target="_blank" rel="noopener">GitHub</a>
-                · <a href="#">Terms</a>
-                · <a href="#">Privacy</a>
+                · <a href="#">{{ t.sponsor.footer_terms }}</a>
+                · <a href="#">{{ t.sponsor.footer_privacy }}</a>
                 · <a href="mailto:sponsors@hatef.ir">sponsors@hatef.ir</a>
             </nav>
         </div>
@@ -153,37 +182,49 @@
         <div class="modal-backdrop" data-close></div>
         <div class="modal-card" role="dialog">
             <div class="modal-header">
-                <h3 id="irr-title" class="modal-title">Pay in IRR</h3>
+                <h3 id="irr-title" class="modal-title">{{ t.sponsor.irr_modal_title }}</h3>
                 <button class="modal-close" type="button" data-close aria-label="Close">✕</button>
             </div>
-            <p id="irr-desc" class="muted">Fill the form to receive a payment link or invoice in IRR.</p>
+            <p id="irr-desc" class="muted">{{ t.sponsor.irr_modal_desc }}</p>
             <form action="#" method="post" class="form-grid" id="irrForm">
                 <label>
-                    Name
+                    {{ t.sponsor.irr_form_name_label }}
                     <input type="text" name="name" autocomplete="name" required>
                 </label>
                 <label>
-                    Email
+                    {{ t.sponsor.irr_form_email_label }}
                     <input type="email" name="email" autocomplete="email" required>
                 </label>
                 <label>
-                    Company (optional)
+                    {{ t.sponsor.irr_form_company_label }}
                     <input type="text" name="company" autocomplete="organization">
                 </label>
                 <label>
-                    Tier
-                    <select name="tier" id="tierSelect" required></select>
+                    {{ t.sponsor.irr_form_tier_label }}
+                    <select name="tier" id="tierSelect" required>
+                        <option value="" disabled selected>{{ t.sponsor.select_tier }}</option>
+                        {% for tier in t.sponsor.tiers %}
+                        <option value="{{ tier.id }}">
+                            {{ tier.name }} —
+                            {% if tier.priceUsdYear > 0 %}
+                                {{ t.sponsor.currency_prefix }}{% if tier.priceUsdYearFmt %}{{ tier.priceUsdYearFmt }}{% else %}{{ tier.priceUsdYear }}{% endif %}{{ t.sponsor.currency_suffix }}{{ t.sponsor.per_year }}
+                            {% else %}
+                                {{ tier.priceNote or t.sponsor.in_kind }}
+                            {% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
                 </label>
                 <label class="full">
-                    Amount (IRR)
+                    {{ t.sponsor.irr_form_amount_label }}
                     <input type="number" name="amount" inputmode="numeric" min="0" step="1" placeholder="e.g., 50000000" required>
                 </label>
                 <div class="full" style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
-                    <button class="btn btn-primary" type="submit">Request Payment Link</button>
-                    <button class="btn btn-outline" type="button" data-close>Cancel</button>
+                    <button class="btn btn-primary" type="submit">{{ t.sponsor.irr_form_request_link_btn }}</button>
+                    <button class="btn btn-outline" type="button" data-close>{{ t.sponsor.irr_form_cancel_btn }}</button>
                 </div>
             </form>
-            <p class="legal-note">Invoices/receipts provided. For contracts or wire, contact sponsors@hatef.ir</p>
+            <p class="legal-note">{{ t.sponsor.legal_note }}</p>
         </div>
     </dialog>
 
@@ -192,7 +233,7 @@
         <div class="modal-backdrop" data-close></div>
         <div class="modal-card" role="dialog">
             <div class="modal-header">
-                <h3 id="btc-title" class="modal-title">Pay with Bitcoin</h3>
+                <h3 id="btc-title" class="modal-title">{{ t.sponsor.pay_btc_title }}</h3>
                 <button class="modal-close" type="button" data-close aria-label="Close">✕</button>
             </div>
             <div id="btc-desc" class="btc-box">
@@ -209,15 +250,15 @@
                     </svg>
                 </div>
                 <div>
-                    <p class="muted">Send BTC to the address below, then email your receipt for confirmation.</p>
+                    <p class="muted">{{ t.sponsor.btc_modal_desc }}</p>
                     <div class="addr">
-                        <strong>BTC Address:</strong>
-                        <code id="btcAddr" class="mono">bc1qexampleaddress0000000000000000000000</code>
-                        <button class="btn btn-outline" id="copyBtc">Copy</button>
+                        <strong>{{ t.sponsor.btc_address_label }}</strong>
+                        <code id="btcAddr" class="mono">3LpRgxXxAJDgRcHF6w1jpobRnPPyQYPQJf</code>
+                        <button class="btn btn-outline" id="copyBtc">{{ t.sponsor.copy }}</button>
                     </div>
                 </div>
             </div>
-            <p class="legal-note">Invoices/receipts provided. For contracts or wire, contact sponsors@hatef.ir</p>
+            <p class="legal-note">{{ t.sponsor.legal_note }}</p>
         </div>
     </dialog>
 
