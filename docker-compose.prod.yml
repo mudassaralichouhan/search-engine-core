@@ -1,0 +1,103 @@
+services:
+  search-engine:
+    image: ghcr.io/hatefsystems/search-engine-core:latest
+    container_name: search-engine-core
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      - PORT=${PORT:-3000}
+      - MONGODB_URI=${MONGODB_URI}
+      - SEARCH_REDIS_URI=${SEARCH_REDIS_URI:-tcp://redis:6379}
+      - SEARCH_REDIS_POOL_SIZE=${SEARCH_REDIS_POOL_SIZE:-8}
+      - SEARCH_INDEX_NAME=${SEARCH_INDEX_NAME:-search_index}
+      - MINIFY_JS=${MINIFY_JS:-true}
+    ports:
+      - "${PORT:-3000}:3000"
+    depends_on:
+      - redis
+      - mongodb
+      - browserless
+    stop_grace_period: 30s
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - search-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - search-network
+
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    command: ["mongod", "--bind_ip_all"]
+    volumes:
+      - mongodb_data:/data/db
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - search-network
+
+  browserless:
+    image: browserless/chrome:latest
+    container_name: browserless
+    restart: unless-stopped
+    shm_size: "2g"
+    environment:
+      - "MAX_CONCURRENT_SESSIONS=10"
+      - "PREBOOT_CHROME=true"
+      - "CONNECTION_TIMEOUT=15000"
+      - "CHROME_REFRESH_TIME=60000"
+      - "QUEUE_LIMIT=100"
+      - "MAX_CPU_PERCENT=90"
+      - "MAX_MEMORY_PERCENT=90"
+      - "KEEP_ALIVE=true"
+      - "ENABLE_DEBUGGER=false"
+      - "ENABLE_CORS=true"
+      - "WORKSPACE_DIR=/workspace"
+      - "FUNCTION_ENABLE_INCOGNITO=false"
+      - "FUNCTION_KEEP_ALIVE=true"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - search-network
+
+networks:
+  search-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+

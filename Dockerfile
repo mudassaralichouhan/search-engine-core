@@ -269,9 +269,9 @@ COPY --from=builder /usr/local/include/sw/ /usr/local/include/sw/
 RUN ldconfig
 
 # Copy public folder from builder stage
-COPY public ./public
-COPY locales ./locales
-COPY templates ./templates
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/locales ./locales
+COPY --from=builder /app/templates ./templates
 
 
 

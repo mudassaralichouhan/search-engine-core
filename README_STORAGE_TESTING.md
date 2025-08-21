@@ -16,7 +16,7 @@ The storage layer provides a dual-storage architecture:
 
 ### Required Software
 
-1. **Visual Studio 2019/2022** with C++ development tools
+1. **GCC/Clang** C++ compiler with C++17 support
 2. **CMake 3.12+** (preferably latest version)
 3. **vcpkg** package manager
 4. **MongoDB Community Server** (for MongoDB tests)
@@ -25,45 +25,48 @@ The storage layer provides a dual-storage architecture:
 
 ### MongoDB Setup
 
-#### Windows Installation
+#### Linux Installation
 
-```powershell
-# Download and install MongoDB Community Server
-# https://www.mongodb.com/try/download/community
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install mongodb
 
-# Start MongoDB service
-net start mongodb
+# Or install via Docker
+docker run -d -p 27017:27017 --name mongodb mongo:latest
 
-# Or run manually
-mongod --dbpath "C:\data\db"
+# Start MongoDB service (if installed locally)
+sudo systemctl start mongod
+sudo systemctl enable mongod
 ```
 
 #### Verification
 
-```powershell
+```bash
 # Test MongoDB connection
-mongo --eval "db.runCommand({ping: 1})"
+mongosh --eval "db.runCommand({ping: 1})"
 ```
 
 ### Redis Setup
 
-#### Windows Installation
+#### Linux Installation
 
-```powershell
-# Option 1: Redis for Windows (Microsoft Open Tech)
-# Download from: https://github.com/microsoftarchive/redis/releases
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install redis-server
 
-# Option 2: Docker (recommended)
-docker run -d -p 6379:6379 redislabs/redisearch:latest
+# Start Redis service
+sudo systemctl start redis-server
+sudo systemctl enable redis-server
 
-# Option 3: WSL2 with Redis
-wsl --install
-# Then install Redis in WSL2
+# Install with RediSearch via Docker (recommended)
+docker run -d -p 6379:6379 --name redis-search redislabs/redisearch:latest
 ```
 
 #### Verification
 
-```powershell
+```bash
 # Test Redis connection
 redis-cli ping
 # Should return "PONG"
@@ -74,62 +77,45 @@ redis-cli "FT.INFO" "test_index"
 
 ## Build Scripts
 
-### Batch Script (Windows CMD)
+### Shell Script (Linux/Unix)
 
-**File**: `build_and_test_storage.bat`
+**File**: `build_and_test_storage.sh`
 
 **Usage**:
 
-```cmd
+```bash
 # Run all tests
-build_and_test_storage.bat
+./build_and_test_storage.sh
 
 # Clean build and run all tests
-build_and_test_storage.bat clean
+./build_and_test_storage.sh clean
 
 # Run specific test categories
-build_and_test_storage.bat mongodb
-build_and_test_storage.bat redis
-build_and_test_storage.bat content
+./build_and_test_storage.sh mongodb
+./build_and_test_storage.sh redis
+./build_and_test_storage.sh content
 
 # Verbose output
-build_and_test_storage.bat verbose
-```
+./build_and_test_storage.sh verbose
 
-### PowerShell Script (Cross-platform)
+# Parallel build
+./build_and_test_storage.sh all --parallel
 
-**File**: `build_and_test_storage.ps1`
-
-**Basic Usage**:
-
-```powershell
-# Run all tests
-.\build_and_test_storage.ps1
-
-# Run with parallel build
-.\build_and_test_storage.ps1 all -Parallel
-
-# Clean build with Release configuration
-.\build_and_test_storage.ps1 clean -Configuration Release
-
-# Skip build and run tests only
-.\build_and_test_storage.ps1 mongodb -SkipBuild
-
-# Get help
-.\build_and_test_storage.ps1 help
+# Release configuration
+./build_and_test_storage.sh all --release
 ```
 
 **Advanced Options**:
 
-```powershell
+```bash
 # Run with code coverage
-.\build_and_test_storage.ps1 all -Coverage
+./build_and_test_storage.sh all --coverage
 
 # Skip dependency checks
-.\build_and_test_storage.ps1 quick -SkipDependencyCheck
+./build_and_test_storage.sh quick --skip-deps
 
 # Custom timeout
-.\build_and_test_storage.ps1 content -Timeout 600
+./build_and_test_storage.sh content --timeout=600
 ```
 
 ## Test Categories
@@ -213,10 +199,10 @@ Integration tests for the unified storage interface:
 
 Set these environment variables for custom configuration:
 
-```powershell
-$env:MONGODB_URI = "mongodb://localhost:27017"
-$env:REDIS_URI = "tcp://127.0.0.1:6379"
-$env:LOG_LEVEL = "DEBUG"  # TRACE, DEBUG, INFO, WARN, ERROR
+```bash
+export MONGODB_URI="mongodb://localhost:27017"
+export REDIS_URI="tcp://127.0.0.1:6379"
+export LOG_LEVEL="DEBUG"  # TRACE, DEBUG, INFO, WARN, ERROR
 ```
 
 ## Troubleshooting
@@ -233,14 +219,14 @@ Error: Failed to build redis-plus-plus, hiredis
 
 **Solution**:
 
-```powershell
+```bash
 # Update vcpkg
 git -C vcpkg pull
-.\vcpkg\bootstrap-vcpkg.bat
+./vcpkg/bootstrap-vcpkg.sh
 
 # Clean and reinstall
-.\vcpkg\vcpkg remove redis-plus-plus hiredis
-.\vcpkg\vcpkg install redis-plus-plus hiredis --triplet x64-windows
+./vcpkg/vcpkg remove redis-plus-plus hiredis
+./vcpkg/vcpkg install redis-plus-plus hiredis --triplet x64-linux
 ```
 
 #### 2. MongoDB Driver Issues
@@ -253,9 +239,12 @@ Error: Could not find mongocxx, bsoncxx
 
 **Solution**:
 
-```powershell
+```bash
 # Install MongoDB C++ driver via vcpkg
-.\vcpkg\vcpkg install mongo-cxx-driver --triplet x64-windows
+./vcpkg/vcpkg install mongo-cxx-driver --triplet x64-linux
+
+# Or install via package manager
+sudo apt install libmongocxx-dev libbsoncxx-dev  # Ubuntu/Debian
 
 # Or download and build manually from:
 # https://github.com/mongodb/mongo-cxx-driver
@@ -271,12 +260,12 @@ Error: Could not find package mongocxx
 
 **Solution**:
 
-```powershell
+```bash
 # Set vcpkg toolchain
-cmake .. -DCMAKE_TOOLCHAIN_FILE=vcpkg\scripts\buildsystems\vcpkg.cmake
+cmake .. -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake
 
 # Or set environment variable
-$env:VCPKG_ROOT = "C:\path\to\vcpkg"
+export VCPKG_ROOT="/path/to/vcpkg"
 ```
 
 ### Common Runtime Issues
@@ -289,16 +278,16 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
 
 1. **Check MongoDB service**:
 
-   ```powershell
-   net start mongodb
+   ```bash
+   sudo systemctl status mongod
    # or
-   sc query mongodb
+   sudo service mongodb status
    ```
 
 2. **Manual start**:
 
-   ```powershell
-   mongod --dbpath "C:\data\db"
+   ```bash
+   mongod --dbpath "/var/lib/mongodb"
    ```
 
 3. **Connection string**:
@@ -315,22 +304,24 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
 
 1. **Check Redis process**:
 
-   ```powershell
-   netstat -an | findstr 6379
+   ```bash
+   netstat -an | grep 6379
    redis-cli ping
    ```
 
 2. **Start Redis**:
 
-   ```powershell
+   ```bash
    redis-server
    # or
+   sudo systemctl start redis-server
+   # or via Docker
    docker run -d -p 6379:6379 redis:latest
    ```
 
 3. **RediSearch module**:
 
-   ```powershell
+   ```bash
    # Check if RediSearch is loaded
    redis-cli MODULE LIST
 
@@ -344,9 +335,9 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
 
 **Solutions**:
 
-1. **Run as Administrator**: Right-click PowerShell → "Run as Administrator"
-2. **File permissions**: Ensure build directory is writable
-3. **Antivirus**: Add project directory to antivirus exclusions
+1. **Run with sudo**: Use `sudo` for system operations if needed
+2. **File permissions**: Ensure build directory is writable (`chmod +w build/`)
+3. **User permissions**: Make sure user has write access to project directory
 
 ### Test-Specific Issues
 
@@ -389,8 +380,8 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
 
 1. **Parallel Building**:
 
-   ```powershell
-   .\build_and_test_storage.ps1 all -Parallel
+   ```bash
+   ./build_and_test_storage.sh all --parallel
    ```
 
 2. **Incremental Builds**:
@@ -399,8 +390,8 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
    - Build specific targets only
 
 3. **Release Configuration**:
-   ```powershell
-   .\build_and_test_storage.ps1 all -Configuration Release
+   ```bash
+   ./build_and_test_storage.sh all --release
    ```
 
 ### Test Performance
@@ -417,13 +408,13 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"
 
 3. **Targeted Testing**:
 
-   ```powershell
+   ```bash
    # Test specific components
-   .\build_and_test_storage.ps1 mongodb
-   .\build_and_test_storage.ps1 redis
+   ./build_and_test_storage.sh mongodb
+   ./build_and_test_storage.sh redis
 
    # Quick essential tests only
-   .\build_and_test_storage.ps1 quick
+   ./build_and_test_storage.sh quick
    ```
 
 ## Continuous Integration
@@ -435,7 +426,7 @@ name: Storage Tests
 on: [push, pull_request]
 jobs:
   test:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     services:
       mongodb:
         image: mongo:latest
@@ -450,34 +441,34 @@ jobs:
       - name: Setup vcpkg
         run: |
           git clone https://github.com/Microsoft/vcpkg.git
-          .\vcpkg\bootstrap-vcpkg.bat
+          ./vcpkg/bootstrap-vcpkg.sh
       - name: Run Storage Tests
-        run: .\build_and_test_storage.ps1 all -SkipDependencyCheck
+        run: ./build_and_test_storage.sh all --skip-deps
 ```
 
 ### Local Development Workflow
 
 1. **Initial Setup**:
 
-   ```powershell
+   ```bash
    # One-time setup
-   .\build_and_test_storage.ps1 clean
+   ./build_and_test_storage.sh clean
    ```
 
 2. **Development Cycle**:
 
-   ```powershell
+   ```bash
    # Quick iteration
-   .\build_and_test_storage.ps1 mongodb -SkipBuild
+   ./build_and_test_storage.sh mongodb --skip-build
 
    # Full validation
-   .\build_and_test_storage.ps1 all
+   ./build_and_test_storage.sh all
    ```
 
 3. **Pre-commit**:
-   ```powershell
+   ```bash
    # Comprehensive testing
-   .\build_and_test_storage.ps1 all -Configuration Release -Parallel
+   ./build_and_test_storage.sh all --release --parallel
    ```
 
 ## Monitoring and Logging
@@ -498,12 +489,12 @@ jobs:
 
 Enable verbose logging:
 
-```powershell
-# PowerShell script
-.\build_and_test_storage.ps1 verbose
+```bash
+# Shell script
+./build_and_test_storage.sh verbose
 
 # Environment variable
-$env:LOG_LEVEL = "DEBUG"
+export LOG_LEVEL="DEBUG"
 ```
 
 ## Support
@@ -512,8 +503,8 @@ $env:LOG_LEVEL = "DEBUG"
 
 1. **Script Help**:
 
-   ```powershell
-   .\build_and_test_storage.ps1 help
+   ```bash
+   ./build_and_test_storage.sh help
    ```
 
 2. **Documentation**: See `docs/content-storage-layer.md`
@@ -525,7 +516,7 @@ $env:LOG_LEVEL = "DEBUG"
 - **Clean build**: Use `clean` parameter to start fresh
 - **Update dependencies**: Refresh vcpkg and rebuild
 - **Check services**: Verify MongoDB and Redis are running
-- **Environment**: Ensure proper Visual Studio and CMake setup
+- **Environment**: Ensure proper GCC/Clang and CMake setup
 
 This guide should help you successfully build and test the storage layer
 components. For additional support, refer to the main project documentation or

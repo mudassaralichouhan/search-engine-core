@@ -139,7 +139,8 @@ SPA rendering capabilities** for JavaScript-heavy websites.
 ├── config/                     # Configuration files
 ├── examples/                   # Usage examples
 │   └── spa_crawler_example.cpp # SPA crawling example
-└── docker-compose.yml          # Multi-service orchestration with browserless
+├── docker-compose.yml          # Development multi-service orchestration
+└── docker-compose.prod.yml     # Production deployment (uses GHCR images)
 ```
 
 ## Enhanced Crawler API
@@ -705,12 +706,31 @@ REDIS_URI=tcp://localhost:6379
 - **Logging**: Custom centralized logging system
 - **Kafka Frontier**: Apache Kafka (via Docker) and `librdkafka` (C client)
 
-## Quick Start with Session-Based SPA Crawling
+## Quick Start
+
+### Development Setup
 
 1. **Start services** (includes Browserless + Kafka + Zookeeper):
 
 ```bash
 docker compose up -d
+```
+
+### Production Deployment
+
+1. **Use the production compose** (pulls from GHCR, no build required):
+
+```bash
+# Create environment file
+cat > .env << EOF
+MONGO_INITDB_ROOT_USERNAME=admin
+MONGO_INITDB_ROOT_PASSWORD=your_secure_password_here
+MONGODB_URI=mongodb://admin:your_secure_password_here@mongodb:27017
+EOF
+
+# Deploy
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 2. **Start a crawl session**:
@@ -747,6 +767,74 @@ curl "http://localhost:3000/api/crawl/details?sessionId=$SESSION_ID" | jq '.logs
 ```
 
 Expected output: `"فروشگاه اینترنتی دیجی‌کالا"` (Digikala Online Store)
+
+## Production Deployment
+
+### Using Pre-built Images (Recommended)
+
+The production setup uses `docker-compose.prod.yml` which pulls pre-built images from GitHub Container Registry instead of building from source.
+
+#### Required Environment Variables
+
+Create a `.env` file with these variables:
+
+```bash
+# MongoDB Configuration
+MONGO_INITDB_ROOT_USERNAME=admin
+MONGO_INITDB_ROOT_PASSWORD=your_secure_password_here
+MONGODB_URI=mongodb://admin:your_secure_password_here@mongodb:27017
+
+# Optional Configuration
+PORT=3000
+SEARCH_REDIS_URI=tcp://redis:6379
+SEARCH_REDIS_POOL_SIZE=8
+SEARCH_INDEX_NAME=search_index
+MINIFY_JS=true
+```
+
+#### Deployment Commands
+
+```bash
+# Login to GitHub Container Registry (if private)
+docker login ghcr.io -u your_username -p your_token
+
+# Pull latest images and start services
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+
+# Check status
+docker compose -f docker-compose.prod.yml ps
+
+# View logs
+docker compose -f docker-compose.prod.yml logs -f search-engine
+```
+
+#### Security Best Practices
+
+1. **Never commit `.env` files** - add to `.gitignore`
+2. **Use strong passwords** - generate secure random passwords
+3. **Limit network exposure** - MongoDB and Redis are not exposed externally by default
+4. **Regular updates** - pull latest images regularly for security updates
+5. **Backup data** - see MongoDB backup section in docs
+
+#### Services Included
+
+- **search-engine-core**: Main application (from GHCR)
+- **mongodb**: Document database with persistent storage
+- **redis**: Cache and search index with persistent storage  
+- **browserless**: Headless Chrome for SPA rendering
+
+#### Scaling Considerations
+
+For high-traffic deployments:
+
+```bash
+# Scale browserless instances
+docker compose -f docker-compose.prod.yml up -d --scale browserless=3
+
+# Use external managed databases
+# Remove mongodb/redis services and point to managed instances via env vars
+```
 
 ## License
 

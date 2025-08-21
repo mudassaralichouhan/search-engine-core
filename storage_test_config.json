@@ -34,7 +34,7 @@
       "mongodb": {
         "port": 27017,
         "optional": false,
-        "startup_command": "net start mongodb"
+        "startup_command": "sudo systemctl start mongod"
       },
       "redis": {
         "port": 6379,
@@ -58,6 +58,6 @@
     "platform": "x64",
     "parallel_build": true,
     "rebuild_on_clean": true,
-    "vcpkg_triplet": "x64-windows"
+    "vcpkg_triplet": "x64-linux"
   }
 }
