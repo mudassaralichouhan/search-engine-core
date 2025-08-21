@@ -63,6 +63,8 @@
     {
       "id": "individual",
       "name": "حامی فردی",
+      "initiallyVisible": true,
+      "cta": "حامی شوید",
       "priceUsdYear": 12000000,
       "priceUsdMonth": 1200000,
       "priceNote": "",
@@ -75,6 +77,8 @@
     {
       "id": "startup",
       "name": "استارتاپ",
+      "initiallyVisible": false,
+      "cta": "همکاری به‌عنوان استارتاپ",
       "priceUsdYear": 120000000,
       "priceUsdMonth": null,
       "priceNote": "",
@@ -87,6 +91,8 @@
     {
       "id": "silver",
       "name": "نقره‌ای",
+      "initiallyVisible": false,
+      "cta": "پیوستن سطح نقره‌ای",
       "priceUsdYear": 1200000000,
       "priceUsdMonth": null,
       "priceNote": "",
@@ -99,6 +105,8 @@
     {
       "id": "gold",
       "name": "طلایی",
+      "initiallyVisible": false,
+      "cta": "پیوستن سطح طلایی",
       "priceUsdYear": 6000000000,
       "priceUsdMonth": null,
       "priceNote": "",
@@ -111,6 +119,8 @@
     {
       "id": "platinum",
       "name": "پلاتینیوم / استراتژیک",
+      "initiallyVisible": false,
+      "cta": "حمایت استراتژیک",
       "priceUsdYear": 50000000000,
       "priceUsdMonth": null,
       "priceNote": "حداقل",
@@ -123,6 +133,8 @@
     {
       "id": "infrastructure",
       "name": "حامی زیرساخت",
+      "initiallyVisible": false,
+      "cta": "تامین زیرساخت",
       "priceUsdYear": 0,
       "priceUsdMonth": null,
       "priceNote": "حمایت سخت‌افزاری/پهنای‌باند (معادل دلاری توافقی)",

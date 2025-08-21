@@ -63,6 +63,8 @@
     {
       "id": "individual",
       "name": "Individual Backer",
+      "initiallyVisible": true,
+      "cta": "Become a backer",
       "priceUsdYear": 99,
       "priceUsdMonth": 9,
       "priceNote": "",
@@ -75,6 +77,8 @@
     {
       "id": "startup",
       "name": "Startup",
+      "initiallyVisible": false,
+      "cta": "Partner as a startup",
       "priceUsdYear": 1000,
       "priceUsdMonth": null,
       "priceNote": "",
@@ -87,6 +91,8 @@
     {
       "id": "silver",
       "name": "Silver",
+      "initiallyVisible": false,
+      "cta": "Join as Silver",
       "priceUsdYear": 20000,
       "priceUsdMonth": null,
       "priceNote": "",
@@ -99,6 +105,8 @@
     {
       "id": "gold",
       "name": "Gold",
+      "initiallyVisible": false,
+      "cta": "Join as Gold",
       "priceUsdYear": 100000,
       "priceUsdMonth": null,
       "priceNote": "",
@@ -111,6 +119,8 @@
     {
       "id": "platinum",
       "name": "Platinum / Strategic",
+      "initiallyVisible": false,
+      "cta": "Strategic sponsorship",
       "priceUsdYear": 250000,
       "priceUsdMonth": null,
       "priceNote": "minimum",
@@ -123,6 +133,8 @@
     {
       "id": "infrastructure",
       "name": "Infrastructure Sponsor",
+      "initiallyVisible": false,
+      "cta": "Contribute infrastructure",
       "priceUsdYear": 0,
       "priceUsdMonth": null,
       "priceNote": "In-kind hardware/bandwidth (USD equivalent agreed)",

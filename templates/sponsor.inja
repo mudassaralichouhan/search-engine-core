@@ -70,7 +70,7 @@
                 <p class="muted">{{ t.sponsor.tiers_subtitle }}</p>
                 <div class="tiers-grid" id="tiersGrid" aria-live="polite" aria-busy="false" data-copy="{{ t.sponsor.copy }}" data-copied="{{ t.sponsor.copied }}" data-copyFailed="{{ t.sponsor.copy_failed }}" data-selectTier="{{ t.sponsor.select_tier }}" data-inKind="{{ t.sponsor.in_kind }}">
                     {% for tier in t.sponsor.tiers %}
-                    <article class="card" id="{{ tier.id }}">
+                    <article class="card{% if tier.initiallyVisible == false %} hide extra-tier{% endif %}" id="{{ tier.id }}">
                         <div class="tier-anchor"><a href="#{{ tier.id }}" aria-label="Link to {{ tier.name }}">#{{ tier.id }}</a></div>
                         <h3>{{ tier.name }}</h3>
                         <div class="price">
@@ -88,7 +88,7 @@
                             {% endfor %}
                         </ul>
                         <div>
-                            <a class="btn btn-primary" href="#payment" data-tier="{{ tier.id }}">{{ t.sponsor.sponsor_now }}</a>
+                            <a class="btn btn-primary" href="#payment" data-tier="{{ tier.id }}">{% if tier.cta %}{{ tier.cta }}{% else %}{{ t.sponsor.sponsor_now }}{% endif %}</a>
                         </div>
                     </article>
                     {% endfor %}
