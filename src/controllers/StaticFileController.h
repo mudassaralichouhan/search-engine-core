@@ -13,6 +13,8 @@ private:
     std::string getMimeType(const std::string& path);
     bool shouldCache(const std::string& path);
     std::string readFile(const std::string& path);
+    std::string generateETag(const std::string& content);
+    std::string getLastModifiedHeader(const std::string& filePath);
 };
 
 // Route registration - catch-all route for static files

@@ -48,6 +48,11 @@ services:
       - MINIFY_JS=true
       - MINIFY_JS_LEVEL=none  # Use microservice instead
       - JS_MINIFIER_SERVICE_URL=http://js-minifier:3002
+      # Cache configuration
+      - JS_CACHE_ENABLED=true
+      - JS_CACHE_TYPE=redis
+      - JS_CACHE_TTL=3600
+      - JS_CACHE_REDIS_DB=1
       # - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       # - KAFKA_FRONTIER_TOPIC=crawl.frontier
     depends_on:
@@ -83,14 +88,17 @@ services:
       start_period: 10s
 
   redis:
-    image: redis:latest
+    image: redis:7-alpine
     container_name: redis
     restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    environment:
+      - REDIS_MAXMEMORY=268435456  # 256MB in bytes
+      - REDIS_MAXMEMORY_POLICY=allkeys-lru
     networks:
       - search-network
 

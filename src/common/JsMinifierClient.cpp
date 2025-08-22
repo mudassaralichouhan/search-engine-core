@@ -58,37 +58,76 @@ std::string JsMinifierClient::minifyWithJson(const std::string& jsCode, const st
 
     std::string response = makeHttpRequest("POST", "/minify/json", payload.str());
     
+    // Debug: Log response for troubleshooting
+    std::cerr << "JS Minifier JSON response: " << response.substr(0, 200) << "..." << std::endl;
+    
     // Parse response to extract minified code
-    // Simple JSON extraction (in production, use a proper JSON library)
+    // Look for "code" field in JSON response
     size_t codeStart = response.find("\"code\":\"");
     if (codeStart != std::string::npos) {
         codeStart += 8; // Length of "code":"
-        size_t codeEnd = response.find("\",", codeStart);
-        if (codeEnd == std::string::npos) {
-            codeEnd = response.find("\"}", codeStart);
+        
+        // Find the end of the code string
+        size_t codeEnd = std::string::npos;
+        size_t pos = codeStart;
+        bool inEscape = false;
+        
+        while (pos < response.length()) {
+            if (inEscape) {
+                inEscape = false;
+                pos++;
+                continue;
+            }
+            
+            if (response[pos] == '\\') {
+                inEscape = true;
+                pos++;
+                continue;
+            }
+            
+            if (response[pos] == '"') {
+                codeEnd = pos;
+                break;
+            }
+            
+            pos++;
         }
+        
         if (codeEnd != std::string::npos) {
             std::string minifiedCode = response.substr(codeStart, codeEnd - codeStart);
-            // Unescape JSON string (basic implementation)
+            
+            // Unescape JSON string
             std::string result;
             for (size_t i = 0; i < minifiedCode.length(); ++i) {
                 if (minifiedCode[i] == '\\' && i + 1 < minifiedCode.length()) {
                     char next = minifiedCode[i + 1];
-                    if (next == '\"') result += '\"';
-                    else if (next == '\\') result += '\\';
-                    else if (next == '/') result += '/';
-                    else if (next == 'n') result += '\n';
-                    else if (next == 'r') result += '\r';
-                    else if (next == 't') result += '\t';
-                    else {
-                        result += minifiedCode[i];
-                        result += next;
+                    switch (next) {
+                        case '"': result += '"'; break;
+                        case '\\': result += '\\'; break;
+                        case '/': result += '/'; break;
+                        case 'n': result += '\n'; break;
+                        case 'r': result += '\r'; break;
+                        case 't': result += '\t'; break;
+                        case 'b': result += '\b'; break;
+                        case 'f': result += '\f'; break;
+                        default:
+                            // Handle Unicode escapes like \u1234
+                            if (next == 'u' && i + 5 < minifiedCode.length()) {
+                                // Skip Unicode escape for now (simplified)
+                                i += 4; // Skip the 4 hex digits
+                            } else {
+                                result += minifiedCode[i];
+                                result += next;
+                            }
+                            break;
                     }
-                    ++i;
+                    ++i; // Skip the escaped character
                 } else {
                     result += minifiedCode[i];
                 }
             }
+            
+            std::cerr << "Minified code length: " << result.length() << " bytes" << std::endl;
             return result;
         }
     }
@@ -99,6 +138,7 @@ std::string JsMinifierClient::minifyWithJson(const std::string& jsCode, const st
         return jsCode; // Return original code on error
     }
     
+    std::cerr << "Failed to parse minified code from response" << std::endl;
     return jsCode; // Fallback
 }
 
@@ -168,32 +208,68 @@ std::string JsMinifierClient::minifyWithFileUpload(const std::string& jsCode, co
     size_t codeStart = readBuffer.find("\"code\":\"");
     if (codeStart != std::string::npos) {
         codeStart += 8; // Length of "code":"
-        size_t codeEnd = readBuffer.find("\",", codeStart);
-        if (codeEnd == std::string::npos) {
-            codeEnd = readBuffer.find("\"}", codeStart);
+        
+        // Find the end of the code string
+        size_t codeEnd = std::string::npos;
+        size_t pos = codeStart;
+        bool inEscape = false;
+        
+        while (pos < readBuffer.length()) {
+            if (inEscape) {
+                inEscape = false;
+                pos++;
+                continue;
+            }
+            
+            if (readBuffer[pos] == '\\') {
+                inEscape = true;
+                pos++;
+                continue;
+            }
+            
+            if (readBuffer[pos] == '"') {
+                codeEnd = pos;
+                break;
+            }
+            
+            pos++;
         }
+        
         if (codeEnd != std::string::npos) {
             std::string minifiedCode = readBuffer.substr(codeStart, codeEnd - codeStart);
-            // Unescape JSON string (basic implementation)
+            
+            // Unescape JSON string
             std::string result;
             for (size_t i = 0; i < minifiedCode.length(); ++i) {
                 if (minifiedCode[i] == '\\' && i + 1 < minifiedCode.length()) {
                     char next = minifiedCode[i + 1];
-                    if (next == '\"') result += '\"';
-                    else if (next == '\\') result += '\\';
-                    else if (next == '/') result += '/';
-                    else if (next == 'n') result += '\n';
-                    else if (next == 'r') result += '\r';
-                    else if (next == 't') result += '\t';
-                    else {
-                        result += minifiedCode[i];
-                        result += next;
+                    switch (next) {
+                        case '"': result += '"'; break;
+                        case '\\': result += '\\'; break;
+                        case '/': result += '/'; break;
+                        case 'n': result += '\n'; break;
+                        case 'r': result += '\r'; break;
+                        case 't': result += '\t'; break;
+                        case 'b': result += '\b'; break;
+                        case 'f': result += '\f'; break;
+                        default:
+                            // Handle Unicode escapes like \u1234
+                            if (next == 'u' && i + 5 < minifiedCode.length()) {
+                                // Skip Unicode escape for now (simplified)
+                                i += 4; // Skip the 4 hex digits
+                            } else {
+                                result += minifiedCode[i];
+                                result += next;
+                            }
+                            break;
                     }
-                    ++i;
+                    ++i; // Skip the escaped character
                 } else {
                     result += minifiedCode[i];
                 }
             }
+            
+            std::cerr << "File upload minified code length: " << result.length() << " bytes" << std::endl;
             return result;
         }
     }
