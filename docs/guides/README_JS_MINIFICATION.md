@@ -5,6 +5,7 @@ This project provides **microservice architecture** for JavaScript minification 
 ## 🏗️ Architecture
 
 **Clean microservice approach:**
+
 - **Main container**: Your existing C++ search engine (lightweight, focused)
 - **JS Minifier service**: Dedicated Node.js container with Terser (port 3002)
 - **Communication**: HTTP API between services
@@ -46,29 +47,29 @@ if (client.isServiceAvailable()) {
 
 ### Environment Variables
 
-| Variable | Values | Description |
-|----------|---------|-------------|
-| `MINIFY_JS` | `true`/`false` | Enable/disable minification globally |
-| `MINIFY_JS_LEVEL` | `none`/`basic`/`advanced` | Minification aggressiveness |
+| Variable          | Values                    | Description                          |
+| ----------------- | ------------------------- | ------------------------------------ |
+| `MINIFY_JS`       | `true`/`false`            | Enable/disable minification globally |
+| `MINIFY_JS_LEVEL` | `none`/`basic`/`advanced` | Minification aggressiveness          |
 
 ### Minification Levels
 
-| Level | Description | Features |
-|--------|-------------|----------|
-| **none** | No minification | Returns original code |
-| **basic** | Basic Terser minification | Removes comments + whitespace |
-| **advanced** | Advanced Terser minification | Variable renaming + dead code elimination |
+| Level          | Description                    | Features                                   |
+| -------------- | ------------------------------ | ------------------------------------------ |
+| **none**       | No minification                | Returns original code                      |
+| **basic**      | Basic Terser minification      | Removes comments + whitespace              |
+| **advanced**   | Advanced Terser minification   | Variable renaming + dead code elimination  |
 | **aggressive** | Aggressive Terser minification | Maximum compression + unsafe optimizations |
 
 ## 📊 Performance Comparison
 
 Based on testing with popular libraries:
 
-| Library | Original | Basic | Advanced (Terser) | Savings |
-|---------|----------|-------|------------------|---------|
-| jQuery 3.x | 287KB | 201KB (30%) | 87KB (70%) | **200KB** |
-| React 18 | 42KB | 31KB (26%) | 12KB (71%) | **30KB** |
-| Lodash | 531KB | 372KB (30%) | 71KB (87%) | **460KB** |
+| Library    | Original | Basic       | Advanced (Terser) | Savings   |
+| ---------- | -------- | ----------- | ----------------- | --------- |
+| jQuery 3.x | 287KB    | 201KB (30%) | 87KB (70%)        | **200KB** |
+| React 18   | 42KB     | 31KB (26%)  | 12KB (71%)        | **30KB**  |
+| Lodash     | 531KB    | 372KB (30%) | 71KB (87%)        | **460KB** |
 
 ## 🐳 Docker Setup
 
@@ -93,7 +94,7 @@ The microservice exposes several endpoints:
 # Health check
 curl http://localhost:3002/health
 
-# Configuration info  
+# Configuration info
 curl http://localhost:3002/config
 
 # Minify single file
@@ -118,7 +119,7 @@ auto& minifier = JsMinifier::getInstance();
 std::string jsResponse = loadJavaScriptFile(filename);
 if (minifier.isEnabled()) {
     jsResponse = minifier.process(jsResponse);
-    
+
     // Set appropriate headers
     setHeader("Content-Type", "application/javascript");
     setHeader("Content-Encoding", "gzip"); // If using gzip
@@ -171,7 +172,7 @@ std::string getMinifiedJs(const std::string& filename) {
     if (it != minificationCache.end()) {
         return it->second;
     }
-    
+
     // Minify and cache
     std::string original = readFile(filename);
     std::string minified = minifier.process(original);
@@ -189,11 +190,11 @@ try {
     return minified;
 } catch (const std::exception& e) {
     std::cerr << "Minification failed: " << e.what() << std::endl;
-    
+
     // Fallback strategies:
     // 1. Return original code as fallback
     return jsCode;
-    
+
     // 2. Or return original code
     // return jsCode;
 }
@@ -208,7 +209,7 @@ std::string result = minifier.process(code);
 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
     std::chrono::high_resolution_clock::now() - start);
 
-std::cout << "Minification: " << code.length() << " → " << result.length() 
+std::cout << "Minification: " << code.length() << " → " << result.length()
           << " bytes in " << duration.count() << "ms" << std::endl;
 ```
 
@@ -217,6 +218,7 @@ std::cout << "Minification: " << code.length() << " → " << result.length()
 ### Common Issues
 
 **1. "Terser not available" Warning**
+
 ```bash
 # Install Node.js and Terser
 npm install terser
@@ -226,6 +228,7 @@ node -e "console.log(require('terser').version)"
 ```
 
 **2. Service Connection Failed**
+
 ```bash
 # Check if service is running
 docker ps | grep js-minifier
@@ -238,6 +241,7 @@ docker logs js-minifier
 ```
 
 **3. Memory Issues with Large Files**
+
 ```bash
 # Increase Node.js memory limit for the service
 docker-compose up --scale js-minifier=1 -e NODE_OPTIONS="--max-old-space-size=4096"
@@ -266,13 +270,14 @@ The microservice provides metrics at `/health`:
 ```json
 {
   "status": "healthy",
-  "service": "js-minifier", 
+  "service": "js-minifier",
   "terser_version": "5.34.1",
   "timestamp": "2024-01-15T10:30:00.000Z"
 }
 ```
 
 Set up monitoring alerts for:
+
 - Service availability
 - Response times > 5 seconds
 - Memory usage > 80%

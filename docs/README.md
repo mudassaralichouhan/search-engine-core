@@ -5,7 +5,9 @@ This directory contains comprehensive documentation for the Search Engine Core p
 ## 📁 Documentation Structure
 
 ### 🏗️ Architecture
+
 Documentation about system design and architectural decisions:
+
 - [Performance Optimizations](architecture/PERFORMANCE_OPTIMIZATIONS.md) - System performance improvements
 - [SPA Rendering](architecture/SPA_RENDERING.md) - Single Page Application rendering capabilities
 - [Scoring and Ranking](architecture/SCORING_AND_RANKING.md) - Search result ranking algorithms
@@ -14,19 +16,25 @@ Documentation about system design and architectural decisions:
 - [Retry System](architecture/RETRY_SYSTEM_SUMMARY.md) - Error handling and retry mechanisms
 
 ### 📖 User Guides
+
 Step-by-step guides for users and developers:
+
 - [JavaScript Minification Guide](guides/README_JS_MINIFICATION.md) - How to use JS minification features
 - [Storage Testing Guide](guides/README_STORAGE_TESTING.md) - Testing the storage layer
 - [Search Core Guide](guides/README_SEARCH_CORE.md) - Core search functionality
 
 ### 🛠️ Development
+
 Technical documentation for developers:
+
 - [JS Minification Strategy](development/JS_MINIFICATION_STRATEGY_ANALYSIS.md) - Implementation details
 - [File Receiving Methods](development/FILE_RECEIVING_METHODS.md) - File upload mechanisms
 - [CMake Version Options](development/cmake-version-options.md) - Build system configuration
 
 ### 🔌 API Documentation
+
 API endpoints and usage:
+
 - [API Overview](api/README.md) - General API information
 - [Search Endpoint](api/search_endpoint.md) - Search API documentation
 - [Crawler Endpoint](api/crawler_endpoint.md) - Web crawler API
@@ -41,6 +49,7 @@ API endpoints and usage:
 ## 🤝 Contributing
 
 When contributing documentation:
+
 1. Follow the existing structure
 2. Use clear, concise language
 3. Include code examples where applicable

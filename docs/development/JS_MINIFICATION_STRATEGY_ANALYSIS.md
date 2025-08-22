@@ -68,6 +68,7 @@ fi
 ### Why This Size-Based Strategy Works
 
 #### Small Files (≤100KB): JSON Payload
+
 - **Advantages:**
   - Lower overhead (no multipart encoding)
   - Faster processing
@@ -76,6 +77,7 @@ fi
 - **Use Cases:** Small scripts, utility functions, configuration files
 
 #### Large Files (>100KB): File Upload
+
 - **Advantages:**
   - Avoids JSON encoding/escaping overhead
   - Better memory efficiency
@@ -85,16 +87,17 @@ fi
 
 ## Performance Comparison
 
-| Method | File Size | Overhead | Memory Usage | Best For |
-|--------|-----------|----------|--------------|----------|
-| JSON Payload | ≤100KB | Low | Moderate | Small files, APIs |
-| File Upload | >100KB | Moderate | Lower | Large files, libraries |
+| Method       | File Size | Overhead | Memory Usage | Best For               |
+| ------------ | --------- | -------- | ------------ | ---------------------- |
+| JSON Payload | ≤100KB    | Low      | Moderate     | Small files, APIs      |
+| File Upload  | >100KB    | Moderate | Lower        | Large files, libraries |
 
 ## Implementation Details
 
 ### C++ Client Features
 
 1. **Automatic Method Selection**
+
    ```cpp
    std::string minified = client.minify(jsCode, "advanced");
    // Automatically chooses JSON vs File Upload based on size
@@ -120,20 +123,25 @@ fi
 ## Recommendations
 
 ### 1. ✅ **Keep Current Strategy**
+
 The microservice approach is excellent and should be maintained.
 
 ### 2. ✅ **Size-Based Selection is Optimal**
+
 The 100KB threshold is well-chosen based on:
+
 - JSON encoding overhead becomes significant after ~100KB
 - Memory usage considerations
 - Network efficiency
 
 ### 3. 🔧 **Improvements Made**
+
 - Added file upload support to C++ client
 - Automatic method selection based on file size
 - Consistent with bash script strategy
 
 ### 4. 📈 **Future Enhancements**
+
 - Add caching layer for frequently minified files
 - Implement retry logic with exponential backoff
 - Add metrics and monitoring
@@ -142,14 +150,17 @@ The 100KB threshold is well-chosen based on:
 ## Alternative Approaches Considered
 
 ### ❌ **Embedded JS Minifier in C++**
+
 - **Problems:** Complex implementation, limited features, maintenance burden
 - **Why Rejected:** Not worth the effort given excellent Node.js tools
 
 ### ❌ **Single Method Only**
+
 - **Problems:** Suboptimal performance for different file sizes
 - **Why Rejected:** Size-based selection provides better efficiency
 
 ### ❌ **Subprocess Approach**
+
 - **Problems:** Process overhead, harder error handling
 - **Why Rejected:** HTTP microservice is more scalable and maintainable
 
@@ -171,15 +182,15 @@ The 100KB threshold for choosing between JSON payload and file upload is well-ca
 
 int main() {
     JsMinifierClient client("http://localhost:3002");
-    
+
     // Small file - uses JSON payload automatically
     std::string smallScript = "function hello() { console.log('world'); }";
     std::string minified1 = client.minify(smallScript, "basic");
-    
+
     // Large file - uses file upload automatically
     std::string largeLibrary = loadLargeJavaScriptFile();
     std::string minified2 = client.minify(largeLibrary, "aggressive");
-    
+
     return 0;
 }
 ```

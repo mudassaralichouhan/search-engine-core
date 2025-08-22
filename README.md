@@ -821,7 +821,7 @@ docker compose -f docker-compose.prod.yml logs -f search-engine
 
 - **search-engine-core**: Main application (from GHCR)
 - **mongodb**: Document database with persistent storage
-- **redis**: Cache and search index with persistent storage  
+- **redis**: Cache and search index with persistent storage
 - **browserless**: Headless Chrome for SPA rendering
 
 #### Scaling Considerations

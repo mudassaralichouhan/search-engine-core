@@ -5,6 +5,7 @@
 ### Development vs Production
 
 **Node.js Preview Server (Development):**
+
 - Port 4000 - http://localhost:4000/
 - Fast template rendering for development
 - Test data and preview features
@@ -12,6 +13,7 @@
 - Separate from production environment
 
 **C++ Production Server:**
+
 - Port 3000 - http://localhost:3000/crawl-request
 - Production-ready with full Inja template engine
 - Real localization data
@@ -31,6 +33,7 @@
 ### Using the Local Preview Server (Recommended for Development)
 
 1. **Start the Node.js preview server:**
+
    ```bash
    cd development
    ./start-preview.sh
@@ -89,6 +92,7 @@ Install the **Better Jinja** extension in VSCode/Cursor for Inja syntax highligh
 ### 3. Test with Different Data
 
 Edit `locales/test-data.json` to test different scenarios:
+
 - Long text
 - Empty fields
 - Special characters
@@ -97,6 +101,7 @@ Edit `locales/test-data.json` to test different scenarios:
 ### 4. Preview Mode Features
 
 When using the Node.js preview server, the template shows:
+
 - Yellow banner at the top indicating preview mode
 - Test data with [PREVIEW MODE] markers
 - All features work exactly like production
@@ -137,16 +142,19 @@ When using the Node.js preview server, the template shows:
 ## 🐛 Debugging
 
 ### Check Server Logs
+
 ```bash
 docker-compose logs search-engine --tail=20
 ```
 
 ### Test Template Syntax
+
 The preview server will show syntax errors if the template is invalid.
 
 ### Common Issues
 
 1. **Template not updating:** The C++ server caches templates. Restart the container:
+
    ```bash
    docker-compose restart search-engine
    ```
@@ -160,6 +168,7 @@ The preview server will show syntax errors if the template is invalid.
 After testing in the Node.js preview server:
 
 1. **Test in production mode:**
+
    ```bash
    curl http://localhost:3000/crawl-request
    ```
