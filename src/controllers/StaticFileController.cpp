@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
-#include "../common/JsMinifier.h"
+#include "../common/JsMinifierClient.h"
 
 void StaticFileController::setCSPHeaders(uWS::HttpResponse<false>* res, const std::string& mimeType, std::string& content) {
     // Set basic security headers for all responses
@@ -52,7 +52,14 @@ void StaticFileController::serveStatic(uWS::HttpResponse<false>* res, uWS::HttpR
     
     // Minify JS if enabled and file is JS
     if (mimeType == "application/javascript") {
-        content = JsMinifier::getInstance().process(content);
+        static JsMinifierClient client("http://js-minifier:3002");
+        if (client.isServiceAvailable()) {
+            try {
+                content = client.minify(content, "advanced");
+            } catch (const std::exception& e) {
+                LOG_WARNING("JS minification failed, using original content: " + std::string(e.what()));
+            }
+        }
     }
     
     // Set response headers

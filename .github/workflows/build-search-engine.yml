@@ -1,4 +1,4 @@
-name: Build Application
+name: 🔍 Build Search Engine
 
 on:
   workflow_call:
@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   build-app:
-    name: Build Application
+    name: 🔍 Build Search Engine
     runs-on: ubuntu-latest
     
     steps:
@@ -41,7 +41,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./Dockerfile
+        file: ./docker/Dockerfile
         tags: ${{ inputs.docker_image }}:${{ inputs.docker_tag }}
         load: true
         push: true

@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Search Engine Core",
   "scripts": {
-    "format": "prettier --write \"docs/**/*.{json,md}\" \"*.{json,md}\" \".prettierrc.json\"",
-    "format:check": "prettier --check \"docs/**/*.{json,md}\" \"*.{json,md}\" \".prettierrc.json\"",
+    "format": "prettier --write \"docs/**/*.{json,md}\" \"*.{json,md}\" \"config/.prettierrc.json\"",
+    "format:check": "prettier --check \"docs/**/*.{json,md}\" \"*.{json,md}\" \"config/.prettierrc.json\"",
     "validate-schema": "node scripts/validate-schema.js"
   },
   "devDependencies": {

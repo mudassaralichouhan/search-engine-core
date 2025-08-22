@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Minifier - File Upload Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { 
+            color: #333; 
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .method-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .method-title {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        input, select, textarea, button {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            padding: 12px 20px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+        }
+        .result {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .stats {
+            background: #e2e3e5;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .file-input {
+            border: 2px dashed #ddd;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .file-input:hover {
+            border-color: #3498db;
+            background: #f8f9fa;
+        }
+        .method-description {
+            color: #666;
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗜️ JavaScript Minifier - File Receiving Methods Demo</h1>
+        
+        <!-- Method 1: JSON Payload -->
+        <div class="method-section">
+            <div class="method-title">📝 Method 1: JSON Payload</div>
+            <div class="method-description">Best for: API integrations, structured data</div>
+            
+            <textarea id="jsonCode" placeholder="Enter JavaScript code here...">
+// Sample JavaScript code
+function calculateTotal(items) {
+    let total = 0;
+    for (let item of items) {
+        total += item.price * item.quantity;
+        console.log('Added item:', item.name);
+    }
+    
+    // This will be removed in advanced minification
+    const unusedVar = 'remove me';
+    debugger;
+    
+    return total;
+}
+
+const result = calculateTotal([
+    {name: 'Widget A', price: 10.99, quantity: 2},
+    {name: 'Widget B', price: 25.50, quantity: 1}
+]);
+            </textarea>
+            
+            <select id="jsonLevel">
+                <option value="basic">Basic Minification</option>
+                <option value="advanced" selected>Advanced Minification</option>
+                <option value="aggressive">Aggressive Minification</option>
+            </select>
+            
+            <button onclick="testJSONMethod()">Minify with JSON Payload</button>
+            <div id="jsonResult"></div>
+        </div>
+
+        <!-- Method 2: File Upload -->
+        <div class="method-section">
+            <div class="method-title">📁 Method 2: File Upload</div>
+            <div class="method-description">Best for: Web forms, browsers, file metadata</div>
+            
+            <div class="file-input" onclick="document.getElementById('fileInput').click()">
+                <input type="file" id="fileInput" accept=".js" style="display: none;" onchange="handleFileSelect(this)">
+                Click here to select a JavaScript file (.js)
+            </div>
+            
+            <select id="uploadLevel">
+                <option value="basic">Basic Minification</option>
+                <option value="advanced" selected>Advanced Minification</option>
+                <option value="aggressive">Aggressive Minification</option>
+            </select>
+            
+            <button id="uploadButton" onclick="testUploadMethod()" disabled>Minify Uploaded File</button>
+            <div id="uploadResult"></div>
+        </div>
+
+        <!-- Method 3: Raw Text -->
+        <div class="method-section">
+            <div class="method-title">📄 Method 3: Raw Text</div>
+            <div class="method-description">Best for: Simple processing, minimal overhead</div>
+            
+            <textarea id="textCode" placeholder="Enter JavaScript code for raw text processing...">
+// Utility functions
+const utils = {
+    debounce: function(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    },
+    
+    formatCurrency: function(amount) {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD'
+        }).format(amount);
+    }
+};
+            </textarea>
+            
+            <select id="textLevel">
+                <option value="basic">Basic Minification</option>
+                <option value="advanced" selected>Advanced Minification</option>
+                <option value="aggressive">Aggressive Minification</option>
+            </select>
+            
+            <button onclick="testTextMethod()">Minify as Raw Text</button>
+            <div id="textResult"></div>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #e8f4f8; border-radius: 8px;">
+            <h3>🎯 When to Use Each Method:</h3>
+            <ul>
+                <li><strong>JSON Payload:</strong> APIs, microservices, when you need structured request/response</li>
+                <li><strong>File Upload:</strong> Web applications, user file uploads, when you need file metadata</li>
+                <li><strong>Raw Text:</strong> CLI tools, build systems, when you want minimal overhead</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+
+        // Method 1: JSON Payload
+        async function testJSONMethod() {
+            const code = document.getElementById('jsonCode').value;
+            const level = document.getElementById('jsonLevel').value;
+            const resultDiv = document.getElementById('jsonResult');
+            
+            if (!code.trim()) {
+                resultDiv.innerHTML = '<div class="error">Please enter JavaScript code</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/minify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ code, level })
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    resultDiv.innerHTML = `<div class="error">Error: ${result.error}</div>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <div class="stats">
+                                <strong>Compression Stats:</strong><br>
+                                Original: ${result.stats.original_size} characters<br>
+                                Minified: ${result.stats.minified_size} characters<br>
+                                Compression: ${result.stats.compression_ratio}<br>
+                                Processing time: ${result.stats.processing_time_ms}ms
+                            </div>
+                            <strong>Minified Code:</strong><br>
+                            <textarea readonly style="width: 100%; height: 100px;">${result.code}</textarea>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Network error: ${error.message}</div>`;
+            }
+        }
+
+        // Method 2: File Upload
+        function handleFileSelect(input) {
+            const file = input.files[0];
+            if (file) {
+                selectedFile = file;
+                document.querySelector('.file-input').innerHTML = `Selected: ${file.name} (${file.size} bytes)`;
+                document.getElementById('uploadButton').disabled = false;
+            }
+        }
+
+        async function testUploadMethod() {
+            if (!selectedFile) {
+                document.getElementById('uploadResult').innerHTML = '<div class="error">Please select a file first</div>';
+                return;
+            }
+            
+            const level = document.getElementById('uploadLevel').value;
+            const resultDiv = document.getElementById('uploadResult');
+            
+            const formData = new FormData();
+            formData.append('jsfile', selectedFile);
+            formData.append('level', level);
+            
+            try {
+                const response = await fetch('/minify/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    resultDiv.innerHTML = `<div class="error">Error: ${result.error}</div>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <div class="stats">
+                                <strong>File Info:</strong><br>
+                                Name: ${result.file_info.original_name}<br>
+                                Original size: ${result.file_info.size} bytes<br>
+                                MIME type: ${result.file_info.mimetype}<br><br>
+                                <strong>Compression Stats:</strong><br>
+                                Characters: ${result.stats.original_size} → ${result.stats.minified_size}<br>
+                                Compression: ${result.stats.compression_ratio}<br>
+                                Processing time: ${result.stats.processing_time_ms}ms
+                            </div>
+                            <strong>Minified Code:</strong><br>
+                            <textarea readonly style="width: 100%; height: 100px;">${result.code}</textarea>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Upload error: ${error.message}</div>`;
+            }
+        }
+
+        // Method 3: Raw Text
+        async function testTextMethod() {
+            const code = document.getElementById('textCode').value;
+            const level = document.getElementById('textLevel').value;
+            const resultDiv = document.getElementById('textResult');
+            
+            if (!code.trim()) {
+                resultDiv.innerHTML = '<div class="error">Please enter JavaScript code</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/minify/text?level=${level}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/javascript',
+                    },
+                    body: code
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    resultDiv.innerHTML = `<div class="error">Error: ${result.error}</div>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <div class="stats">
+                                <strong>Compression Stats:</strong><br>
+                                Original: ${result.stats.original_size} characters<br>
+                                Minified: ${result.stats.minified_size} characters<br>
+                                Compression: ${result.stats.compression_ratio}<br>
+                                Processing time: ${result.stats.processing_time_ms}ms
+                            </div>
+                            <strong>Minified Code:</strong><br>
+                            <textarea readonly style="width: 100%; height: 100px;">${result.code}</textarea>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Network error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

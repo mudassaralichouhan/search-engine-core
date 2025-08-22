@@ -87,13 +87,18 @@ endif()
 # Create a common library for shared code
 add_library(common STATIC
     src/common/Logger.cpp
-    src/common/JsMinifier.cpp
+    src/common/JsMinifierClient.cpp
     src/common/UrlSanitizer.cpp
 )
 target_include_directories(common 
     PUBLIC 
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(common
+    PUBLIC
+        ${CURL_LIBRARIES}
+        CURL::libcurl
 )
 
 # Install common library

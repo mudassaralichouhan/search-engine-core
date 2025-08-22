@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jQuery Minification Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>jQuery Minification Functionality Test</h1>
+    
+    <div id="test-results"></div>
+    
+    <button id="test-selectors">Test jQuery Selectors</button>
+    <button id="test-events">Test jQuery Events</button>
+    <button id="test-ajax" onclick="testAjax()">Test jQuery AJAX</button>
+    <button id="test-animations">Test jQuery Animations</button>
+    
+    <div id="animation-target" style="width: 100px; height: 100px; background-color: #007bff; margin: 20px 0;"></div>
+    
+    <script src="coming-soon/assets/lib/jquery/dist/jquery.min.js"></script>
+    <script>
+        function addResult(test, success, message) {
+            const resultDiv = document.getElementById('test-results');
+            const testResult = document.createElement('div');
+            testResult.className = 'test-result ' + (success ? 'success' : 'error');
+            testResult.innerHTML = `<strong>${test}:</strong> ${message}`;
+            resultDiv.appendChild(testResult);
+        }
+
+        // Test if jQuery loaded
+        $(document).ready(function() {
+            if (typeof jQuery !== 'undefined') {
+                addResult('jQuery Load', true, `jQuery ${jQuery.fn.jquery} loaded successfully from minified file`);
+            } else {
+                addResult('jQuery Load', false, 'jQuery failed to load');
+                return;
+            }
+
+            // Test selectors
+            $('#test-selectors').click(function() {
+                try {
+                    const buttons = $('button').length;
+                    const divs = $('div').length;
+                    addResult('Selectors', true, `Found ${buttons} buttons and ${divs} divs using jQuery selectors`);
+                } catch (e) {
+                    addResult('Selectors', false, `Selector test failed: ${e.message}`);
+                }
+            });
+
+            // Test events
+            $('#test-events').click(function() {
+                try {
+                    let clicked = false;
+                    const testElement = $('<div>').text('Click me!').css({
+                        padding: '10px',
+                        background: '#ffc107',
+                        cursor: 'pointer',
+                        margin: '10px 0'
+                    });
+                    
+                    testElement.click(function() {
+                        clicked = true;
+                        $(this).text('Clicked!').css('background', '#28a745');
+                    });
+                    
+                    $('body').append(testElement);
+                    testElement.click(); // Trigger the click
+                    
+                    if (clicked) {
+                        addResult('Events', true, 'Event binding and triggering works correctly');
+                    } else {
+                        addResult('Events', false, 'Event system failed');
+                    }
+                } catch (e) {
+                    addResult('Events', false, `Event test failed: ${e.message}`);
+                }
+            });
+
+            // Test animations
+            $('#test-animations').click(function() {
+                try {
+                    const target = $('#animation-target');
+                    target.animate({
+                        width: '200px',
+                        height: '200px',
+                        opacity: 0.5
+                    }, 1000, function() {
+                        addResult('Animations', true, 'jQuery animations working correctly');
+                        // Reset
+                        target.css({
+                            width: '100px',
+                            height: '100px',
+                            opacity: 1
+                        });
+                    });
+                } catch (e) {
+                    addResult('Animations', false, `Animation test failed: ${e.message}`);
+                }
+            });
+
+            addResult('Document Ready', true, 'Document ready event fired successfully');
+        });
+
+        function testAjax() {
+            try {
+                // Test AJAX functionality (will fail due to no endpoint, but proves AJAX methods exist)
+                $.get('/test-endpoint')
+                    .done(function() {
+                        addResult('AJAX', true, 'AJAX request completed successfully');
+                    })
+                    .fail(function(xhr, status, error) {
+                        // This is expected since we don't have a real endpoint
+                        if (status === 'error') {
+                            addResult('AJAX', true, 'AJAX methods are available and functional (endpoint not found is expected)');
+                        } else {
+                            addResult('AJAX', false, `AJAX test failed with status: ${status}`);
+                        }
+                    });
+            } catch (e) {
+                addResult('AJAX', false, `AJAX test failed: ${e.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

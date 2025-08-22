@@ -1,0 +1,4 @@
+{
+  "code": "function calculateSum(numbers) {\n    let total = 0;\n    for (let i = 0; i < numbers.length; i++) {\n        total += numbers[i]; // Add each number\n    }\n    console.log('Total calculated:', total);\n    \n    // Unused variable\n    const unused = 'remove me';\n    debugger;\n    \n    return total;\n}\n\nconst result = calculateSum([1, 2, 3, 4, 5]);",
+  "level": "advanced"
+}

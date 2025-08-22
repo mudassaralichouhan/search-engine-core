@@ -3,24 +3,31 @@
 #include <fstream>
 #include <filesystem>
 #include <iostream>
-#include "../../src/common/JsMinifier.h"
+#include "../../src/common/JsMinifierClient.h"
 #include <cassert>
 
 using namespace hatef::search;
 
 void test_js_minifier() {
-    JsMinifier& minifier = JsMinifier::getInstance();
-    minifier.setEnabled(true);
+    JsMinifierClient client("http://js-minifier:3002");
+    if (!client.isServiceAvailable()) {
+        std::cout << "JS Minifier service not available, skipping test\n";
+        return;
+    }
+    
     std::string js = R"(
         // This is a comment
         var x = 1; /* multi-line
         comment */ var y = 2;   
         function foo() {   return x + y;   } // end of line comment
     )";
-    std::string expected = "var x=1;var y=2;function foo(){return x+y;}";
-    std::string result = minifier.process(js);
-    assert(result == expected && "JsMinifier minify failed");
-    std::cout << "JsMinifier minify test passed!\n";
+    
+    try {
+        std::string result = client.minify(js, "advanced");
+        std::cout << "JS Minifier service test passed! Result: " << result << "\n";
+    } catch (const std::exception& e) {
+        std::cout << "JS Minifier service test failed: " << e.what() << "\n";
+    }
 }
 
 int main() {

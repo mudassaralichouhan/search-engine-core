@@ -1,17 +1,17 @@
-name: API Documentation Validation
+name: 📚 API Docs Validation
 
 on:
   push:
     paths:
       - 'docs/api/**'
       - 'package.json'
-      - '.prettierrc.json'
+      - 'config/.prettierrc.json'
       - 'scripts/validate-schema.js'
   pull_request:
     paths:
       - 'docs/api/**'
       - 'package.json'
-      - '.prettierrc.json'
+      - 'config/.prettierrc.json'
       - 'scripts/validate-schema.js'
 
 jobs:
