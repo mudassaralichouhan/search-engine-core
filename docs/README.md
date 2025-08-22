@@ -16,6 +16,11 @@ Welcome to the Search Engine Core documentation. This directory contains compreh
   - Redis-based caching implementation
   - Production-grade HTTP headers
   - Comprehensive monitoring and testing
+- **[PRODUCTION_JS_MINIFICATION.md](./PRODUCTION_JS_MINIFICATION.md)** - Production deployment guide for JS minification
+  - Pre-built Docker images from GitHub Container Registry
+  - Production environment configuration
+  - Monitoring, scaling, and troubleshooting
+  - Security best practices and performance optimization
 - **[JS_MINIFIER_CLIENT_CHANGELOG.md](./JS_MINIFIER_CLIENT_CHANGELOG.md)** - Detailed changelog for JsMinifierClient improvements
   - Enhanced JSON parsing with robust escape sequence handling
   - Size-based method selection (JSON ≤100KB, File Upload >100KB)
@@ -43,6 +48,7 @@ Welcome to the Search Engine Core documentation. This directory contains compreh
 docs/
 ├── README.md                           # This documentation index
 ├── PERFORMANCE_OPTIMIZATIONS_SUMMARY.md # Complete performance optimization summary
+├── PRODUCTION_JS_MINIFICATION.md       # Production deployment guide for JS minification
 ├── JS_MINIFIER_CLIENT_CHANGELOG.md     # JsMinifierClient version history
 ├── DOCUMENTATION_CLEANUP.md            # Documentation organization guidelines
 ├── guides/                             # User and developer guides
@@ -64,6 +70,7 @@ docs/
 - **Contributing documentation?** Check [DOCUMENTATION_CLEANUP.md](./DOCUMENTATION_CLEANUP.md)
 
 #### For Operations
+- **Production deployment?** See [PRODUCTION_JS_MINIFICATION.md](./PRODUCTION_JS_MINIFICATION.md)
 - **Deployment guide** - See [../README.md](../README.md#deployment)
 - **Configuration** - See [../config/](../config/) directory
 - **Docker setup** - See [../docker/](../docker/) directory

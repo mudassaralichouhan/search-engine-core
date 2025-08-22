@@ -813,12 +813,19 @@ MONGO_INITDB_ROOT_USERNAME=admin
 MONGO_INITDB_ROOT_PASSWORD=your_secure_password_here
 MONGODB_URI=mongodb://admin:your_secure_password_here@mongodb:27017
 
+# JavaScript Minification Configuration
+MINIFY_JS=true
+MINIFY_JS_LEVEL=advanced
+JS_CACHE_ENABLED=true
+JS_CACHE_TYPE=redis
+JS_CACHE_TTL=3600
+JS_CACHE_REDIS_DB=1
+
 # Optional Configuration
 PORT=3000
 SEARCH_REDIS_URI=tcp://redis:6379
 SEARCH_REDIS_POOL_SIZE=8
 SEARCH_INDEX_NAME=search_index
-MINIFY_JS=true
 ```
 
 #### Deployment Commands
@@ -849,6 +856,7 @@ docker compose -f docker-compose.prod.yml logs -f search-engine
 #### Services Included
 
 - **search-engine-core**: Main application (from GHCR)
+- **js-minifier**: JavaScript minification microservice (from GHCR)
 - **mongodb**: Document database with persistent storage
 - **redis**: Cache and search index with persistent storage
 - **browserless**: Headless Chrome for SPA rendering

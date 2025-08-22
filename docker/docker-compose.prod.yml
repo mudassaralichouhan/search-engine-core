@@ -11,12 +11,19 @@ services:
       - SEARCH_REDIS_POOL_SIZE=${SEARCH_REDIS_POOL_SIZE:-8}
       - SEARCH_INDEX_NAME=${SEARCH_INDEX_NAME:-search_index}
       - MINIFY_JS=${MINIFY_JS:-true}
+      - MINIFY_JS_LEVEL=${MINIFY_JS_LEVEL:-advanced}
+      - JS_MINIFIER_SERVICE_URL=http://js-minifier:3002
+      - JS_CACHE_ENABLED=${JS_CACHE_ENABLED:-true}
+      - JS_CACHE_TYPE=${JS_CACHE_TYPE:-redis}
+      - JS_CACHE_TTL=${JS_CACHE_TTL:-3600}
+      - JS_CACHE_REDIS_DB=${JS_CACHE_REDIS_DB:-1}
     ports:
       - "${PORT:-3000}:3000"
     depends_on:
       - redis
       - mongodb
       - browserless
+      - js-minifier
     stop_grace_period: 30s
     ulimits:
       nofile:
@@ -84,6 +91,34 @@ services:
       - "WORKSPACE_DIR=/workspace"
       - "FUNCTION_ENABLE_INCOGNITO=false"
       - "FUNCTION_KEEP_ALIVE=true"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - search-network
+
+  js-minifier:
+    image: ghcr.io/hatefsystems/search-engine-core/js-minifier:latest
+    container_name: js-minifier
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - MAX_FILE_SIZE=52428800
+      - MAX_CONCURRENT_REQUESTS=50
+      - CACHE_ENABLED=true
+      - CACHE_TTL=3600
+    ports:
+      - "3002:3002"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3002/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     logging:
       driver: json-file
       options:

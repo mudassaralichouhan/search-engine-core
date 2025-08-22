@@ -86,7 +86,7 @@ Based on testing with popular libraries:
 
 ## 🐳 Docker Setup
 
-### Build and Run
+### Development Setup
 
 ```bash
 # Install Node.js dependencies (for the microservice)
@@ -97,6 +97,30 @@ docker-compose up --build
 
 # Or run the setup script
 ./scripts/setup-microservice.sh
+```
+
+### Production Deployment
+
+For production deployments, use the pre-built images from GitHub Container Registry:
+
+```bash
+# Use production Docker Compose file
+docker-compose -f docker/docker-compose.prod.yml up -d
+
+# The JS minifier service uses the image:
+# ghcr.io/hatefsystems/search-engine-core/js-minifier:latest
+```
+
+**Production Environment Variables:**
+
+```bash
+# JavaScript Minification Configuration
+MINIFY_JS=true
+MINIFY_JS_LEVEL=advanced
+JS_CACHE_ENABLED=true
+JS_CACHE_TYPE=redis
+JS_CACHE_TTL=3600
+JS_CACHE_REDIS_DB=1
 ```
 
 ### Service Endpoints
@@ -120,6 +144,8 @@ curl -X POST http://localhost:3002/minify/batch \
   -H "Content-Type: application/json" \
   -d '{"files": [{"name": "test.js", "code": "function test() {}"}], "level": "advanced"}'
 ```
+
+**Note:** In production deployments, the service is available at `http://js-minifier:3002` within the Docker network.
 
 ## 🔧 Integration Examples
 
