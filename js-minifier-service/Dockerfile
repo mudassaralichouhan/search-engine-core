@@ -24,9 +24,9 @@ RUN chown -R minifier:nodejs /app
 # Switch to non-root user
 USER minifier
 
-# Health check
+# Health check (using wget since curl is not available in Alpine)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "const http = require('http'); const req = http.request('http://localhost:3002/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }); req.on('error', () => process.exit(1)); req.end();"
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3002/health || exit 1
 
 # Expose port
 EXPOSE 3002

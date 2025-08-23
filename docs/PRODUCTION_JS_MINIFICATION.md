@@ -64,7 +64,7 @@ The production setup includes the following services:
 
 **Configuration**:
 - **Port**: 3002 (internal Docker network)
-- **Health Check**: `/health` endpoint
+- **Health Check**: `/health` endpoint (using `wget` command)
 - **Max File Size**: 50MB
 - **Concurrent Requests**: 50
 - **Cache TTL**: 3600 seconds (1 hour)
@@ -110,11 +110,31 @@ curl http://localhost:3002/health
 # Expected response:
 {
   "status": "healthy",
-  "service": "js-minifier",
-  "terser_version": "5.34.1",
-  "timestamp": "2024-01-15T10:30:00.000Z"
+  "service": "js-minifier-enhanced",
+  "timestamp": "2025-08-23T08:52:56.750Z",
+  "supported_methods": ["JSON payload", "Raw text", "File upload", "URL fetch", "Streaming"]
 }
 ```
+
+#### Docker Health Check Configuration
+The JS minifier service includes a robust health check that uses `wget` (since `curl` is not available in Alpine images):
+
+```yaml
+healthcheck:
+  test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3002/health || exit 1"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 10s
+```
+
+**Benefits of this approach:**
+- ✅ Available in Alpine Linux images (included by default)
+- ✅ Fast execution (<1 second)
+- ✅ `--spider` mode only checks existence without downloading content
+- ✅ `--no-verbose` reduces output noise
+- ✅ Simple and reliable command
+- ✅ Handles network errors gracefully
 
 ### Log Monitoring
 
@@ -178,6 +198,9 @@ docker compose -f docker/docker-compose.prod.yml logs js-minifier
 ```bash
 # Check if service is responding
 curl -f http://localhost:3002/health
+
+# Test health check command manually
+docker exec js-minifier wget --no-verbose --tries=1 --spider http://localhost:3002/health
 
 # Check container status
 docker compose -f docker/docker-compose.prod.yml ps js-minifier
