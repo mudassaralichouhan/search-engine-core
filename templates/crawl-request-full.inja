@@ -197,6 +197,7 @@
         if (typeof initializeTemplateData === 'function') {
             initializeTemplateData({
                 baseUrl: "{{ base_url }}",
+                base_url: "{{ base_url }}",
                 progressComplete: "{{ t.progress.complete }}",
                 errorMessages: {
                     emptyUrl: "{{ t.errors.empty_url }}",

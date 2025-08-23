@@ -367,6 +367,11 @@ void HomeController::crawlRequestPageWithLang(uWS::HttpResponse<false>* res, uWS
         
         std::string baseUrl = protocol + host;
         
+        LOG_INFO("Setting base_url for template: " + baseUrl);
+        LOG_INFO("Host header: " + host);
+        LOG_INFO("Protocol: " + protocol);
+        LOG_INFO("Forwarded proto: " + forwardedProto);
+        
         nlohmann::json templateData = {
             {"t", t},
             {"base_url", baseUrl}

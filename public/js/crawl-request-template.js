@@ -7,11 +7,8 @@ function switchLanguage(langCode) {
     const currentPath = window.location.pathname;
     let newPath;
     
-    if (currentPath.includes('/crawl-request')) {
+
         newPath = `/crawl-request/${langCode}`;
-    } else {
-        newPath = `/crawl-request/${langCode}`;
-    }
     
     window.location.href = newPath;
 }
@@ -21,6 +18,10 @@ function initializeTemplateData(data) {
     templateData = data;
     errorMessages = data.errorMessages || {};
     progressMessages = data.progressMessages || [];
+    
+    // Debug logging
+    console.log('Template data initialized:', templateData);
+    console.log('Base URL from template:', templateData.baseUrl || templateData.base_url || 'Not set');
 }
 
 let currentSessionId = null;
@@ -199,7 +200,9 @@ async function startCrawl() {
         startProgressSimulation();
         
         // Send crawl request (base_url will be injected by template)
-        const response = await fetch(`${templateData.baseUrl || 'http://localhost:3000'}/api/crawl/add-site`, {
+        const apiUrl = `${templateData.baseUrl || templateData.base_url || 'http://localhost:3000'}/api/crawl/add-site`;
+        console.log('Making API request to:', apiUrl);
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -242,7 +245,7 @@ function connectWebSocket() {
     try {
         // Use the base URL from template data, fallback to current host
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsHost = templateData.baseUrl ? new URL(templateData.baseUrl).host : window.location.host;
+        const wsHost = (templateData.baseUrl || templateData.base_url) ? new URL(templateData.baseUrl || templateData.base_url).host : window.location.host;
         const wsUrl = `${wsProtocol}//${wsHost}/crawl-logs`;
         
         websocket = new WebSocket(wsUrl);
