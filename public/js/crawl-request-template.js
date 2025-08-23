@@ -240,7 +240,12 @@ async function startCrawl() {
 
 function connectWebSocket() {
     try {
-        websocket = new WebSocket('ws://localhost:3000/crawl-logs');
+        // Use the base URL from template data, fallback to current host
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsHost = templateData.baseUrl ? new URL(templateData.baseUrl).host : window.location.host;
+        const wsUrl = `${wsProtocol}//${wsHost}/crawl-logs`;
+        
+        websocket = new WebSocket(wsUrl);
         
         websocket.onopen = function() {
             console.log('WebSocket connected');

@@ -34,8 +34,8 @@ services:
   #     - search-network
   search-engine:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     container_name: core
     restart: unless-stopped
     ports:
@@ -69,7 +69,7 @@ services:
 
   js-minifier:
     build:
-      context: ../js-minifier-service
+      context: ./js-minifier-service
       dockerfile: Dockerfile
     container_name: js-minifier
     restart: unless-stopped

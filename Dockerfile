@@ -177,7 +177,7 @@ RUN ANTICASH=6
 WORKDIR /deps
 COPY src/ /deps/src/
 COPY tests/ /deps/tests/
-COPY build-files/CMakeLists.txt /deps/
+COPY CMakeLists.txt /deps/
 COPY include/ /deps/include/
 
 # uWebSockets and uSockets are now installed system-wide, no need to copy

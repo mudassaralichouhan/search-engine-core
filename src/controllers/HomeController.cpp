@@ -151,9 +151,21 @@ void HomeController::sponsorPage(uWS::HttpResponse<false>* res, uWS::HttpRequest
         if (metaJson.contains("language")) t["language"] = metaJson["language"];
         t["sponsor"] = sponsorPrimary;
 
+        // Get the host from the request headers
+        std::string host = std::string(req->getHeader("host"));
+        std::string protocol = "http://";
+        
+        // Check if we're behind a proxy (X-Forwarded-Proto header)
+        std::string forwardedProto = std::string(req->getHeader("x-forwarded-proto"));
+        if (!forwardedProto.empty()) {
+            protocol = forwardedProto + "://";
+        }
+        
+        std::string baseUrl = protocol + host;
+
         nlohmann::json templateData = {
             {"t", t},
-            {"base_url", "http://localhost:3000"}
+            {"base_url", baseUrl}
         };
         std::string renderedHtml = renderTemplate("sponsor.inja", templateData);
         if (renderedHtml.empty()) {
@@ -217,9 +229,21 @@ void HomeController::sponsorPageWithLang(uWS::HttpResponse<false>* res, uWS::Htt
         if (metaJson.contains("language")) t["language"] = metaJson["language"];
         t["sponsor"] = sponsorPrimary;
 
+        // Get the host from the request headers
+        std::string host = std::string(req->getHeader("host"));
+        std::string protocol = "http://";
+        
+        // Check if we're behind a proxy (X-Forwarded-Proto header)
+        std::string forwardedProto = std::string(req->getHeader("x-forwarded-proto"));
+        if (!forwardedProto.empty()) {
+            protocol = forwardedProto + "://";
+        }
+        
+        std::string baseUrl = protocol + host;
+
         nlohmann::json templateData = {
             {"t", t},
-            {"base_url", "http://localhost:3000"}
+            {"base_url", baseUrl}
         };
         std::string renderedHtml = renderTemplate("sponsor.inja", templateData);
         if (renderedHtml.empty()) {
@@ -253,9 +277,22 @@ void HomeController::crawlRequestPage(uWS::HttpResponse<false>* res, uWS::HttpRe
         // Compose template data
         nlohmann::json t = pagePrimary;
         if (metaJson.contains("language")) t["language"] = metaJson["language"];
+        
+        // Get the host from the request headers
+        std::string host = std::string(req->getHeader("host"));
+        std::string protocol = "http://";
+        
+        // Check if we're behind a proxy (X-Forwarded-Proto header)
+        std::string forwardedProto = std::string(req->getHeader("x-forwarded-proto"));
+        if (!forwardedProto.empty()) {
+            protocol = forwardedProto + "://";
+        }
+        
+        std::string baseUrl = protocol + host;
+        
         nlohmann::json templateData = {
             {"t", t},
-            {"base_url", "http://localhost:3000"}
+            {"base_url", baseUrl}
         };
 
         // Render template with data
@@ -317,9 +354,22 @@ void HomeController::crawlRequestPageWithLang(uWS::HttpResponse<false>* res, uWS
 
         nlohmann::json t = j;
         if (metaJson.contains("language")) t["language"] = metaJson["language"];
+        
+        // Get the host from the request headers
+        std::string host = std::string(req->getHeader("host"));
+        std::string protocol = "http://";
+        
+        // Check if we're behind a proxy (X-Forwarded-Proto header)
+        std::string forwardedProto = std::string(req->getHeader("x-forwarded-proto"));
+        if (!forwardedProto.empty()) {
+            protocol = forwardedProto + "://";
+        }
+        
+        std::string baseUrl = protocol + host;
+        
         nlohmann::json templateData = {
             {"t", t},
-            {"base_url", "http://localhost:3000"}
+            {"base_url", baseUrl}
         };
 
         // Render template with data
