@@ -191,7 +191,8 @@
         </div>
     </div>
     
-    <!-- Template data injection for JavaScript -->
+    <script src="/js/crawl-request-template.js"></script>
+     <!-- Template data injection for JavaScript -->
     <script>
         // Initialize template data for external JavaScript
         if (typeof initializeTemplateData === 'function') {
@@ -220,6 +221,5 @@
         console.log('Language:', '{{ t.language.code }}');
         console.log('Direction:', '{{ t.language.direction }}');
     </script>
-    <script src="/js/crawl-request-template.js"></script>
 </body>
 </html>
