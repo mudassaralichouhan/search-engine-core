@@ -9,6 +9,7 @@ This guide covers MongoDB C++ driver integration patterns and critical lessons l
 ### 🚨 **MOST IMPORTANT: MongoDB Instance Initialization**
 
 **❌ NEVER DO THIS - Will Crash Server:**
+
 ```cpp
 class MyStorage {
     MyStorage() {
@@ -20,12 +21,13 @@ class MyStorage {
 ```
 
 **✅ ALWAYS DO THIS - Use Singleton Pattern:**
+
 ```cpp
 class MyStorage {
     MyStorage() {
         // 1. Get the global MongoDB instance first
         mongocxx::instance& instance = MongoDBInstance::getInstance();
-        
+
         // 2. Now create client safely
         mongocxx::uri uri{"mongodb://localhost:27017"};
         client_ = std::make_unique<mongocxx::client>(uri); // ✅ WORKS!
@@ -36,12 +38,14 @@ class MyStorage {
 ## Error Symptoms
 
 ### Server Crashes
+
 - `curl: (52) Empty reply from server`
 - Server crashes immediately on API call
 - No error logs because crash happens before logging
 - Application terminates without warning
 
 ### Root Cause
+
 - MongoDB C++ driver allows only **ONE global instance** per application
 - Multiple instances cause memory corruption and crashes
 - Instance must be initialized before any client creation
@@ -103,13 +107,13 @@ public:
         try {
             // ✅ CORRECT: Use singleton instance
             mongocxx::instance& instance = MongoDBInstance::getInstance();
-            
+
             // Create client and connect
             mongocxx::uri uri{connectionString};
             client_ = std::make_unique<mongocxx::client>(uri);
             database_ = (*client_)[databaseName];
             collection_ = database_["my_collection"];
-            
+
         } catch (const mongocxx::exception& e) {
             throw std::runtime_error("MongoDB connection failed: " + std::string(e.what()));
         }
@@ -146,7 +150,7 @@ try {
     mongocxx::instance& instance = MongoDBInstance::getInstance();
     mongocxx::uri uri{connectionString};
     client_ = std::make_unique<mongocxx::client>(uri);
-    
+
 } catch (const mongocxx::exception& e) {
     LOG_ERROR("MongoDB connection failed: " + std::string(e.what()));
     throw std::runtime_error("MongoDB connection failed: " + std::string(e.what()));
@@ -169,6 +173,7 @@ try {
 ## Common Pitfalls
 
 ### 1. Multiple Instance Creation
+
 ```cpp
 // ❌ WRONG: Creating multiple instances
 mongocxx::instance instance1;  // Will crash
@@ -176,6 +181,7 @@ mongocxx::instance instance2;  // Will crash
 ```
 
 ### 2. Missing Include
+
 ```cpp
 // ❌ WRONG: Missing mongodb.h include
 #include <mongocxx/client.hpp>  // Only this - will crash
@@ -183,6 +189,7 @@ mongocxx::instance instance2;  // Will crash
 ```
 
 ### 3. Wrong Collection Names
+
 ```cpp
 // ❌ WRONG: Inconsistent collection names
 // Imported data goes to "sponsors"
@@ -252,25 +259,25 @@ private:
 public:
     MyStorage(const std::string& connectionString, const std::string& databaseName) {
         LOG_DEBUG("Initializing MongoDB connection to: " + connectionString);
-        
+
         try {
             // ✅ Use singleton pattern
             mongocxx::instance& instance = MongoDBInstance::getInstance();
-            
+
             // Create client and connect
             mongocxx::uri uri{connectionString};
             client_ = std::make_unique<mongocxx::client>(uri);
             database_ = (*client_)[databaseName];
             collection_ = database_["my_collection"];
-            
+
             LOG_INFO("Connected to MongoDB database: " + databaseName);
-            
+
         } catch (const mongocxx::exception& e) {
             LOG_ERROR("Failed to initialize MongoDB connection: " + std::string(e.what()));
             throw std::runtime_error("MongoDB connection failed: " + std::string(e.what()));
         }
     }
-    
+
     bool store(const std::string& data) {
         try {
             auto doc = document{} << "data" << data << "timestamp" << bsoncxx::types::b_date{std::chrono::system_clock::now()} << finalize;

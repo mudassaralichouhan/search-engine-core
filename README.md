@@ -338,14 +338,14 @@ POST /api/spa/render
 
 **Parameters:**
 
-| Parameter | Type   | Required | Description                    |
-|-----------|--------|----------|--------------------------------|
-| `name`    | string | ✅       | Full name of the sponsor       |
-| `email`   | string | ✅       | Email address for contact      |
-| `mobile`  | string | ✅       | Mobile phone number            |
-| `tier`    | string | ✅       | Sponsorship tier/plan          |
-| `amount`  | number | ✅       | Amount in IRR (Iranian Rial)   |
-| `company` | string | ❌       | Company name (optional)        |
+| Parameter | Type   | Required | Description                  |
+| --------- | ------ | -------- | ---------------------------- |
+| `name`    | string | ✅       | Full name of the sponsor     |
+| `email`   | string | ✅       | Email address for contact    |
+| `mobile`  | string | ✅       | Mobile phone number          |
+| `tier`    | string | ✅       | Sponsorship tier/plan        |
+| `amount`  | number | ✅       | Amount in IRR (Iranian Rial) |
+| `company` | string | ❌       | Company name (optional)      |
 
 **Example Usage:**
 
@@ -421,7 +421,7 @@ The search engine features a modern, attribute-based routing system inspired by
 
 **Available Endpoints:**
 
-- **HomeController**: 
+- **HomeController**:
   - `GET /` (coming soon), `GET /test` (main search)
   - `POST /api/v2/sponsor-submit` - Sponsor application submission
 - **SearchController**:

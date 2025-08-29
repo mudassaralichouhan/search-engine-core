@@ -63,6 +63,7 @@ The production setup includes the following services:
 **Image**: `ghcr.io/hatefsystems/search-engine-core/js-minifier:latest`
 
 **Configuration**:
+
 - **Port**: 3002 (internal Docker network)
 - **Health Check**: `/health` endpoint (using `wget` command)
 - **Max File Size**: 50MB
@@ -70,6 +71,7 @@ The production setup includes the following services:
 - **Cache TTL**: 3600 seconds (1 hour)
 
 **Environment Variables**:
+
 ```bash
 NODE_ENV=production
 PORT=3002
@@ -92,12 +94,12 @@ The production setup uses Redis for high-performance caching:
 
 ### Minification Levels
 
-| Level | Description | Use Case |
-|-------|-------------|----------|
-| **none** | No minification | Development/debugging |
-| **basic** | Basic compression | Simple optimization |
-| **advanced** | Full Terser optimization | **Production (recommended)** |
-| **aggressive** | Maximum compression | High-traffic sites |
+| Level          | Description              | Use Case                     |
+| -------------- | ------------------------ | ---------------------------- |
+| **none**       | No minification          | Development/debugging        |
+| **basic**      | Basic compression        | Simple optimization          |
+| **advanced**   | Full Terser optimization | **Production (recommended)** |
+| **aggressive** | Maximum compression      | High-traffic sites           |
 
 ## 🔧 Monitoring & Health Checks
 
@@ -117,11 +119,16 @@ curl http://localhost:3002/health
 ```
 
 #### Docker Health Check Configuration
+
 The JS minifier service includes a robust health check that uses `wget` (since `curl` is not available in Alpine images):
 
 ```yaml
 healthcheck:
-  test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3002/health || exit 1"]
+  test:
+    [
+      "CMD-SHELL",
+      "wget --no-verbose --tries=1 --spider http://localhost:3002/health || exit 1",
+    ]
   interval: 30s
   timeout: 10s
   retries: 3
@@ -129,6 +136,7 @@ healthcheck:
 ```
 
 **Benefits of this approach:**
+
 - ✅ Available in Alpine Linux images (included by default)
 - ✅ Fast execution (<1 second)
 - ✅ `--spider` mode only checks existence without downloading content
@@ -262,10 +270,10 @@ js-minifier:
     resources:
       limits:
         memory: 1G
-        cpus: '0.5'
+        cpus: "0.5"
       reservations:
         memory: 512M
-        cpus: '0.25'
+        cpus: "0.25"
 ```
 
 ## 🔄 Updates & Maintenance

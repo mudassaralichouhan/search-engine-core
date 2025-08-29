@@ -15,10 +15,11 @@ Submit a sponsor application with required and optional fields.
 **Content-Type:** `application/json`
 
 **Body:**
+
 ```json
 {
   "name": "string (required)",
-  "email": "string (required)", 
+  "email": "string (required)",
   "mobile": "string (required)",
   "tier": "string (required)",
   "amount": "number (required)",
@@ -28,14 +29,14 @@ Submit a sponsor application with required and optional fields.
 
 #### Field Descriptions
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | ✅ | Full name of the sponsor |
-| `email` | string | ✅ | Email address for contact |
-| `mobile` | string | ✅ | Mobile phone number |
-| `tier` | string | ✅ | Sponsorship tier/plan (e.g., "basic", "premium", "gold", "silver") |
-| `amount` | number | ✅ | Amount in IRR (Iranian Rial) |
-| `company` | string | ❌ | Company name (optional) |
+| Field     | Type   | Required | Description                                                        |
+| --------- | ------ | -------- | ------------------------------------------------------------------ |
+| `name`    | string | ✅       | Full name of the sponsor                                           |
+| `email`   | string | ✅       | Email address for contact                                          |
+| `mobile`  | string | ✅       | Mobile phone number                                                |
+| `tier`    | string | ✅       | Sponsorship tier/plan (e.g., "basic", "premium", "gold", "silver") |
+| `amount`  | number | ✅       | Amount in IRR (Iranian Rial)                                       |
+| `company` | string | ❌       | Company name (optional)                                            |
 
 #### Example Request
 
@@ -55,6 +56,7 @@ curl --location 'http://localhost:3000/api/v2/sponsor-submit' \
 #### Response
 
 **Success Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -75,14 +77,14 @@ curl --location 'http://localhost:3000/api/v2/sponsor-submit' \
 
 #### Response Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `success` | boolean | Always `true` for successful submissions |
-| `message` | string | Success message in Persian |
-| `submissionId` | string | MongoDB ObjectId of the stored record |
+| Field             | Type    | Description                                    |
+| ----------------- | ------- | ---------------------------------------------- |
+| `success`         | boolean | Always `true` for successful submissions       |
+| `message`         | string  | Success message in Persian                     |
+| `submissionId`    | string  | MongoDB ObjectId of the stored record          |
 | `savedToDatabase` | boolean | Whether data was successfully saved to MongoDB |
-| `bankInfo` | object | Bank account details for payment |
-| `note` | string | Payment instructions |
+| `bankInfo`        | object  | Bank account details for payment               |
+| `note`            | string  | Payment instructions                           |
 
 #### Bank Information
 
@@ -105,7 +107,7 @@ Sponsor data is stored in the `search-engine.sponsors` collection with the follo
 {
   "_id": "ObjectId",
   "fullName": "string",
-  "email": "string", 
+  "email": "string",
   "mobile": "string",
   "plan": "string",
   "amount": "number",

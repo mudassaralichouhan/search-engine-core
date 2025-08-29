@@ -3,6 +3,7 @@
 ## 🎯 **Current vs. Recommended Headers**
 
 ### **❌ Before (Your Current Headers)**
+
 ```
 HTTP/1.1 200 OK
 Server: HatefEngine 1.0
@@ -19,6 +20,7 @@ Content-Length: 86139
 ```
 
 ### **✅ After (Recommended Headers)**
+
 ```
 HTTP/1.1 200 OK
 Server: HatefEngine 1.0
@@ -39,12 +41,14 @@ Content-Length: 3475
 ## 🚀 **Performance Impact**
 
 ### **Before (No Caching)**
+
 - **Every request** hits your server
 - **No browser caching** benefits
 - **Higher server load**
 - **Slower page loads**
 
 ### **After (Proper Caching)**
+
 - **99.9% cache hit rate** for returning users
 - **Instant loading** from browser cache
 - **Reduced server load** by 90%+
@@ -54,11 +58,11 @@ Content-Length: 3475
 
 ### **`public, max-age=31536000, immutable`**
 
-| Directive | Value | Purpose |
-|-----------|-------|---------|
-| **`public`** | - | Cacheable by browsers, CDNs, proxies |
-| **`max-age=31536000`** | 1 year (31,536,000 seconds) | How long to cache |
-| **`immutable`** | - | File never changes, skip validation |
+| Directive              | Value                       | Purpose                              |
+| ---------------------- | --------------------------- | ------------------------------------ |
+| **`public`**           | -                           | Cacheable by browsers, CDNs, proxies |
+| **`max-age=31536000`** | 1 year (31,536,000 seconds) | How long to cache                    |
+| **`immutable`**        | -                           | File never changes, skip validation  |
 
 ### **Why 1 Year for JavaScript?**
 
@@ -70,6 +74,7 @@ Content-Length: 3475
 ## 🔧 **ETag Implementation**
 
 ### **Content-Based ETag**
+
 ```cpp
 std::string generateETag(const std::string& content) {
     std::hash<std::string> hasher;
@@ -79,6 +84,7 @@ std::string generateETag(const std::string& content) {
 ```
 
 ### **Benefits**
+
 - **Automatic invalidation** when content changes
 - **Conditional requests** (304 Not Modified)
 - **Bandwidth savings** for unchanged files
@@ -86,6 +92,7 @@ std::string generateETag(const std::string& content) {
 ## 📈 **Cache Strategy by File Type**
 
 ### **JavaScript Files**
+
 ```cpp
 // Cache for 1 year with immutable flag
 res->writeHeader("Cache-Control", "public, max-age=31536000, immutable");
@@ -94,6 +101,7 @@ res->writeHeader("Last-Modified", getLastModifiedHeader(filePath));
 ```
 
 ### **CSS Files**
+
 ```cpp
 // Cache for 1 year
 res->writeHeader("Cache-Control", "public, max-age=31536000");
@@ -101,12 +109,14 @@ res->writeHeader("ETag", generateETag(content));
 ```
 
 ### **Images & Fonts**
+
 ```cpp
 // Cache for 1 year
 res->writeHeader("Cache-Control", "public, max-age=31536000");
 ```
 
 ### **HTML Files**
+
 ```cpp
 // No cache for dynamic content
 res->writeHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -117,21 +127,25 @@ res->writeHeader("Expires", "0");
 ## 🎯 **Versioning Strategy**
 
 ### **Option 1: Query Parameters**
+
 ```html
 <script src="/script.js?v=1.2.3"></script>
 ```
 
 ### **Option 2: Filename Versioning**
+
 ```html
 <script src="/script.1.2.3.js"></script>
 ```
 
 ### **Option 3: Content Hash**
+
 ```html
 <script src="/script.a1b2c3d4.js"></script>
 ```
 
 ### **Option 4: Build-time Versioning**
+
 ```html
 <script src="/script.js?build=20250822"></script>
 ```
@@ -139,11 +153,13 @@ res->writeHeader("Expires", "0");
 ## 🔍 **Testing Cache Headers**
 
 ### **Test Current Headers**
+
 ```bash
 curl -I http://localhost:3000/script.js
 ```
 
 ### **Test Conditional Requests**
+
 ```bash
 # First request
 curl -s -D - -o /dev/null http://localhost:3000/script.js
@@ -153,6 +169,7 @@ curl -s -D - -o /dev/null -H "If-None-Match: \"1138250396556001301\"" http://loc
 ```
 
 ### **Expected Results**
+
 ```bash
 # First request: 200 OK with full content
 HTTP/1.1 200 OK
@@ -168,6 +185,7 @@ ETag: "1138250396556001301"
 ## 🛡️ **Security Considerations**
 
 ### **Keep Security Headers**
+
 ```cpp
 // Essential security headers (keep these!)
 res->writeHeader("X-Content-Type-Options", "nosniff");
@@ -179,6 +197,7 @@ res->writeHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomai
 ```
 
 ### **Why These Matter**
+
 - **`nosniff`**: Prevents MIME type sniffing attacks
 - **`DENY`**: Prevents clickjacking
 - **`XSS-Protection`**: Additional XSS protection
@@ -187,6 +206,7 @@ res->writeHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomai
 ## 📊 **Performance Monitoring**
 
 ### **Cache Hit Rate Metrics**
+
 ```cpp
 // Track cache effectiveness
 struct CacheMetrics {
@@ -199,6 +219,7 @@ struct CacheMetrics {
 ```
 
 ### **Key Metrics to Monitor**
+
 - **Cache hit rate**: Target >95%
 - **Bandwidth savings**: From 304 responses
 - **Server load reduction**: From cached requests
@@ -207,6 +228,7 @@ struct CacheMetrics {
 ## 🚀 **CDN Integration**
 
 ### **CloudFlare Configuration**
+
 ```nginx
 # CloudFlare Page Rules
 URL: *.js
@@ -217,6 +239,7 @@ Settings:
 ```
 
 ### **AWS CloudFront**
+
 ```json
 {
   "CacheBehaviors": {
@@ -232,6 +255,7 @@ Settings:
 ## 🎯 **Implementation Checklist**
 
 ### **✅ Done**
+
 - [x] Implement proper Cache-Control headers
 - [x] Add ETag generation
 - [x] Add Last-Modified headers
@@ -239,6 +263,7 @@ Settings:
 - [x] Test conditional requests
 
 ### **🔄 Next Steps**
+
 - [ ] Implement versioning strategy
 - [ ] Add cache monitoring
 - [ ] Configure CDN rules
@@ -248,12 +273,14 @@ Settings:
 ## 📈 **Expected Results**
 
 ### **Performance Improvements**
+
 - **90%+ reduction** in server load for static assets
 - **95%+ cache hit rate** for returning users
 - **50%+ faster** page loads for cached resources
 - **Significant bandwidth savings** from 304 responses
 
 ### **User Experience**
+
 - **Instant loading** of JavaScript files
 - **Faster page transitions**
 - **Reduced loading spinners**
