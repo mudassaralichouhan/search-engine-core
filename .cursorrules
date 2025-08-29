@@ -1,0 +1,280 @@
+# Search Engine Core - Cursor AI Rules
+
+## Project Context
+This is a high-performance search engine built with C++, uWebSockets, MongoDB, and Redis. The project uses Docker for containerization and includes features like web crawling, SPA rendering, and sponsor management.
+
+## Critical MongoDB C++ Rules
+
+### ⚠️ MOST IMPORTANT: MongoDB Instance Initialization
+**NEVER create MongoDB clients without proper instance initialization:**
+```cpp
+// ❌ WRONG - This will crash the server!
+mongocxx::uri uri{"mongodb://localhost:27017"};
+client_ = std::make_unique<mongocxx::client>(uri); // CRASH!
+```
+
+**ALWAYS use the singleton pattern:**
+```cpp
+// ✅ CORRECT
+#include "../../include/mongodb.h"
+mongocxx::instance& instance = MongoDBInstance::getInstance();
+mongocxx::uri uri{"mongodb://localhost:27017"};
+client_ = std::make_unique<mongocxx::client>(uri); // Works!
+```
+
+### MongoDB Integration Checklist
+When implementing MongoDB functionality:
+1. Include `#include "../../include/mongodb.h"`
+2. Call `MongoDBInstance::getInstance()` before creating any client
+3. Use consistent collection names across imports and code
+4. Add proper exception handling with try-catch blocks
+5. Test connection with simple query first
+
+## Build and Deployment Rules
+
+### Local Build Process
+```bash
+cd /root/search-engine-core
+mkdir -p build && cd build
+cmake .. && make -j4
+```
+
+### Docker Deployment
+```bash
+# Build locally and copy to container
+docker cp /root/search-engine-core/build/server core:/app/server
+docker restart core
+
+# Or use Docker Compose
+cd /root/search-engine-core
+docker compose up --build
+```
+
+## Code Style and Patterns
+
+### Controller Registration
+All new API endpoints must be registered in the controller:
+```cpp
+// In HomeController.h
+void myNewEndpoint(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
+
+// Register the route
+REGISTER_ROUTE(HttpMethod::POST, "/api/v2/my-endpoint", myNewEndpoint, HomeController);
+```
+
+### Error Handling Pattern
+```cpp
+try {
+    // MongoDB operations
+    mongocxx::instance& instance = MongoDBInstance::getInstance();
+    // ... rest of code
+} catch (const mongocxx::exception& e) {
+    LOG_ERROR("MongoDB error: " + std::string(e.what()));
+    serverError(res, "Database error occurred");
+}
+```
+
+### Logging Standards
+- Use `LOG_INFO()` for normal operations
+- Use `LOG_ERROR()` for errors
+- Use `LOG_DEBUG()` for debugging (only in debug builds)
+- Use `LOG_WARNING()` for warnings
+
+## File Organization
+
+### Header Includes
+```cpp
+// System headers first
+#include <string>
+#include <memory>
+
+// Project headers
+#include "../../include/Logger.h"
+#include "../../include/mongodb.h"
+
+// Third-party headers
+#include <mongocxx/client.hpp>
+#include <nlohmann/json.hpp>
+```
+
+### CMake Integration
+When adding new storage classes:
+1. Add to `src/storage/CMakeLists.txt`
+2. Create static library target
+3. Link to main server executable
+4. Include in install targets
+
+## API Response Format
+
+### Success Response
+```json
+{
+  "success": true,
+  "message": "Operation completed successfully",
+  "data": { ... }
+}
+```
+
+### Error Response
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "error": "ERROR_CODE"
+}
+```
+
+## Testing Guidelines
+
+### MongoDB Connection Test
+```bash
+docker exec mongodb_test mongosh --username admin --password password123 \
+--eval "db.adminCommand('ping')"
+```
+
+### API Testing
+```bash
+curl --location 'http://localhost:3000/api/endpoint' \
+--header 'Content-Type: application/json' \
+--data-raw '{ ... }'
+```
+
+### Verify Data Storage
+```bash
+docker exec mongodb_test mongosh --username admin --password password123 \
+--eval "use('search-engine'); db.collection.find().pretty()"
+```
+
+## Common Issues and Solutions
+
+### Server Crash: "Empty reply from server"
+**Cause:** MongoDB instance not initialized
+**Solution:** Use `MongoDBInstance::getInstance()` before creating clients
+
+### Undefined Reference Errors
+**Cause:** Missing library in CMakeLists.txt
+**Solution:** Add library to target_link_libraries in CMakeLists.txt
+
+### Collection Not Found
+**Cause:** Inconsistent collection names
+**Solution:** Use same collection name in code and imports
+
+## Docker Environment
+
+### Container Names
+- `core` - Main application server
+- `mongodb_test` - MongoDB database
+- `redis` - Redis cache
+- `browserless` - Headless Chrome for SPA rendering
+
+### Environment Variables
+- `MONGODB_URI` - MongoDB connection string (default: mongodb://admin:password123@mongodb:27017)
+- `REDIS_URL` - Redis connection string
+- `BROWSERLESS_URL` - Browserless service URL
+
+## Frontend Integration
+
+### Static Files
+- Location: `/public/` directory
+- Served by: StaticFileController
+- Caching: 1-year browser cache for JS/CSS
+
+### Templates
+- Location: `/templates/` directory
+- Engine: Inja templating
+- Localization: `/locales/` directory
+
+## Security Best Practices
+
+1. Always validate input data
+2. Use prepared statements for database queries
+3. Implement rate limiting for APIs
+4. Use HTTPS in production
+5. Sanitize user-provided URLs
+6. Validate email formats
+7. Check mobile number formats
+
+## Performance Optimization
+
+1. Use connection pooling for MongoDB
+2. Implement Redis caching for frequently accessed data
+3. Use async operations where possible
+4. Minimize database round trips
+5. Use indexes on frequently queried fields
+
+## Documentation Requirements
+
+When adding new features:
+1. Update `README.md` with feature description
+2. Add API documentation to `docs/api/`
+3. Update project structure if new files added
+4. Document any new environment variables
+5. Add examples to documentation
+
+## Git Commit Messages
+
+Format: `type: description`
+
+Types:
+- `feat:` New feature
+- `fix:` Bug fix
+- `docs:` Documentation changes
+- `refactor:` Code refactoring
+- `test:` Test additions/changes
+- `perf:` Performance improvements
+- `chore:` Maintenance tasks
+
+## Code Review Checklist
+
+Before submitting code:
+- [ ] MongoDB instance properly initialized
+- [ ] Error handling implemented
+- [ ] Logging added for debugging
+- [ ] Documentation updated
+- [ ] Tests written/updated
+- [ ] CMakeLists.txt updated if needed
+- [ ] No memory leaks
+- [ ] Thread-safe where required
+
+## Important File Paths
+
+- Controllers: `src/controllers/`
+- Storage: `src/storage/`
+- Headers: `include/`
+- MongoDB singleton: `include/mongodb.h`
+- API docs: `docs/api/`
+- Templates: `templates/`
+- Static files: `public/`
+
+## Memory Management
+
+1. Use smart pointers (`std::unique_ptr`, `std::shared_ptr`)
+2. Avoid raw pointers unless necessary
+3. RAII pattern for resource management
+4. Clean up in destructors
+
+## Thread Safety
+
+1. Use mutexes for shared resources
+2. Prefer lock_guard over manual lock/unlock
+3. Minimize lock scope
+4. Avoid deadlocks with consistent lock ordering
+
+## Debugging Tips
+
+1. Check Docker logs: `docker logs core --tail 50`
+2. MongoDB logs: `docker logs mongodb_test`
+3. Use `LOG_DEBUG()` liberally during development
+4. Test with curl before UI integration
+5. Verify MongoDB connection independently
+
+## Production Deployment
+
+1. Set appropriate environment variables
+2. Enable HTTPS
+3. Configure proper MongoDB authentication
+4. Set up monitoring and alerting
+5. Implement backup strategies
+6. Use production Docker images from GHCR
+
+Remember: Always test MongoDB connections with the singleton pattern to avoid server crashes!

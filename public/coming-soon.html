@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en-US" dir="ltr">
+<html lang="fa-IR" dir="ltr">
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -43,12 +43,26 @@
     <!-- Main stylesheet and color file-->
     <link href="coming-soon/assets/css/style.css" rel="stylesheet">
     <link id="color-scheme" href="coming-soon/assets/css/colors/default.css" rel="stylesheet">
+    
+    <!-- Font Awesome for icons (local) -->
+    <link rel="stylesheet" href="/coming-soon/assets/css/fontawesome/all.min.css">
+    
+    <!-- Video Control Styles -->
+    <link rel="stylesheet" href="/coming-soon/assets/css/video-control.css">
 </head>
 <body data-spy="scroll" data-target=".onpage-navigation" data-offset="60">
     <main>
         <video id="video-background" autoplay="" loop="" muted="" poster="coming-soon/assets/images/3.jpg">
-            <source src="/coming-soon/assets/149172-795746658_small.mp4" type="video/mp4">
+            <source src="/coming-soon/assets/Drift_Motion_loop.mp4" type="video/mp4">
         </video>
+        
+        <!-- Video Control Button -->
+        <div class="video-control">
+            <button id="video-toggle" class="btn btn-outline-light btn-sm" title="توقف/شروع ویدیو">
+                <i id="video-icon" class="fas fa-pause"></i>
+            </button>
+        </div>
+        
         <section class="main">
             <div class="content">
                 <div class="container">
@@ -57,9 +71,9 @@
                     </div>
                     <div class="counter" id="countdown">
                         <h2>راه اندازی در <span class="days timenumbers"> 30 </span>&nbsp;روز <span class="hours timenumbers"> 00 </span> ساعت <span class="minutes timenumbers"> 00 </span> دقیقه <span class="seconds timenumbers yellow-text"> 00 </span> ثانیه</h2>
-                        <div class="row">
-                            <div class="col-sm-6 col-sm-offset-3">
-                                <p>هاتف یک موتور جستجوی متن‌باز و ایرانی است که با هدف ارائه یک جایگزین بومی و قابل اعتماد برای موتورهای جستجوی خارجی توسعه یافته است. این موتور جستجو به کاربران امکان می‌دهد تا به صورت خصوصی و امن به جستجوی اطلاعات بپردازند.</p>
+                        <div class="row center-div">
+                            <div class="">
+                                <p>هاتف یک موتور جست‌وجوی متن‌باز و ایرانی است که با تمرکز بر مالکیت دادهٔ کاربر، شفافیت کُد و مشارکت جامعه توسعه یافته است. این موتور جست‌وجو شفافیت را اصل قرار می‌دهد: کاربر دقیقاً می‌داند چه داده‌ای جمع‌آوری می‌شود، اختیار کامل بر نگه‌داری، حذف و به‌اشتراک‌گذاری آن دارد و تمامی به‌روزرسانی‌های کُد و سیاست‌ها به‌صورت عمومی منتشر می‌شود. هاتف با معماری مستقل و حریم‌خصوصی‌محور، تجربهٔ جست‌وجوی سریع و خصوصی را ارائه می‌کند و از مشارکت توسعه‌دهندگان، پژوهشگران و کاربران برای بهبود مداوم استقبال می‌کند.</p>
                             </div>
                         </div>
                     </div>
@@ -77,6 +91,17 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="additional-links">
+                        <div class="row center-div">
+                            <div class="col-sm-6 text-center">
+                                <div class="link-buttons">
+                                    <a href="/crawl-request" class="btn btn-outline-light btn-lg">درخواست خزش</a>
+                                    <a href="/sponsor" class="btn btn-outline-light btn-lg">حمایت مالی</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -90,5 +115,50 @@
     <script src="coming-soon/assets/lib/owl.carousel/dist/owl.carousel.js"></script>
     <script src="coming-soon/assets/lib/ajaxchimp/jquery.ajaxchimp.js"></script>
     <script src="coming-soon/assets/js/main.js"></script>
+    
+    <!-- Video Control Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const video = document.getElementById('video-background');
+            const toggleBtn = document.getElementById('video-toggle');
+            const videoIcon = document.getElementById('video-icon');
+            
+            // Set video speed to half (0.5x)
+            //video.playbackRate = 0.5;
+            
+            // Check if user has previously paused the video
+            const videoPaused = localStorage.getItem('videoPaused') === 'true';
+            
+            if (videoPaused) {
+                video.pause();
+                videoIcon.className = 'fas fa-play';
+            }
+            
+            toggleBtn.addEventListener('click', function() {
+                if (video.paused) {
+                    video.play();
+                    videoIcon.className = 'fas fa-pause';
+                    localStorage.setItem('videoPaused', 'false');
+                } else {
+                    video.pause();
+                    videoIcon.className = 'fas fa-play';
+                    localStorage.setItem('videoPaused', 'true');
+                }
+            });
+            
+            // Handle video loading and error states
+            video.addEventListener('loadstart', function() {
+                toggleBtn.disabled = true;
+            });
+            
+            video.addEventListener('canplay', function() {
+                toggleBtn.disabled = false;
+            });
+            
+            video.addEventListener('error', function() {
+                toggleBtn.style.display = 'none';
+            });
+        });
+    </script>
 </body>
 </html>

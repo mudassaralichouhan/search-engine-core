@@ -53,6 +53,7 @@ find_package(redis++ QUIET)
 set(STORAGE_SOURCES
     MongoDBStorage.cpp
     ContentStorage.cpp
+    SponsorStorage.cpp
     ../infrastructure.cpp
 )
 
@@ -69,7 +70,9 @@ endif()
 # Define header files
 set(STORAGE_HEADERS
     ../../include/search_engine/storage/SiteProfile.h
+    ../../include/search_engine/storage/SponsorProfile.h
     ../../include/search_engine/storage/MongoDBStorage.h
+    ../../include/search_engine/storage/SponsorStorage.h
     ../../include/search_engine/storage/ContentStorage.h
     ../../include/infrastructure.h
 )
@@ -155,6 +158,18 @@ if(REDIS_AVAILABLE)
     target_compile_definitions(RedisSearchStorage PUBLIC REDIS_AVAILABLE)
 endif()
 
+add_library(SponsorStorage STATIC SponsorStorage.cpp ../infrastructure.cpp)
+target_include_directories(SponsorStorage 
+    PUBLIC 
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>
+        $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(SponsorStorage PUBLIC common mongo::bsoncxx_shared mongo::mongocxx_shared)
+target_compile_definitions(SponsorStorage PRIVATE
+    BSONCXX_STATIC
+    MONGOCXX_STATIC
+)
+
 add_library(ContentStorage STATIC ContentStorage.cpp ../infrastructure.cpp)
 target_include_directories(ContentStorage 
     PUBLIC 
@@ -168,7 +183,7 @@ if(REDIS_AVAILABLE)
 endif()
 
 # Export targets for use by other CMake projects
-install(TARGETS storage MongoDBStorage ContentStorage
+install(TARGETS storage MongoDBStorage SponsorStorage ContentStorage
     EXPORT StorageTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib

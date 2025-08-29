@@ -305,7 +305,7 @@ cd build
 
 # Configure CMake
 echo "Configuring CMake..."
-cmake .. \
+cmake . \
     -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_CXX_STANDARD=20 \
     -DCMAKE_CXX_STANDARD_REQUIRED=ON \

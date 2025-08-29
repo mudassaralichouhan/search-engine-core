@@ -95,6 +95,16 @@ SPA rendering capabilities** for JavaScript-heavy websites.
 - **Size-based Optimization**: JSON payload (≤100KB) vs file upload (>100KB)
 - **Thread-safe Operations**: Concurrent request handling with mutex protection
 
+### 💰 **Sponsor Management API**
+
+- **MongoDB Integration**: Direct database storage with proper C++ driver initialization
+- **Bank Information Response**: Complete Iranian bank details for payment processing
+- **Data Validation**: Comprehensive input validation for all sponsor fields
+- **Backend Tracking**: Automatic capture of IP, user agent, and submission timestamps
+- **Status Management**: Support for PENDING, VERIFIED, REJECTED, CANCELLED states
+- **Error Handling**: Graceful fallbacks with detailed error logging
+- **Frontend Integration**: JavaScript form handling with success/error notifications
+
 ## Project Structure
 
 ```
@@ -106,7 +116,7 @@ SPA rendering capabilities** for JavaScript-heavy websites.
 │   └── docker-build-app.yml       # Application build
 ├── src/
 │   ├── controllers/            # Controller-based routing system
-│   │   ├── HomeController.cpp  # Home page and coming soon handling
+│   │   ├── HomeController.cpp  # Home page, sponsor API, and coming soon handling
 │   │   ├── SearchController.cpp # Search functionality and crawler APIs
 │   │   ├── StaticFileController.cpp # Static file serving with caching
 │   │   └── CacheController.cpp # Cache monitoring and management
@@ -132,7 +142,8 @@ SPA rendering capabilities** for JavaScript-heavy websites.
 │   └── storage/                # Data persistence with comprehensive logging
 │       ├── MongoDBStorage.cpp  # MongoDB operations with CRUD logging
 │       ├── RedisSearchStorage.cpp # Redis search indexing with operation logging
-│       └── ContentStorage.cpp  # Unified storage with detailed flow logging
+│       ├── ContentStorage.cpp  # Unified storage with detailed flow logging
+│       └── SponsorStorage.cpp  # Sponsor data management with MongoDB integration
 ├── js-minifier-service/        # JavaScript minification microservice
 │   ├── enhanced-server.js      # Enhanced minification server with multiple methods
 │   ├── package.json           # Node.js dependencies
@@ -144,21 +155,29 @@ SPA rendering capabilities** for JavaScript-heavy websites.
 │   ├── routing/                # Routing system headers
 │   ├── Logger.h                # Logging interface with multiple levels
 │   ├── search_core/            # Search API headers
+│   ├── mongodb.h               # MongoDB singleton instance management
 │   └── search_engine/          # Public API headers
-│       └── crawler/            # Public crawler API (new)
-│          ├── BrowserlessClient.h
-│          ├── PageFetcher.h
-│          ├── Crawler.h
-│          ├── CrawlerManager.h
-│          └── models/
-│             ├── CrawlConfig.h
-│             ├── CrawlResult.h
-│             └── FailureType.h
+│       ├── crawler/            # Public crawler API (new)
+│       │   ├── BrowserlessClient.h
+│       │   ├── PageFetcher.h
+│       │   ├── Crawler.h
+│       │   ├── CrawlerManager.h
+│       │   └── models/
+│       │      ├── CrawlConfig.h
+│       │      ├── CrawlResult.h
+│       │      └── FailureType.h
+│       └── storage/            # Storage API headers
+│          ├── SponsorProfile.h # Sponsor data model
+│          └── SponsorStorage.h # Sponsor storage interface
 ├── docs/                       # Comprehensive documentation
 │   ├── SPA_RENDERING.md        # SPA rendering setup and usage guide
 │   ├── content-storage-layer.md # Storage architecture documentation
 │   ├── SCORING_AND_RANKING.md  # Search ranking algorithms
+│   ├── development/            # Development guides
+│   │   └── MONGODB_CPP_GUIDE.md # MongoDB C++ development patterns
 │   └── api/                    # REST API documentation
+│      ├── sponsor_endpoint.md  # Sponsor API documentation
+│      └── README.md            # API overview
 ├── pages/                      # Frontend source files
 ├── public/                     # Static files served by server
 ├── tests/                      # Comprehensive testing suite
@@ -315,6 +334,53 @@ POST /api/spa/render
 }
 ```
 
+### `/api/v2/sponsor-submit` - Sponsor Application Submission
+
+**Parameters:**
+
+| Parameter | Type   | Required | Description                    |
+|-----------|--------|----------|--------------------------------|
+| `name`    | string | ✅       | Full name of the sponsor       |
+| `email`   | string | ✅       | Email address for contact      |
+| `mobile`  | string | ✅       | Mobile phone number            |
+| `tier`    | string | ✅       | Sponsorship tier/plan          |
+| `amount`  | number | ✅       | Amount in IRR (Iranian Rial)   |
+| `company` | string | ❌       | Company name (optional)        |
+
+**Example Usage:**
+
+```json
+POST /api/v2/sponsor-submit
+{
+  "name": "Ahmad Mohammadi",
+  "email": "ahmad@example.com",
+  "mobile": "09123456789",
+  "tier": "premium",
+  "amount": 2500000,
+  "company": "Tech Corp"
+}
+```
+
+**Success Response:**
+
+```json
+{
+  "success": true,
+  "message": "فرم حمایت با موفقیت ارسال و ذخیره شد",
+  "submissionId": "68b05d4abb79f500190b8a92",
+  "savedToDatabase": true,
+  "bankInfo": {
+    "bankName": "بانک پاسارگاد",
+    "accountNumber": "3047-9711-6543-2",
+    "iban": "IR64 0570 3047 9711 6543 2",
+    "accountHolder": "هاتف پروژه",
+    "swift": "PASAIRTHXXX",
+    "currency": "IRR"
+  },
+  "note": "لطفاً پس از واریز مبلغ، رسید پرداخت را به آدرس ایمیل sponsors@hatef.ir ارسال کنید."
+}
+```
+
 ## SPA Rendering Architecture
 
 ### Intelligent SPA Detection
@@ -355,7 +421,9 @@ The search engine features a modern, attribute-based routing system inspired by
 
 **Available Endpoints:**
 
-- **HomeController**: `GET /` (coming soon), `GET /test` (main search)
+- **HomeController**: 
+  - `GET /` (coming soon), `GET /test` (main search)
+  - `POST /api/v2/sponsor-submit` - Sponsor application submission
 - **SearchController**:
   - `GET /api/search` - Search functionality
   - `POST /api/crawl/add-site` - Enhanced crawler with SPA support

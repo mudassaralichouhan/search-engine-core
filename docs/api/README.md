@@ -31,6 +31,11 @@ enhanced crawler capabilities.
 - `POST /api/spa/detect` - Analyze URLs for SPA characteristics
 - See: [crawler_endpoint.md](./crawler_endpoint.md)
 
+### Sponsor API
+
+- `POST /api/v2/sponsor-submit` - Submit sponsor applications with MongoDB storage
+- See: [sponsor_endpoint.md](./sponsor_endpoint.md)
+
 ## Key Features
 
 ### 🚀 **Advanced SPA Rendering**
