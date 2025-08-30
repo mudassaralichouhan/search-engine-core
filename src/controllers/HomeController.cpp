@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <curl/curl.h>
 
 // Deep merge helper: fill missing keys in dst with values from src (recursively for objects)
 static void jsonDeepMergeMissing(nlohmann::json &dst, const nlohmann::json &src) {
@@ -595,15 +596,67 @@ void HomeController::sponsorSubmit(uWS::HttpResponse<false>* res, uWS::HttpReque
                         actualSubmissionId = "temp_" + std::to_string(timestamp);
                     }
                     
-                    // Return success response with bank info
-                    nlohmann::json bankInfo = {
-                        {"bankName", "بانک پاسارگاد"},
-                        {"accountNumber", "3047-9711-6543-2"},
-                        {"iban", "IR64 0570 3047 9711 6543 2"},
-                        {"accountHolder", "هاتف پروژه"},
-                        {"swift", "PASAIRTHXXX"},
-                        {"currency", "IRR"}
-                    };
+                    // Fetch payment accounts from JSON file
+                    nlohmann::json bankInfo;
+                    try {
+                        std::string url = "https://cdn.hatef.ir/sponsor_payment_accounts.json";
+                        
+                        CURL* curl = curl_easy_init();
+                        if (curl) {
+                            std::string response_data;
+                            
+                            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+                            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, +[](void* contents, size_t size, size_t nmemb, std::string* userp) {
+                                userp->append((char*)contents, size * nmemb);
+                                return size * nmemb;
+                            });
+                            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
+                            curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+                            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+                            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+                            curl_easy_setopt(curl, CURLOPT_USERAGENT, "SearchEngine/1.0");
+                            
+                            CURLcode res_code = curl_easy_perform(curl);
+                            long http_code = 0;
+                            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+                            curl_easy_cleanup(curl);
+                            
+                            if (res_code == CURLE_OK && http_code == 200) {
+                                auto json_data = nlohmann::json::parse(response_data);
+                                
+                                // Get the first active account
+                                if (json_data.contains("sponsor_payment_accounts") && json_data["sponsor_payment_accounts"].is_array()) {
+                                    for (const auto& account : json_data["sponsor_payment_accounts"]) {
+                                        if (account.contains("is_active") && account["is_active"].get<bool>()) {
+                                            bankInfo = {
+                                                {"bankName", account.value("bank_name", "بانک پاسارگاد")},
+                                                {"cardNumber", account.value("card_number", "5022-2913-3025-8516")},
+                                                {"accountNumber", account.value("account_number", "287.8000.10618503.1")},
+                                                {"iban", account.value("shaba_number", "IR750570028780010618503101")},
+                                                {"accountHolder", account.value("account_holder_name", "هاتف رستمخانی")},
+                                                {"currency", "IRR"}
+                                            };
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (const std::exception& e) {
+                        LOG_WARNING("Failed to fetch payment accounts, using fallback: " + std::string(e.what()));
+                    }
+                    
+                    // Fallback to default values if fetching failed
+                    if (bankInfo.empty()) {
+                        bankInfo = {
+                            {"bankName", "بانک پاسارگاد"},
+                            {"cardNumber", "5022-2913-3025-8516"},
+                            {"accountNumber", "287.8000.10618503.1"},
+                            {"iban", "IR750570028780010618503101"},
+                            {"accountHolder", "هاتف رستمخانی"},
+                            {"currency", "IRR"}
+                        };
+                    }
                     
                     nlohmann::json response = {
                         {"success", true},
@@ -622,15 +675,65 @@ void HomeController::sponsorSubmit(uWS::HttpResponse<false>* res, uWS::HttpReque
                     // Continue to fallback response below
                 }
                 
-                // Fallback response if anything goes wrong
-                nlohmann::json bankInfo = {
-                    {"bankName", "بانک پاسارگاد"},
-                    {"accountNumber", "3047-9711-6543-2"},
-                    {"iban", "IR64 0570 3047 9711 6543 2"},
-                    {"accountHolder", "هاتف پروژه"},
-                    {"swift", "PASAIRTHXXX"},
-                    {"currency", "IRR"}
-                };
+                // Fallback response if anything goes wrong - try to fetch payment accounts
+                nlohmann::json bankInfo;
+                try {
+                    std::string url = "https://cdn.hatef.ir/sponsor_payment_accounts.json";
+                    
+                    CURL* curl = curl_easy_init();
+                    if (curl) {
+                        std::string response_data;
+                        
+                        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+                        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, +[](void* contents, size_t size, size_t nmemb, std::string* userp) {
+                            userp->append((char*)contents, size * nmemb);
+                            return size * nmemb;
+                        });
+                        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
+                        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
+                        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+                        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+                        curl_easy_setopt(curl, CURLOPT_USERAGENT, "SearchEngine/1.0");
+                        
+                        CURLcode res_code = curl_easy_perform(curl);
+                        long http_code = 0;
+                        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+                        curl_easy_cleanup(curl);
+                        
+                        if (res_code == CURLE_OK && http_code == 200) {
+                            auto json_data = nlohmann::json::parse(response_data);
+                            
+                            // Get the first active account
+                            if (json_data.contains("sponsor_payment_accounts") && json_data["sponsor_payment_accounts"].is_array()) {
+                                for (const auto& account : json_data["sponsor_payment_accounts"]) {
+                                    if (account.contains("is_active") && account["is_active"].get<bool>()) {
+                                        bankInfo = {
+                                            {"bankName", account.value("bank_name", "بانک پاسارگاد")},
+                                            {"accountNumber", account.value("card_number", "5022-2913-3025-8516")},
+                                            {"iban", account.value("shaba_number", "IR750570028780010618503101")},
+                                            {"accountHolder", account.value("account_holder_name", "هاتف رستمخانی")},
+                                            {"currency", "IRR"}
+                                        };
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    LOG_WARNING("Failed to fetch payment accounts in fallback: " + std::string(e.what()));
+                }
+                
+                // Final fallback to default values if fetching failed
+                if (bankInfo.empty()) {
+                    bankInfo = {
+                        {"bankName", "بانک پاسارگاد"},
+                        {"accountNumber", "5022-2913-3025-8516"},
+                        {"iban", "IR750570028780010618503101"},
+                        {"accountHolder", "هاتف رستمخانی"},
+                        {"currency", "IRR"}
+                    };
+                }
                 
                 nlohmann::json response = {
                     {"success", true},
@@ -652,4 +755,72 @@ void HomeController::sponsorSubmit(uWS::HttpResponse<false>* res, uWS::HttpReque
     res->onAborted([]() {
         LOG_WARNING("Sponsor form submission request aborted");
     });
+} 
+
+void HomeController::getSponsorPaymentAccounts(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
+    LOG_INFO("HomeController::getSponsorPaymentAccounts called");
+    
+    try {
+        // Fetch payment accounts from the JSON file
+        std::string url = "https://cdn.hatef.ir/sponsor_payment_accounts.json";
+        
+        // Use libcurl to fetch the JSON data
+        CURL* curl = curl_easy_init();
+        if (!curl) {
+            LOG_ERROR("Failed to initialize CURL for fetching payment accounts");
+            serverError(res, "Failed to fetch payment accounts");
+            return;
+        }
+        
+        std::string response_data;
+        
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, +[](void* contents, size_t size, size_t nmemb, std::string* userp) {
+            userp->append((char*)contents, size * nmemb);
+            return size * nmemb;
+        });
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "SearchEngine/1.0");
+        
+        CURLcode res_code = curl_easy_perform(curl);
+        long http_code = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+        curl_easy_cleanup(curl);
+        
+        if (res_code != CURLE_OK || http_code != 200) {
+            LOG_ERROR("Failed to fetch payment accounts from " + url + ". HTTP code: " + std::to_string(http_code));
+            serverError(res, "Failed to fetch payment accounts");
+            return;
+        }
+        
+        // Parse the JSON response
+        auto json_data = nlohmann::json::parse(response_data);
+        
+        // Extract active accounts only
+        std::vector<nlohmann::json> active_accounts;
+        if (json_data.contains("sponsor_payment_accounts") && json_data["sponsor_payment_accounts"].is_array()) {
+            for (const auto& account : json_data["sponsor_payment_accounts"]) {
+                if (account.contains("is_active") && account["is_active"].get<bool>()) {
+                    active_accounts.push_back(account);
+                }
+            }
+        }
+        
+        // Return the active accounts
+        nlohmann::json response = {
+            {"success", true},
+            {"accounts", active_accounts},
+            {"total_accounts", active_accounts.size()},
+            {"source_url", url}
+        };
+        
+        json(res, response);
+        
+    } catch (const std::exception& e) {
+        LOG_ERROR("Exception in getSponsorPaymentAccounts: " + std::string(e.what()));
+        serverError(res, "Failed to process payment accounts");
+    }
 } 

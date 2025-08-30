@@ -184,6 +184,120 @@ docker exec mongodb_test mongosh --username admin --password password123 \
 - Engine: Inja templating
 - Localization: `/locales/` directory
 
+### CSS Best Practices
+
+#### ⚠️ CSS Class Reuse and DRY Principle
+**ALWAYS prefer reusing existing CSS classes over creating new ones:**
+
+```css
+/* ❌ WRONG - Duplicating styles */
+.new-component {
+    padding: var(--space-4) 0;
+    font-family: "Vazirmatn FD", "Vazirmatn", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.another-component {
+    padding: var(--space-4) 0;
+    font-family: "Vazirmatn FD", "Vazirmatn", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+```
+
+**✅ CORRECT - Using CSS custom properties and reusing classes:**
+```css
+:root {
+    --font-family: "Vazirmatn FD", "Vazirmatn", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.content-section {
+    padding: var(--space-4) 0;
+    font-family: var(--font-family);
+}
+
+/* Reuse the existing class */
+.new-component {
+    /* Extend existing class or use utility classes */
+}
+```
+
+#### CSS Custom Properties (Variables)
+- **ALWAYS** define reusable values as CSS custom properties in `:root`
+- Use semantic names: `--font-family`, `--primary-color`, `--border-radius`
+- Reference existing variables before creating new ones
+- Group related variables together
+
+#### Class Naming and Organization
+- Use BEM methodology for component-specific classes
+- Create utility classes for common patterns (spacing, typography, colors)
+- Prefer composition over inheritance
+- Document complex CSS patterns with comments
+
+#### CSS Checklist
+Before adding new CSS:
+- [ ] Check if existing classes can be reused
+- [ ] Verify if CSS custom properties already exist for the values
+- [ ] Consider creating utility classes for repeated patterns
+- [ ] Use semantic class names
+- [ ] Follow the existing CSS architecture
+
+### JavaScript Best Practices
+
+#### ⚠️ NO Inline JavaScript - Content Security Policy Compliance
+**NEVER use inline event handlers (onclick, onload, etc.) due to CSP restrictions:**
+
+```javascript
+// ❌ WRONG - Inline JavaScript (violates CSP)
+<button onclick="copyToClipboard('text')">Copy</button>
+<span onclick="handleClick()">Click me</span>
+
+// ✅ CORRECT - Use data attributes and event listeners
+<button data-copy-text="text" class="copy-btn">Copy</button>
+<span data-action="click" class="clickable">Click me</span>
+
+// Add event listeners in JavaScript
+document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const text = this.getAttribute('data-copy-text');
+        copyToClipboard(text);
+    });
+});
+```
+
+#### JavaScript Security Rules
+- **ALWAYS** use `data-*` attributes instead of inline event handlers
+- **ALWAYS** attach event listeners using `addEventListener()`
+- **NEVER** use `onclick`, `onload`, `onsubmit`, etc. in HTML
+- **ALWAYS** use event delegation for dynamically created elements
+- **ALWAYS** follow CSP (Content Security Policy) guidelines
+
+#### JavaScript Event Handling Pattern
+```javascript
+// ✅ CORRECT Pattern for reusable components
+function createCopyButton(text, label) {
+    const button = document.createElement('button');
+    button.className = 'copy-btn';
+    button.setAttribute('data-copy-text', text);
+    button.setAttribute('title', label);
+    button.innerHTML = '<svg>...</svg>';
+    
+    // Add event listener
+    button.addEventListener('click', function() {
+        const textToCopy = this.getAttribute('data-copy-text');
+        copyToClipboard(textToCopy);
+    });
+    
+    return button;
+}
+```
+
+#### JavaScript Checklist
+Before adding new JavaScript:
+- [ ] No inline event handlers (onclick, onload, etc.)
+- [ ] Use data attributes for dynamic content
+- [ ] Add event listeners in JavaScript code
+- [ ] Follow CSP guidelines
+- [ ] Use event delegation for dynamic elements
+- [ ] Implement proper error handling
+
 ## Security Best Practices
 
 1. Always validate input data

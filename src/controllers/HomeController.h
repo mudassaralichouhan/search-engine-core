@@ -30,6 +30,7 @@ public:
     
     // POST /api/v2/sponsor-submit
     void sponsorSubmit(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
+    void getSponsorPaymentAccounts(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
 
 private:
     std::string getAvailableLocales();
@@ -51,4 +52,5 @@ ROUTE_CONTROLLER(HomeController) {
     REGISTER_ROUTE(HttpMethod::GET, "/sponsor/*", sponsorPageWithLang, HomeController);
     REGISTER_ROUTE(HttpMethod::POST, "/api/v2/email-subscribe", emailSubscribe, HomeController);
     REGISTER_ROUTE(HttpMethod::POST, "/api/v2/sponsor-submit", sponsorSubmit, HomeController);
+    REGISTER_ROUTE(HttpMethod::GET, "/api/v2/sponsor-payment-accounts", getSponsorPaymentAccounts, HomeController);
 } 

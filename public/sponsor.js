@@ -237,6 +237,9 @@ document.getElementById('year').textContent = new Date().getFullYear();
                 showBankInfo(result.bankInfo, result.note);
                 form.reset();
                 closeModal(document.getElementById('irr-modal'));
+                
+                // Also fetch and display all available payment accounts
+                fetchPaymentAccounts();
             } else {
                 showNotification(result.message || 'خطا در ارسال فرم', 'error');
             }
@@ -251,6 +254,93 @@ document.getElementById('year').textContent = new Date().getFullYear();
         }
     });
 })();
+
+/* Payment Accounts API */
+async function fetchPaymentAccounts() {
+    try {
+        const response = await fetch('/api/v2/sponsor-payment-accounts');
+        const result = await response.json();
+        
+        if (response.ok && result.success && result.accounts && result.accounts.length > 0) {
+            showPaymentAccountsModal(result.accounts);
+        }
+    } catch (error) {
+        console.error('Failed to fetch payment accounts:', error);
+    }
+}
+
+function showPaymentAccountsModal(accounts) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('payment-accounts-modal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Create modal HTML
+    const modalHTML = `
+        <div id="payment-accounts-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>اطلاعات حساب‌های بانکی برای پرداخت</h3>
+                    <button class="modal-close" onclick="closeModal(document.getElementById('payment-accounts-modal'))">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="payment-accounts-list">
+                        ${accounts.map((account, index) => `
+                            <div class="payment-account-item">
+                                <h4>حساب ${index + 1}</h4>
+                                <div class="account-details">
+                                    <div class="detail-row">
+                                        <span class="label">نام بانک:</span>
+                                        <span class="value">${account.bank_name || 'نامشخص'}</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="label">شماره کارت:</span>
+                                        <span class="value">${account.card_number || 'نامشخص'}</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="label">شماره حساب:</span>
+                                        <span class="value">${account.account_number || 'نامشخص'}</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="label">شماره شبا:</span>
+                                        <span class="value">${account.shaba_number || 'نامشخص'}</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="label">صاحب حساب:</span>
+                                        <span class="value">${account.account_holder_name || 'نامشخص'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="payment-instructions">
+                        <p><strong>نکات مهم:</strong></p>
+                        <ul>
+                            <li>لطفاً پس از واریز مبلغ، رسید پرداخت را به آدرس ایمیل sponsors@hatef.ir ارسال کنید.</li>
+                            <li>در توضیحات واریز، نام و ایمیل خود را ذکر کنید.</li>
+                            <li>پرداخت شما پس از تایید، در سیستم ثبت خواهد شد.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Show modal
+    const modal = document.getElementById('payment-accounts-modal');
+    modal.style.display = 'block';
+    
+    // Add click outside to close
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeModal(modal);
+        }
+    });
+}
 
 /* Notification system */
 function showNotification(message, type = 'info') {
@@ -291,21 +381,51 @@ function showBankInfo(bankInfo, note) {
                 <span>${bankInfo.bankName}</span>
             </div>
             <div class="bank-field">
+                <label>شماره کارت:</label>
+                <div class="field-with-copy">
+                    <span class="copyable" data-copy-text="${bankInfo.cardNumber}">${bankInfo.cardNumber}</span>
+                    <button class="copy-btn" data-copy-text="${bankInfo.cardNumber}" title="کپی شماره کارت">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="bank-field">
                 <label>شماره حساب:</label>
-                <span class="copyable" onclick="copyToClipboard('${bankInfo.accountNumber}')">${bankInfo.accountNumber}</span>
+                <div class="field-with-copy">
+                    <span class="copyable" data-copy-text="${bankInfo.accountNumber}">${bankInfo.accountNumber}</span>
+                    <button class="copy-btn" data-copy-text="${bankInfo.accountNumber}" title="کپی شماره حساب">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div class="bank-field">
                 <label>شماره شبا:</label>
-                <span class="copyable" onclick="copyToClipboard('${bankInfo.iban}')">${bankInfo.iban}</span>
+                <div class="field-with-copy">
+                    <span class="copyable" data-copy-text="${bankInfo.iban}">${bankInfo.iban}</span>
+                    <button class="copy-btn" data-copy-text="${bankInfo.iban}" title="کپی شماره شبا">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div class="bank-field">
                 <label>نام صاحب حساب:</label>
                 <span>${bankInfo.accountHolder}</span>
             </div>
+            <!-- Temporarily hidden SWIFT code section
             <div class="bank-field">
                 <label>کد SWIFT:</label>
                 <span class="copyable" onclick="copyToClipboard('${bankInfo.swift}')">${bankInfo.swift}</span>
             </div>
+            -->
         </div>
         <div class="bank-note">
             <p>${note}</p>
@@ -313,6 +433,17 @@ function showBankInfo(bankInfo, note) {
     `;
     
     openModal('bank-info-modal');
+    
+    // Add event listeners for copy functionality
+    const copyElements = modal.querySelectorAll('.copyable, .copy-btn');
+    copyElements.forEach(element => {
+        element.addEventListener('click', function() {
+            const textToCopy = this.getAttribute('data-copy-text');
+            if (textToCopy) {
+                copyToClipboard(textToCopy);
+            }
+        });
+    });
 }
 
 function createBankInfoModal() {
