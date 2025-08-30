@@ -103,6 +103,7 @@ target_link_libraries(storage
         common
         mongo::bsoncxx_shared
         mongo::mongocxx_shared
+        mongodb_instance
         Threads::Threads
 )
 
@@ -141,7 +142,7 @@ target_include_directories(MongoDBStorage
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>
         $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(MongoDBStorage PUBLIC common mongo::bsoncxx_shared mongo::mongocxx_shared)
+target_link_libraries(MongoDBStorage PUBLIC common mongo::bsoncxx_shared mongo::mongocxx_shared mongodb_instance)
 
 if(REDIS_AVAILABLE)
     add_library(RedisSearchStorage STATIC RedisSearchStorage.cpp ../infrastructure.cpp)
@@ -164,7 +165,7 @@ target_include_directories(SponsorStorage
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>
         $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(SponsorStorage PUBLIC common mongo::bsoncxx_shared mongo::mongocxx_shared)
+target_link_libraries(SponsorStorage PUBLIC common mongo::bsoncxx_shared mongo::mongocxx_shared mongodb_instance)
 target_compile_definitions(SponsorStorage PRIVATE
     BSONCXX_STATIC
     MONGOCXX_STATIC

@@ -1,5 +1,6 @@
 #include "../../include/search_engine/storage/MongoDBStorage.h"
 #include "../../include/Logger.h"
+#include "../../include/mongodb.h"
 #include <bsoncxx/builder/stream/document.hpp>
 #include <bsoncxx/builder/stream/array.hpp>
 #include <bsoncxx/builder/stream/helpers.hpp>
@@ -17,23 +18,6 @@ using namespace bsoncxx::builder::stream;
 using namespace search_engine::storage;
 
 namespace {
-    // Singleton for mongocxx instance
-    class MongoInstance {
-    private:
-        static std::unique_ptr<mongocxx::instance> instance_;
-        static std::mutex mutex_;
-    public:
-        static mongocxx::instance& getInstance() {
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (!instance_) {
-                instance_ = std::make_unique<mongocxx::instance>();
-            }
-            return *instance_;
-        }
-    };
-    
-    std::unique_ptr<mongocxx::instance> MongoInstance::instance_;
-    std::mutex MongoInstance::mutex_;
     
     // Helper function to convert time_point to BSON date
     bsoncxx::types::b_date timePointToBsonDate(const std::chrono::system_clock::time_point& tp) {
@@ -54,7 +38,7 @@ MongoDBStorage::MongoDBStorage(const std::string& connectionString, const std::s
         LOG_INFO("Initializing MongoDB connection to: " + connectionString);
         
         // Ensure instance is initialized
-        MongoInstance::getInstance();
+        MongoDBInstance::getInstance();
         LOG_DEBUG("MongoDB instance initialized");
         
         // Create client and connect to database
@@ -198,13 +182,13 @@ bsoncxx::document::value MongoDBStorage::siteProfileToBson(const SiteProfile& pr
     }
     
     // Arrays
-    auto keywordsArray = array{};
+    auto keywordsArray = bsoncxx::builder::stream::array{};
     for (const auto& keyword : profile.keywords) {
         keywordsArray << keyword;
     }
     builder << "keywords" << keywordsArray;
     
-    auto outboundLinksArray = array{};
+    auto outboundLinksArray = bsoncxx::builder::stream::array{};
     for (const auto& link : profile.outboundLinks) {
         outboundLinksArray << link;
     }
@@ -635,7 +619,7 @@ bsoncxx::document::value MongoDBStorage::crawlLogToBson(const CrawlLog& log) con
     if (log.title) builder << "title" << *log.title;
     if (log.description) builder << "description" << *log.description;
     if (log.downloadTimeMs) builder << "downloadTimeMs" << *log.downloadTimeMs;
-    auto linksArray = array{};
+    auto linksArray = bsoncxx::builder::stream::array{};
     for (const auto& link : log.links) linksArray << link;
     builder << "links" << linksArray;
     return builder << finalize;

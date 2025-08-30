@@ -173,7 +173,8 @@ async function startCrawl() {
     const url = document.getElementById('url-input').value.trim();
     const maxPages = parseInt(document.getElementById('pages-slider').value);
     const maxDepth = parseInt(document.getElementById('depth-slider').value);
-    const email = document.getElementById('email-input').value.trim();
+    const emailInput = document.getElementById('email-input');
+    const email = emailInput ? emailInput.value.trim() : '';
     
     // Validation
     if (!url) {
@@ -401,8 +402,17 @@ function startNewCrawl() {
     resetToForm();
     
     // Clear form
-    document.getElementById('url-input').value = '';
-    document.getElementById('email-input').value = '';
+    const urlInput = document.getElementById('url-input');
+    const emailInput = document.getElementById('email-input');
+    
+    if (urlInput) {
+        urlInput.value = '';
+    }
+    
+    if (emailInput) {
+        emailInput.value = '';
+    }
+    
     selectPreset('standard');
 }
 

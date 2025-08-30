@@ -136,6 +136,26 @@ list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*kafka/.*\\.cpp$")
 
 file(GLOB_RECURSE HEADERS "include/*.h" "include/*.hpp")
 
+# Create MongoDB instance library for shared use
+add_library(mongodb_instance STATIC src/mongodb.cpp)
+target_include_directories(mongodb_instance 
+    PUBLIC 
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(mongodb_instance 
+    PUBLIC 
+        mongo::bsoncxx_shared 
+        mongo::mongocxx_shared
+)
+target_compile_definitions(mongodb_instance PRIVATE
+    BSONCXX_STATIC
+    MONGOCXX_STATIC
+)
+
+# Filter out mongodb.cpp from MAIN_SOURCES since it's now in a separate library  
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*mongodb\\.cpp$")
+
 # Create executable
 add_executable(server ${MAIN_SOURCES} ${HEADERS})
 
@@ -148,6 +168,7 @@ target_link_libraries(server
         crawler
         search_core
         scoring
+        mongodb_instance
         /usr/local/lib/libmongocxx.so
         /usr/local/lib/libbsoncxx.so
         OpenSSL::SSL
@@ -172,6 +193,21 @@ endif()
 target_link_libraries(server
     PRIVATE
         /usr/local/lib/libuSockets.a
+)
+
+# Install mongodb_instance target
+install(TARGETS mongodb_instance
+    EXPORT MongoDBInstanceTargets
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+
+# Export mongodb_instance configuration
+install(EXPORT MongoDBInstanceTargets
+    FILE MongoDBInstanceTargets.cmake
+    NAMESPACE SearchEngine::
+    DESTINATION lib/cmake/SearchEngine
 )
 
 # Enable testing and add tests
