@@ -11,7 +11,7 @@ struct CrawlConfig {
     std::chrono::milliseconds politenessDelay{500};
     std::string userAgent = "Hatefbot/1.0";
     size_t maxConcurrentConnections = 5;
-    std::chrono::milliseconds requestTimeout{15000};
+    std::chrono::milliseconds requestTimeout{15000}; // Will be overridden by environment variable if set
     bool respectRobotsTxt = true;
     bool followRedirects = true;
     size_t maxRedirects = 5;

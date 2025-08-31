@@ -120,7 +120,19 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                 bool extractTextContent = jsonBody.value("extractTextContent", true);  // Default to true for text extraction
                 bool spaRenderingEnabled = jsonBody.value("spaRenderingEnabled", false);  // Default to disabled
                 bool includeFullContent = jsonBody.value("includeFullContent", false);
-                int requestTimeoutMs = jsonBody.value("requestTimeout", 90000); // allow overriding request timeout
+                // Get default timeout from environment variable or use 90000ms
+                int defaultTimeoutMs = 90000;
+                const char* envTimeout = std::getenv("DEFAULT_REQUEST_TIMEOUT");
+                if (envTimeout) {
+                    try {
+                        defaultTimeoutMs = std::stoi(envTimeout);
+                        LOG_INFO("Using DEFAULT_REQUEST_TIMEOUT from environment: " + std::to_string(defaultTimeoutMs) + "ms");
+                    } catch (...) {
+                        LOG_WARNING("Invalid DEFAULT_REQUEST_TIMEOUT, using default: " + std::to_string(defaultTimeoutMs) + "ms");
+                    }
+                }
+                
+                int requestTimeoutMs = jsonBody.value("requestTimeout", defaultTimeoutMs); // allow overriding request timeout
                 bool stopPreviousSessions = jsonBody.value("stopPreviousSessions", false);  // Default to false for concurrent crawling
                 std::string browserlessUrl = jsonBody.value("browserlessUrl", "http://browserless:3000");
                 
@@ -157,6 +169,18 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                     config.maxDepth = maxDepth;
                     config.userAgent = "Hatefbot/1.0";
                     config.requestTimeout = std::chrono::milliseconds(requestTimeoutMs);
+                    
+                    // Override with environment variables if set
+                    const char* envRequestTimeout = std::getenv("DEFAULT_REQUEST_TIMEOUT");
+                    if (envRequestTimeout) {
+                        try {
+                            int envTimeout = std::stoi(envRequestTimeout);
+                            config.requestTimeout = std::chrono::milliseconds(envTimeout);
+                            LOG_INFO("Overriding requestTimeout with DEFAULT_REQUEST_TIMEOUT from environment: " + std::to_string(envTimeout) + "ms");
+                        } catch (...) {
+                            LOG_WARNING("Invalid DEFAULT_REQUEST_TIMEOUT, keeping API timeout: " + std::to_string(requestTimeoutMs) + "ms");
+                        }
+                    }
                     config.extractTextContent = extractTextContent;
                     config.restrictToSeedDomain = restrictToSeedDomain;
                     config.followRedirects = followRedirects;

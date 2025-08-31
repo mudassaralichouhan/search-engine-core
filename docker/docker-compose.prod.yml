@@ -17,6 +17,11 @@ services:
       - JS_CACHE_TYPE=${JS_CACHE_TYPE:-redis}
       - JS_CACHE_TTL=${JS_CACHE_TTL:-3600}
       - JS_CACHE_REDIS_DB=${JS_CACHE_REDIS_DB:-1}
+      # SPA Rendering Configuration
+      - SPA_RENDERING_ENABLED=${SPA_RENDERING_ENABLED:-true}
+      - SPA_RENDERING_TIMEOUT=${SPA_RENDERING_TIMEOUT:-60000}
+      - BROWSERLESS_URL=${BROWSERLESS_URL:-http://browserless:3000}
+      - DEFAULT_REQUEST_TIMEOUT=${DEFAULT_REQUEST_TIMEOUT:-60000}
     ports:
       - "${PORT:-3000}:3000"
     depends_on:
@@ -75,22 +80,50 @@ services:
   browserless:
     image: browserless/chrome:latest
     container_name: browserless
+    pull_policy: if_not_present
     restart: unless-stopped
-    shm_size: "2g"
+    shm_size: "512m"
+    ports:
+      - "3001:3000"
     environment:
-      - "MAX_CONCURRENT_SESSIONS=10"
-      - "PREBOOT_CHROME=true"
-      - "CONNECTION_TIMEOUT=15000"
-      - "CHROME_REFRESH_TIME=60000"
-      - "QUEUE_LIMIT=100"
-      - "MAX_CPU_PERCENT=90"
-      - "MAX_MEMORY_PERCENT=90"
+      - "MAX_CONCURRENT_SESSIONS=1"
+      - "PREBOOT_CHROME=false"
+      - "CONNECTION_TIMEOUT=60000"
+      - "CHROME_REFRESH_TIME=120000"
+      - "QUEUE_LIMIT=50"
+      - "MAX_CPU_PERCENT=85"
+      - "MAX_MEMORY_PERCENT=85"
       - "KEEP_ALIVE=true"
       - "ENABLE_DEBUGGER=false"
       - "ENABLE_CORS=true"
       - "WORKSPACE_DIR=/workspace"
       - "FUNCTION_ENABLE_INCOGNITO=false"
       - "FUNCTION_KEEP_ALIVE=true"
+      - "DEFAULT_LAUNCH_ARGS=[\"--no-sandbox\",\"--disable-setuid-sandbox\",\"--disable-dev-shm-usage\",\"--memory-pressure-off\",\"--disable-background-timer-throttling\",\"--disable-renderer-backgrounding\",\"--disable-backgrounding-occluded-windows\",\"--single-process\"]"
+    # Resource limits optimized for 1 CPU / 1GB RAM server
+    deploy:
+      resources:
+        limits:
+          memory: 600M
+          cpus: '0.6'
+        reservations:
+          memory: 150M
+          cpus: '0.1'
+    # Health check to verify service is running
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/pressure || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # DNS settings for better connectivity
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+      - 8.8.4.4
+    # Security options
+    security_opt:
+      - seccomp:unconfined
     logging:
       driver: json-file
       options:
@@ -102,7 +135,7 @@ services:
   js-minifier:
     image: ghcr.io/hatefsystems/search-engine-core/js-minifier:latest
     container_name: js-minifier
-    pull_policy: always
+    pull_policy: if_not_present
     restart: unless-stopped
     environment:
       - NODE_ENV=production
