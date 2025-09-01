@@ -219,14 +219,28 @@ std::vector<std::string> CrawlerManager::getActiveSessions() {
 void CrawlerManager::cleanupCompletedSessions() {
     // First, collect sessions to clean up without holding the lock during join
     std::vector<std::string> toCleanupIds;
+    std::vector<std::string> timedOutIds;
     auto now = std::chrono::system_clock::now();
     {
         std::lock_guard<std::mutex> lock(sessionsMutex_);
         for (const auto& [id, session] : sessions_) {
+            // Cleanup completed sessions after 5 minutes
             bool shouldCleanup = session->isCompleted &&
                 (now - session->createdAt) > std::chrono::minutes(5);
+            
+            // Timeout long-running sessions based on config (default: 10 minutes)
+            auto sessionDuration = now - session->createdAt;
+            bool isTimedOut = !session->isCompleted && 
+                session->crawler &&
+                sessionDuration > session->crawler->getConfig().maxSessionDuration;
+            
             if (shouldCleanup) {
                 toCleanupIds.push_back(id);
+            } else if (isTimedOut) {
+                timedOutIds.push_back(id);
+                LOG_WARNING("Session timeout detected for session: " + id + 
+                          " (running for " + std::to_string(
+                              std::chrono::duration_cast<std::chrono::minutes>(sessionDuration).count()) + " minutes)");
             }
         }
     }
@@ -249,6 +263,34 @@ void CrawlerManager::cleanupCompletedSessions() {
         }
 
         // Join thread outside of the sessions mutex to avoid deadlocks and UB
+        if (sessionCopy && sessionCopy->crawlThread.joinable()) {
+            sessionCopy->crawlThread.join();
+        }
+        // sessionCopy goes out of scope and is destroyed cleanly here
+    }
+    
+    // Handle timed-out sessions
+    for (const auto& id : timedOutIds) {
+        std::unique_ptr<CrawlSession> sessionCopy;
+        {
+            std::lock_guard<std::mutex> lock(sessionsMutex_);
+            auto it = sessions_.find(id);
+            if (it == sessions_.end()) continue;
+            
+            LOG_WARNING("Forcibly stopping timed-out session: " + it->second->id);
+            CrawlLogger::broadcastLog("⏰ Session timeout: Stopping session " + it->second->id + " (exceeded maximum duration)", "warning");
+            
+            // Move session out so we can operate without holding the map lock
+            sessionCopy = std::move(it->second);
+            sessions_.erase(it);
+        }
+
+        // Force stop crawler
+        if (sessionCopy && sessionCopy->crawler) {
+            sessionCopy->crawler->stop();
+        }
+
+        // Join thread outside of the sessions mutex
         if (sessionCopy && sessionCopy->crawlThread.joinable()) {
             sessionCopy->crawlThread.join();
         }

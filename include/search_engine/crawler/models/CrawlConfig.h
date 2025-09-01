@@ -30,12 +30,15 @@ struct CrawlConfig {
     std::chrono::milliseconds baseRetryDelay{1000};
     float backoffMultiplier = 2.0f;
     std::chrono::milliseconds maxRetryDelay{30000};
+    
+    // Maximum session duration to prevent infinite crawling (default: 10 minutes)
+    std::chrono::minutes maxSessionDuration{10};
 
     std::set<int> retryableHttpCodes = {408,429,500,502,503,504,520,521,522,523,524};
     std::set<CURLcode> retryableCurlCodes = {
         CURLE_OPERATION_TIMEDOUT,
         CURLE_COULDNT_CONNECT,
-        CURLE_COULDNT_RESOLVE_HOST,
+        // CURLE_COULDNT_RESOLVE_HOST removed - DNS failures are permanent
         CURLE_RECV_ERROR,
         CURLE_SEND_ERROR,
         CURLE_GOT_NOTHING,

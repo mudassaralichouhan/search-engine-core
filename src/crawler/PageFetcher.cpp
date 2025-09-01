@@ -259,16 +259,16 @@ PageFetchResult PageFetcher::fetch(const std::string& url) {
 
                 // Get SPA timeout from environment variable or use the passed timeout
                 int spaTimeout = std::max(static_cast<int>(timeout.count()), 15000);
-                // const char* envSpaTimeout = std::getenv("SPA_RENDERING_TIMEOUT");
-                // if (envSpaTimeout) {
-                //     try {
-                //         int envTimeout = std::stoi(envSpaTimeout);
-                //         spaTimeout = std::max(spaTimeout, envTimeout);
-                //         LOG_INFO("Using SPA_RENDERING_TIMEOUT from environment: " + std::to_string(envTimeout) + "ms, final timeout: " + std::to_string(spaTimeout) + "ms");
-                //     } catch (...) {
-                //         LOG_WARNING("Invalid SPA_RENDERING_TIMEOUT, using calculated timeout: " + std::to_string(spaTimeout) + "ms");
-                //     }
-                // }
+                const char* envSpaTimeout = std::getenv("SPA_RENDERING_TIMEOUT");
+                if (envSpaTimeout) {
+                    try {
+                        int envTimeout = std::stoi(envSpaTimeout);
+                        spaTimeout = std::max(spaTimeout, envTimeout);
+                        LOG_INFO("Using SPA_RENDERING_TIMEOUT from environment: " + std::to_string(envTimeout) + "ms, final timeout: " + std::to_string(spaTimeout) + "ms");
+                    } catch (...) {
+                        LOG_WARNING("Invalid SPA_RENDERING_TIMEOUT, using calculated timeout: " + std::to_string(spaTimeout) + "ms");
+                    }
+                }
                 auto renderResult = browserlessClient->renderUrl(cleanedUrl, spaTimeout);
 
                 auto spaEndSteady = std::chrono::steady_clock::now();
