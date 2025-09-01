@@ -1,6 +1,7 @@
 #include "HomeController.h"
 #include "../../include/Logger.h"
 #include "../../include/api.h"
+#include "../../include/mongodb.h"
 #include "../../include/search_engine/storage/SponsorStorage.h"
 #include <filesystem>
 #include <fstream>
@@ -401,7 +402,7 @@ void HomeController::emailSubscribe(uWS::HttpResponse<false>* res, uWS::HttpRequ
     
     // Read the request body
     std::string buffer;
-    res->onData([this, res, buffer = std::move(buffer)](std::string_view data, bool last) mutable {
+    res->onData([this, res, req, buffer = std::move(buffer)](std::string_view data, bool last) mutable {
         buffer.append(data.data(), data.length());
         
         if (last) {
@@ -415,16 +416,43 @@ void HomeController::emailSubscribe(uWS::HttpResponse<false>* res, uWS::HttpRequ
                     return;
                 }
                 
-                // Here you would normally save the email to database
-                LOG_INFO("Email subscription received: " + email);
+                // Get IP address and user agent
+                std::string ipAddress = std::string(req->getHeader("x-forwarded-for"));
+                if (ipAddress.empty()) {
+                    ipAddress = std::string(req->getHeader("x-real-ip"));
+                }
+                if (ipAddress.empty()) {
+                    ipAddress = "unknown";
+                }
                 
-                // Return success response
-                nlohmann::json response = {
-                    {"success", true},
-                    {"message", "Successfully subscribed!"}
-                };
+                std::string userAgent = std::string(req->getHeader("user-agent"));
+                if (userAgent.empty()) {
+                    userAgent = "unknown";
+                }
                 
-                json(res, response);
+                // Save email to MongoDB with additional data
+                try {
+                    auto result = mongodb().subscribeEmail(email, ipAddress, userAgent);
+                    
+                    if (result.success) {
+                        LOG_INFO("Email subscription saved to MongoDB: " + email + " from IP: " + ipAddress);
+                        nlohmann::json response = {
+                            {"success", true},
+                            {"message", result.message}
+                        };
+                        json(res, response);
+                    } else {
+                        LOG_WARNING("Email subscription failed: " + email + " - " + result.message);
+                        if (result.message == "duplicate") {
+                            badRequest(res, "You are already subscribed!");
+                        } else {
+                            badRequest(res, "Failed to subscribe: " + result.message);
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    LOG_ERROR("MongoDB error in email subscription: " + std::string(e.what()));
+                    badRequest(res, "Database error occurred");
+                }
                 
             } catch (const std::exception& e) {
                 LOG_ERROR("Failed to parse email subscription: " + std::string(e.what()));
