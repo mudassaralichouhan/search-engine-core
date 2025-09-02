@@ -61,6 +61,9 @@ public:
     
     // Get session count for monitoring
     size_t getActiveSessionCount();
+    
+    // Get access to storage for logging
+    std::shared_ptr<search_engine::storage::ContentStorage> getStorage() const { return storage_; }
 
 private:
     std::shared_ptr<search_engine::storage::ContentStorage> storage_;

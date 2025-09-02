@@ -106,6 +106,11 @@ public:
     Result<std::vector<CrawlLog>> getCrawlLogsByDomain(const std::string& domain, int limit = 100, int skip = 0) { ensureMongoConnection(); return mongoStorage_->getCrawlLogsByDomain(domain, limit, skip); }
     Result<std::vector<CrawlLog>> getCrawlLogsByUrl(const std::string& url, int limit = 100, int skip = 0) { ensureMongoConnection(); return mongoStorage_->getCrawlLogsByUrl(url, limit, skip); }
     
+    // ApiRequestLog operations
+    Result<std::string> storeApiRequestLog(const search_engine::storage::ApiRequestLog& log) { ensureMongoConnection(); return mongoStorage_->storeApiRequestLog(log); }
+    Result<std::vector<search_engine::storage::ApiRequestLog>> getApiRequestLogsByEndpoint(const std::string& endpoint, int limit = 100, int skip = 0) { ensureMongoConnection(); return mongoStorage_->getApiRequestLogsByEndpoint(endpoint, limit, skip); }
+    Result<std::vector<search_engine::storage::ApiRequestLog>> getApiRequestLogsByIp(const std::string& ipAddress, int limit = 100, int skip = 0) { ensureMongoConnection(); return mongoStorage_->getApiRequestLogsByIp(ipAddress, limit, skip); }
+    
     // Get direct access to storage layers (for advanced operations)
     MongoDBStorage* getMongoStorage() const { return mongoStorage_.get(); }
 #ifdef REDIS_AVAILABLE

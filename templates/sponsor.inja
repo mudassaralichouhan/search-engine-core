@@ -328,7 +328,7 @@
             </div>
             <div id="btc-desc" class="btc-box">
                 <div class="qr" aria-hidden="true">
-                    <img src="bitcoin-wallet.png" alt="Bitcoin QR Code" width="120" height="120" style="border-radius: 12px;">
+                    <img src="bitcoin-wallet.png" alt="Bitcoin QR Code" width="120" height="120">
                 </div>
                 <div>
                     <p class="muted">{{ t.sponsor.btc_modal_desc }}</p>

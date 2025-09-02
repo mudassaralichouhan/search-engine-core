@@ -5,6 +5,7 @@
 #include "../../include/search_engine/crawler/PageFetcher.h"
 #include "../../include/search_engine/crawler/models/CrawlConfig.h"
 #include "../../include/search_engine/storage/ContentStorage.h"
+#include "../../include/search_engine/storage/ApiRequestLog.h"
 #include <cstdlib>
 #include <chrono>
 #include <iomanip>
@@ -92,10 +93,31 @@ SearchController::SearchController() {
 void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
     LOG_INFO("SearchController::addSiteToCrawl called");
     
+    // Start timing for response time tracking
+    auto requestStartTime = std::chrono::system_clock::now();
+    
+    // Get IP address and user agent for logging
+    std::string ipAddress = std::string(req->getHeader("x-forwarded-for"));
+    if (ipAddress.empty()) {
+        ipAddress = std::string(req->getHeader("x-real-ip"));
+    }
+    if (ipAddress.empty()) {
+        ipAddress = "unknown";
+    }
+    
+    std::string userAgent = std::string(req->getHeader("user-agent"));
+    if (userAgent.empty()) {
+        userAgent = "unknown";
+    }
+    
+    LOG_INFO("IP Address: " + ipAddress + ", User Agent: " + userAgent);
+    
     // Read the request body
     std::string buffer;
-    res->onData([this, res, buffer = std::move(buffer)](std::string_view data, bool last) mutable {
+    res->onData([this, res, req, buffer = std::move(buffer), requestStartTime, ipAddress, userAgent](std::string_view data, bool last) mutable {
         buffer.append(data.data(), data.length());
+        
+        LOG_INFO("addSiteToCrawl: Received data chunk, length: " + std::to_string(data.length()) + ", last: " + (last ? "true" : "false") + ", buffer size: " + std::to_string(buffer.size()));
         
         if (last) {
             try {
@@ -227,15 +249,68 @@ void SearchController::addSiteToCrawl(uWS::HttpResponse<false>* res, uWS::HttpRe
                     };
                     
                     json(res, response);
+                    
+                    // Log API request to database
+                    try {
+                        LOG_INFO("Starting API request logging...");
+                        
+                        // Calculate response time
+                        auto responseEndTime = std::chrono::system_clock::now();
+                        auto responseTime = std::chrono::duration_cast<std::chrono::milliseconds>(responseEndTime - requestStartTime);
+                        
+                        // Create API request log
+                        search_engine::storage::ApiRequestLog apiLog;
+                        apiLog.endpoint = "/api/crawl/add-site";
+                        apiLog.method = "POST";
+                        apiLog.ipAddress = ipAddress;
+                        apiLog.userAgent = userAgent;
+                        apiLog.createdAt = std::chrono::system_clock::now();
+                        apiLog.requestBody = buffer;
+                        apiLog.sessionId = sessionId;
+                        apiLog.status = "success";
+                        apiLog.responseTimeMs = static_cast<int>(responseTime.count());
+                        
+                        LOG_INFO("API request log created - endpoint: " + apiLog.endpoint + ", IP: " + apiLog.ipAddress + ", sessionId: " + sessionId);
+                        
+                        // Store in database if we have access to storage
+                        if (g_crawlerManager) {
+                            LOG_INFO("CrawlerManager is available");
+                            if (g_crawlerManager->getStorage()) {
+                                LOG_INFO("Storage is available, storing API request log...");
+                                auto result = g_crawlerManager->getStorage()->storeApiRequestLog(apiLog);
+                                if (result.success) {
+                                    LOG_INFO("API request logged successfully with ID: " + result.value);
+                                } else {
+                                    LOG_WARNING("Failed to log API request: " + result.message);
+                                }
+                            } else {
+                                LOG_WARNING("Storage is not available from CrawlerManager");
+                            }
+                        } else {
+                            LOG_WARNING("CrawlerManager is not available");
+                        }
+                    } catch (const std::exception& e) {
+                        LOG_WARNING("Failed to log API request: " + std::string(e.what()));
+                    }
                 } else {
                     serverError(res, "CrawlerManager not initialized");
                 }
                 
             } catch (const nlohmann::json::parse_error& e) {
                 LOG_ERROR("Failed to parse JSON: " + std::string(e.what()));
+                
+                // Log API request error to database
+                logApiRequestError("/api/crawl/add-site", "POST", ipAddress, userAgent, requestStartTime, 
+                                 buffer, "Invalid JSON format", std::string(e.what()));
+                
                 badRequest(res, "Invalid JSON format");
             } catch (const std::exception& e) {
                 LOG_ERROR("Unexpected error in addSiteToCrawl: " + std::string(e.what()));
+                
+                // Log API request error to database
+                logApiRequestError("/api/crawl/add-site", "POST", ipAddress, userAgent, requestStartTime, 
+                                 buffer, "Unexpected error", std::string(e.what()));
+                
                 serverError(res, "An unexpected error occurred");
             }
         }
@@ -969,7 +1044,43 @@ nlohmann::json SearchController::parseRedisSearchResponse(const std::string& raw
     }
     
     return response;
-} 
+}
+
+void SearchController::logApiRequestError(const std::string& endpoint, const std::string& method, 
+                                        const std::string& ipAddress, const std::string& userAgent,
+                                        const std::chrono::system_clock::time_point& requestStartTime,
+                                        const std::string& requestBody, const std::string& status, 
+                                        const std::string& errorMessage) {
+    try {
+        // Calculate response time
+        auto responseEndTime = std::chrono::system_clock::now();
+        auto responseTime = std::chrono::duration_cast<std::chrono::milliseconds>(responseEndTime - requestStartTime);
+        
+        // Create API request log
+        search_engine::storage::ApiRequestLog apiLog;
+        apiLog.endpoint = endpoint;
+        apiLog.method = method;
+        apiLog.ipAddress = ipAddress;
+        apiLog.userAgent = userAgent;
+        apiLog.createdAt = std::chrono::system_clock::now();
+        apiLog.requestBody = requestBody;
+        apiLog.status = status;
+        apiLog.errorMessage = errorMessage;
+        apiLog.responseTimeMs = static_cast<int>(responseTime.count());
+        
+        // Store in database if we have access to storage
+        if (g_crawlerManager && g_crawlerManager->getStorage()) {
+            auto result = g_crawlerManager->getStorage()->storeApiRequestLog(apiLog);
+            if (result.success) {
+                LOG_INFO("API request error logged successfully with ID: " + result.value);
+            } else {
+                LOG_WARNING("Failed to log API request error: " + result.message);
+            }
+        }
+    } catch (const std::exception& e) {
+        LOG_WARNING("Failed to log API request error: " + std::string(e.what()));
+    }
+}
 
 // Register the renderPage endpoint
 namespace {

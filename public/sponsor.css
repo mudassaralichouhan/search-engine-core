@@ -252,6 +252,11 @@ label:has(input[name="extension"]),
 .qr {
     width: 150px; height: 150px; border-radius: 12px; border: 1px solid var(--border); background: var(--elev); display: grid; place-items: center;
 }
+.qr img {
+    border-radius: 12px;
+    max-width: 100%;
+    height: auto;
+}
 .addr { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 

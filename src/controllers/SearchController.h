@@ -22,6 +22,13 @@ public:
 
 private:
     nlohmann::json parseRedisSearchResponse(const std::string& rawResponse, int page, int limit);
+    
+    // Helper method for logging API request errors
+    void logApiRequestError(const std::string& endpoint, const std::string& method, 
+                           const std::string& ipAddress, const std::string& userAgent,
+                           const std::chrono::system_clock::time_point& requestStartTime,
+                           const std::string& requestBody, const std::string& status, 
+                           const std::string& errorMessage);
 };
 
 // Route registration

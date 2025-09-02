@@ -708,3 +708,101 @@ Result<std::vector<CrawlLog>> MongoDBStorage::getCrawlLogsByUrl(const std::strin
         return Result<std::vector<CrawlLog>>::Failure("MongoDB error: " + std::string(e.what()));
     }
 } 
+
+// ApiRequestLog BSON helpers
+bsoncxx::document::value MongoDBStorage::apiRequestLogToBson(const ApiRequestLog& log) const {
+    using namespace bsoncxx::builder::stream;
+    auto builder = document{};
+    if (log.id) builder << "_id" << bsoncxx::oid{*log.id};
+    builder << "endpoint" << log.endpoint
+            << "method" << log.method
+            << "ipAddress" << log.ipAddress
+            << "userAgent" << log.userAgent
+            << "createdAt" << timePointToBsonDate(log.createdAt)
+            << "status" << log.status
+            << "responseTimeMs" << log.responseTimeMs;
+    if (log.requestBody) builder << "requestBody" << *log.requestBody;
+    if (log.sessionId) builder << "sessionId" << *log.sessionId;
+    if (log.userId) builder << "userId" << *log.userId;
+    if (log.errorMessage) builder << "errorMessage" << *log.errorMessage;
+    return builder << finalize;
+}
+
+ApiRequestLog MongoDBStorage::bsonToApiRequestLog(const bsoncxx::document::view& doc) const {
+    ApiRequestLog log;
+    if (doc["_id"]) log.id = std::string(doc["_id"].get_oid().value.to_string());
+    log.endpoint = std::string(doc["endpoint"].get_string().value);
+    log.method = std::string(doc["method"].get_string().value);
+    log.ipAddress = std::string(doc["ipAddress"].get_string().value);
+    log.userAgent = std::string(doc["userAgent"].get_string().value);
+    log.createdAt = bsonDateToTimePoint(doc["createdAt"].get_date());
+    log.status = std::string(doc["status"].get_string().value);
+    log.responseTimeMs = doc["responseTimeMs"].get_int32().value;
+    if (doc["requestBody"]) log.requestBody = std::string(doc["requestBody"].get_string().value);
+    if (doc["sessionId"]) log.sessionId = std::string(doc["sessionId"].get_string().value);
+    if (doc["userId"]) log.userId = std::string(doc["userId"].get_string().value);
+    if (doc["errorMessage"]) log.errorMessage = std::string(doc["errorMessage"].get_string().value);
+    return log;
+}
+
+Result<std::string> MongoDBStorage::storeApiRequestLog(const ApiRequestLog& log) {
+    LOG_DEBUG("MongoDBStorage::storeApiRequestLog called for endpoint: " + log.endpoint);
+    try {
+        auto doc = apiRequestLogToBson(log);
+        auto apiRequestLogsCollection = database_["api_request_logs"];
+        auto result = apiRequestLogsCollection.insert_one(doc.view());
+        if (result) {
+            std::string id = result->inserted_id().get_oid().value.to_string();
+            LOG_INFO("API request log stored successfully with ID: " + id + " for endpoint: " + log.endpoint);
+            return Result<std::string>::Success(id, "API request log stored successfully");
+        } else {
+            LOG_ERROR("Failed to insert API request log for endpoint: " + log.endpoint);
+            return Result<std::string>::Failure("Failed to insert API request log");
+        }
+    } catch (const mongocxx::exception& e) {
+        LOG_ERROR("MongoDB error storing API request log for endpoint: " + log.endpoint + " - " + std::string(e.what()));
+        return Result<std::string>::Failure("MongoDB error: " + std::string(e.what()));
+    }
+}
+
+Result<std::vector<ApiRequestLog>> MongoDBStorage::getApiRequestLogsByEndpoint(const std::string& endpoint, int limit, int skip) {
+    LOG_DEBUG("MongoDBStorage::getApiRequestLogsByEndpoint called for endpoint: " + endpoint);
+    try {
+        using namespace bsoncxx::builder::stream;
+        auto apiRequestLogsCollection = database_["api_request_logs"];
+        auto filter = document{} << "endpoint" << endpoint << finalize;
+        mongocxx::options::find opts;
+        opts.limit(limit);
+        opts.skip(skip);
+        opts.sort(document{} << "createdAt" << -1 << finalize); // newest first
+        auto cursor = apiRequestLogsCollection.find(filter.view(), opts);
+        std::vector<ApiRequestLog> logs;
+        for (const auto& doc : cursor) logs.push_back(bsonToApiRequestLog(doc));
+        LOG_INFO("Retrieved " + std::to_string(logs.size()) + " API request logs for endpoint: " + endpoint);
+        return Result<std::vector<ApiRequestLog>>::Success(std::move(logs), "API request logs retrieved successfully");
+    } catch (const mongocxx::exception& e) {
+        LOG_ERROR("MongoDB error retrieving API request logs for endpoint: " + endpoint + " - " + std::string(e.what()));
+        return Result<std::vector<ApiRequestLog>>::Failure("MongoDB error: " + std::string(e.what()));
+    }
+}
+
+Result<std::vector<ApiRequestLog>> MongoDBStorage::getApiRequestLogsByIp(const std::string& ipAddress, int limit, int skip) {
+    LOG_DEBUG("MongoDBStorage::getApiRequestLogsByIp called for IP: " + ipAddress);
+    try {
+        using namespace bsoncxx::builder::stream;
+        auto apiRequestLogsCollection = database_["api_request_logs"];
+        auto filter = document{} << "ipAddress" << ipAddress << finalize;
+        mongocxx::options::find opts;
+        opts.limit(limit);
+        opts.skip(skip);
+        opts.sort(document{} << "createdAt" << -1 << finalize); // newest first
+        auto cursor = apiRequestLogsCollection.find(filter.view(), opts);
+        std::vector<ApiRequestLog> logs;
+        for (const auto& doc : cursor) logs.push_back(bsonToApiRequestLog(doc));
+        LOG_INFO("Retrieved " + std::to_string(logs.size()) + " API request logs for IP: " + ipAddress);
+        return Result<std::vector<ApiRequestLog>>::Success(std::move(logs), "API request logs retrieved successfully");
+    } catch (const mongocxx::exception& e) {
+        LOG_ERROR("MongoDB error retrieving API request logs for IP: " + ipAddress + " - " + std::string(e.what()));
+        return Result<std::vector<ApiRequestLog>>::Failure("MongoDB error: " + std::string(e.what()));
+    }
+} 

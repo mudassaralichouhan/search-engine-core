@@ -237,9 +237,6 @@ document.getElementById('year').textContent = new Date().getFullYear();
                 showBankInfo(result.bankInfo, result.note);
                 form.reset();
                 closeModal(document.getElementById('irr-modal'));
-                
-                // Also fetch and display all available payment accounts
-                fetchPaymentAccounts();
             } else {
                 showNotification(result.message || 'خطا در ارسال فرم', 'error');
             }
@@ -255,92 +252,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
     });
 })();
 
-/* Payment Accounts API */
-async function fetchPaymentAccounts() {
-    try {
-        const response = await fetch('/api/v2/sponsor-payment-accounts');
-        const result = await response.json();
-        
-        if (response.ok && result.success && result.accounts && result.accounts.length > 0) {
-            showPaymentAccountsModal(result.accounts);
-        }
-    } catch (error) {
-        console.error('Failed to fetch payment accounts:', error);
-    }
-}
 
-function showPaymentAccountsModal(accounts) {
-    // Remove existing modal if any
-    const existingModal = document.getElementById('payment-accounts-modal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    // Create modal HTML
-    const modalHTML = `
-        <div id="payment-accounts-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>اطلاعات حساب‌های بانکی برای پرداخت</h3>
-                    <button class="modal-close" onclick="closeModal(document.getElementById('payment-accounts-modal'))">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="payment-accounts-list">
-                        ${accounts.map((account, index) => `
-                            <div class="payment-account-item">
-                                <h4>حساب ${index + 1}</h4>
-                                <div class="account-details">
-                                    <div class="detail-row">
-                                        <span class="label">نام بانک:</span>
-                                        <span class="value">${account.bank_name || 'نامشخص'}</span>
-                                    </div>
-                                    <div class="detail-row">
-                                        <span class="label">شماره کارت:</span>
-                                        <span class="value">${account.card_number || 'نامشخص'}</span>
-                                    </div>
-                                    <div class="detail-row">
-                                        <span class="label">شماره حساب:</span>
-                                        <span class="value">${account.account_number || 'نامشخص'}</span>
-                                    </div>
-                                    <div class="detail-row">
-                                        <span class="label">شماره شبا:</span>
-                                        <span class="value">${account.shaba_number || 'نامشخص'}</span>
-                                    </div>
-                                    <div class="detail-row">
-                                        <span class="label">صاحب حساب:</span>
-                                        <span class="value">${account.account_holder_name || 'نامشخص'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <div class="payment-instructions">
-                        <p><strong>نکات مهم:</strong></p>
-                        <ul>
-                            <li>لطفاً پس از واریز مبلغ، رسید پرداخت را به آدرس ایمیل sponsors@hatef.ir ارسال کنید.</li>
-                            <li>در توضیحات واریز، نام و ایمیل خود را ذکر کنید.</li>
-                            <li>پرداخت شما پس از تایید، در سیستم ثبت خواهد شد.</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Add modal to page
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-    // Show modal
-    const modal = document.getElementById('payment-accounts-modal');
-    modal.style.display = 'block';
-    
-    // Add click outside to close
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            closeModal(modal);
-        }
-    });
-}
 
 /* Notification system */
 function showNotification(message, type = 'info') {

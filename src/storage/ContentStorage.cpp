@@ -1,4 +1,5 @@
 #include "../../include/search_engine/storage/ContentStorage.h"
+#include "../../include/search_engine/storage/ApiRequestLog.h"
 #include "../../include/Logger.h"
 #include <regex>
 #include <algorithm>

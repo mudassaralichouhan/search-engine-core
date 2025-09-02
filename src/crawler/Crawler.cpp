@@ -783,6 +783,7 @@ void Crawler::extractAndAddURLs(const std::string& content, const std::string& b
         // Check current successful downloads and queue size
         size_t queueSize = urlFrontier->size() + urlFrontier->retryQueueSize();
         size_t totalQueued = currentSuccessfulDownloads + queueSize;
+        (void)totalQueued; // Suppress unused variable warning
         
         // Only be restrictive when we're very close to maxPages in successful downloads
         if (currentSuccessfulDownloads >= config.maxPages * 0.9) {

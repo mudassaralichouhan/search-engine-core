@@ -38,6 +38,7 @@ Result<bool> mongodb::subscribeEmail(const string& email, const string& ipAddres
     {
         // Use the singleton instance instead of creating a new one
         mongocxx::instance& instance = MongoDBInstance::getInstance();
+        (void)instance; // Suppress unused variable warning
         
         // Get MongoDB connection string from environment or use default
         const char* mongoUri = std::getenv("MONGODB_URI");

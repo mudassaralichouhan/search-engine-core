@@ -39,6 +39,7 @@ SponsorStorage::SponsorStorage(const std::string& connectionString, const std::s
         
         // Use the existing MongoDB instance singleton
         mongocxx::instance& instance = MongoDBInstance::getInstance();
+        (void)instance; // Suppress unused variable warning
         
         // Create client and connect to database
         mongocxx::uri uri{connectionString};
