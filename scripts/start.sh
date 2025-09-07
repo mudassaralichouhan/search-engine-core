@@ -23,18 +23,6 @@ fi
 
 echo "Starting search engine core..."
 
-# Simple non-blocking MongoDB connection test
-echo "Testing MongoDB connection..."
-(
-    if mongosh "$MONGO_URI" --eval "db.runCommand('ping')" > /dev/null 2>&1; then
-        echo "✅ MongoDB connection test successful"
-    else
-        echo "⚠️  MongoDB connection test failed - service will connect lazily"
-    fi
-) &
-
-# Simple non-blocking Redis connection test
-echo "Testing Redis connection..."
 # Use SEARCH_REDIS_URI if available, otherwise default to tcp://localhost:6379
 if [ -n "$SEARCH_REDIS_URI" ]; then
     REDIS_URI="$SEARCH_REDIS_URI"
@@ -48,17 +36,45 @@ fi
 REDIS_HOST=$(echo "$REDIS_URI" | sed -E 's|tcp://([^:]+):([0-9]+).*|\1|')
 REDIS_PORT=$(echo "$REDIS_URI" | sed -E 's|tcp://([^:]+):([0-9]+).*|\2|')
 
-(
-    if command -v redis-cli > /dev/null 2>&1; then
-        if redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" ping | grep -q PONG; then
-            echo "✅ Redis connection test successful"
-        else
-            echo "⚠️  Redis connection test failed - service will connect lazily"
-        fi
-    else
-        echo "⚠️  redis-cli not found, skipping Redis connection test"
+echo "Parsed Redis connection: $REDIS_HOST:$REDIS_PORT"
+
+# Wait for services to be ready with health checks
+echo "Waiting for services to be ready..."
+echo "Checking MongoDB..."
+for i in {1..30}; do
+    if mongosh "$MONGO_URI" --eval "db.runCommand('ping')" --quiet > /dev/null 2>&1; then
+        echo "✅ MongoDB is ready"
+        MONGO_READY=true
+        break
     fi
-) &
+    echo "  MongoDB not ready, waiting... ($i/30)"
+    sleep 2
+done
+
+echo "Checking Redis..."
+for i in {1..30}; do
+    if redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" --raw ping 2>/dev/null | grep -q "PONG"; then
+        echo "✅ Redis is ready"
+        REDIS_READY=true
+        break
+    fi
+    echo "  Redis not ready, waiting... ($i/30)"
+    sleep 2
+done
+
+# Simple connection tests since we already verified services are ready
+echo "Final connection verification..."
+if [ "$MONGO_READY" = true ]; then
+    echo "✅ MongoDB connection verified"
+else
+    echo "⚠️  MongoDB not ready - will connect lazily when needed"
+fi
+
+if [ "$REDIS_READY" = true ]; then
+    echo "✅ Redis connection verified"
+else
+    echo "⚠️  Redis not ready - will connect lazily when needed"
+fi
 
 # Start the server application immediately
 echo "Starting server application..."

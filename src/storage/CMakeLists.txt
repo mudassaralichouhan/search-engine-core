@@ -54,6 +54,7 @@ set(STORAGE_SOURCES
     MongoDBStorage.cpp
     ContentStorage.cpp
     SponsorStorage.cpp
+    DomainStorage.cpp
     ../infrastructure.cpp
 )
 
@@ -74,6 +75,7 @@ set(STORAGE_HEADERS
     ../../include/search_engine/storage/MongoDBStorage.h
     ../../include/search_engine/storage/SponsorStorage.h
     ../../include/search_engine/storage/ContentStorage.h
+    ../../include/storage/DomainStorage.h
     ../../include/infrastructure.h
 )
 
@@ -183,8 +185,20 @@ if(REDIS_AVAILABLE)
     target_compile_definitions(ContentStorage PUBLIC REDIS_AVAILABLE)
 endif()
 
+add_library(DomainStorage STATIC DomainStorage.cpp ../infrastructure.cpp)
+target_include_directories(DomainStorage 
+    PUBLIC 
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>
+        $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(DomainStorage PUBLIC common mongo::bsoncxx_shared mongo::mongocxx_shared mongodb_instance)
+target_compile_definitions(DomainStorage PRIVATE
+    BSONCXX_STATIC
+    MONGOCXX_STATIC
+)
+
 # Export targets for use by other CMake projects
-install(TARGETS storage MongoDBStorage SponsorStorage ContentStorage
+install(TARGETS storage MongoDBStorage SponsorStorage ContentStorage DomainStorage
     EXPORT StorageTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib

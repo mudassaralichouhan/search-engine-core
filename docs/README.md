@@ -7,6 +7,7 @@ Welcome to the Search Engine Core documentation. This directory contains compreh
 ### 🚀 Getting Started
 
 - **[README.md](../README.md)** - Main project overview and quick start guide
+- **[DEPLOYMENT_CONFIGURATION.md](./DEPLOYMENT_CONFIGURATION.md)** - Complete deployment configuration guide
 - **[LICENSE](../LICENSE)** - Project license information
 
 ### 🔧 Development Documentation
@@ -41,6 +42,14 @@ Welcome to the Search Engine Core documentation. This directory contains compreh
   - Browser cache optimization strategies
   - CDN integration and performance tuning
 
+#### Development Setup & Configuration
+
+- **[DEVELOPMENT_SETUP.md](./development/DEVELOPMENT_SETUP.md)** - Complete development environment setup guide
+  - Debug configuration and logging
+  - Testing procedures and best practices
+  - Troubleshooting common issues
+  - Performance optimization techniques
+
 #### Project Organization
 
 - **[DOCUMENTATION_CLEANUP.md](./DOCUMENTATION_CLEANUP.md)** - Documentation organization and cleanup guidelines
@@ -67,7 +76,8 @@ docs/
 
 #### For Developers
 
-- **New to the project?** Start with [../README.md](../README.md)
+- **New to the project?** Start with [DEVELOPMENT_SETUP.md](./development/DEVELOPMENT_SETUP.md)
+- **Setting up development environment?** See [DEVELOPMENT_SETUP.md](./development/DEVELOPMENT_SETUP.md)
 - **Working on JS minification?** See [JS_MINIFIER_CLIENT_CHANGELOG.md](./JS_MINIFIER_CLIENT_CHANGELOG.md)
 - **Implementing caching?** See [JS_CACHING_BEST_PRACTICES.md](./guides/JS_CACHING_BEST_PRACTICES.md)
 - **Optimizing headers?** See [JS_CACHING_HEADERS_BEST_PRACTICES.md](./guides/JS_CACHING_HEADERS_BEST_PRACTICES.md)
@@ -75,6 +85,7 @@ docs/
 
 #### For Operations
 
+- **Complete deployment configuration?** See [DEPLOYMENT_CONFIGURATION.md](./DEPLOYMENT_CONFIGURATION.md)
 - **Production deployment?** See [PRODUCTION_JS_MINIFICATION.md](./PRODUCTION_JS_MINIFICATION.md)
 - **Deployment guide** - See [../README.md](../README.md#deployment)
 - **Configuration** - See [../config/](../config/) directory

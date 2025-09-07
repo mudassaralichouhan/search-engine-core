@@ -6,6 +6,7 @@ services:
     restart: unless-stopped
     environment:
       - PORT=${PORT:-3000}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
       - MONGODB_URI=${MONGODB_URI}
       - SEARCH_REDIS_URI=${SEARCH_REDIS_URI:-tcp://redis:6379}
       - SEARCH_REDIS_POOL_SIZE=${SEARCH_REDIS_POOL_SIZE:-16}

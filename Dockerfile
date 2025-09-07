@@ -146,19 +146,35 @@ RUN echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.
 
 # RUN apt-get update && apt-get install -y mongodb-org-mongos mongodb-org-server mongodb-org-shell mongodb-org-tools
 #Install MongoDB shell for health checks
-RUN apt-get update && apt-get install -y mongodb-mongosh
-
-RUN apt-get update && apt-get install -y libcurl4-openssl-dev redis-tools
-
-
 RUN apt-get update && apt-get install -y \
+    mongodb-mongosh \
+    libcurl4-openssl-dev \
+    redis-tools \
     libwebsocketpp-dev \
     libboost-system-dev \
     libboost-thread-dev \
     libssl-dev \
     libasio-dev \
-    librdkafka-dev && \
-    rm -rf /var/lib/apt/lists/*
+    librdkafka-dev \
+    uuid-dev \
+    libuuid1 
+
+# RUN apt-get install -y \
+#     libatomic1 \
+#     liblzf1 \
+#     liblua5.1-cjson0 \
+#     liblua5.1-bitop0 \
+#     liblua5.1-0 \
+#     libjemalloc2 \ 
+#     liblua5.1-cjson-dev \
+#     liblua5.1-bitop-dev \
+#     liblua5.1-dev \
+#     libjemalloc-dev \ 
+#     redis-tools
+
+RUN apt-get install -y redis-tools
+    
+    # rm -rf /var/lib/apt/lists/*
 
 
 # Add ddebs repo
@@ -193,7 +209,7 @@ RUN rm -rf build && \
         -DCMAKE_CXX_EXTENSIONS=OFF \
         -DPkgConfig_DIR=/usr/share/pkgconfig \
         -DCMAKE_PREFIX_PATH="/usr/local/lib/cmake/mongocxx-4.0.0;/usr/local/lib/cmake/bsoncxx-4.0.0" \
-        -DBUILD_TESTS=ON && \
+        -DBUILD_TESTS=OFF && \
     make -j$(nproc)
 
 COPY public/ /app/public/
@@ -278,6 +294,40 @@ COPY --from=builder /app/templates ./templates
 # Copy the startup script
 COPY scripts/start.sh /app/start.sh
 RUN chmod +x /app/start.sh
+
+# Copy MongoDB shell from builder stage for health checks
+COPY --from=builder /usr/bin/mongosh /usr/bin/mongosh
+
+# Copy Redis CLI and dependencies from builder stage (always copy, conditionally use)
+COPY --from=builder /usr/bin/redis-cli /usr/bin/redis-cli
+COPY --from=builder /lib/x86_64-linux-gnu/libatomic.so.1 /lib/x86_64-linux-gnu/
+COPY --from=builder /lib/x86_64-linux-gnu/liblzf.so.1 /lib/x86_64-linux-gnu/
+COPY --from=builder /lib/x86_64-linux-gnu/liblua5.1-cjson.so.0 /lib/x86_64-linux-gnu/
+COPY --from=builder /lib/x86_64-linux-gnu/liblua5.1-bitop.so.0 /lib/x86_64-linux-gnu/
+COPY --from=builder /lib/x86_64-linux-gnu/liblua5.1.so.0 /lib/x86_64-linux-gnu/
+COPY --from=builder /lib/x86_64-linux-gnu/libjemalloc.so.2 /lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/liblua5.1-cjson.so.0 /usr/lib/x86_64-linux-gnu/
+COPY --from=builder /usr/lib/x86_64-linux-gnu/liblua5.1-bitop.so.0 /usr/lib/x86_64-linux-gnu/
+
+# Conditional Redis CLI installation based on build mode
+ARG BUILD_MODE=development
+RUN echo "Build mode: $BUILD_MODE"
+
+# Development mode: Redis CLI already copied from builder stage (faster builds)
+RUN if [ "$BUILD_MODE" = "development" ]; then \
+    echo "📦 Development mode - using Redis CLI copied from builder stage"; \
+    chmod +x /usr/bin/redis-cli; \
+    fi
+
+# Production mode: Remove copied files and install fresh Redis tools (slower but fresh)
+RUN if [ "$BUILD_MODE" = "production" ]; then \
+    echo "📥 Production mode - removing copied files and installing fresh Redis tools..."; \
+    rm -f /usr/bin/redis-cli; \
+    apt-get update && apt-get install -y redis-tools && rm -rf /var/lib/apt/lists/*; \
+    fi
+
+# Always update library cache
+RUN ldconfig
 
 RUN dir
 # Expose the port

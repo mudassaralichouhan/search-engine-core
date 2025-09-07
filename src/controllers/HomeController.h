@@ -7,6 +7,8 @@
 
 class HomeController : public routing::Controller {
 public:
+
+    void addDomain(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
     // GET /
     void index(uWS::HttpResponse<false>* res, uWS::HttpRequest* req);
     

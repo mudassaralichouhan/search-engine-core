@@ -1,0 +1,42 @@
+{
+  "business_name": "زی زی سوییت",
+  "website_url": "zizii.ir",
+  "owner_name": "زینب محمدی",
+  "grant_date": {
+    "persian": "1404/05/15",
+    "gregorian": "2025-08-06"
+  },
+  "expiry_date": {
+    "persian": "1406/05/15",
+    "gregorian": "2027-08-06"
+  },
+  "address": "استان : تهران - شهرستان : تهران - بخش : مرکزی - شهر : تهران - محله : میدان ولی عصر - خیابان حافظ - بلوار کریم خان زند - تجاری اداری الماس کریمخان - پلاک : -280.0 - طبقه : -1 - واحد : 123",
+  "phone": "02186038136",
+  "email": "info@zizii.ir",
+  "location": {
+    "latitude": 35.71343369184115,
+    "longitude": 51.41196012496949
+  },
+  "business_experience": "",
+  "business_hours": "10:00-18:00",
+  "business_services": [
+    {
+      "row_number": "1",
+      "service_title": "آموزش مجازی برخط",
+      "permit_issuer": "",
+      "permit_number": "",
+      "validity_start_date": "",
+      "validity_end_date": "",
+      "status": "تایید شده"
+    }
+  ],
+  "extraction_timestamp": "2025-09-06T04:56:49.892967",
+  "domain_info": {
+    "page_number": 254,
+    "row_index": 24,
+    "row_number": "7585",
+    "province": "تهران",
+    "city": "تهران",
+    "domain_url": "https://trustseal.enamad.ir/?id=634572&code="
+  }
+}

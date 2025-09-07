@@ -1,0 +1,11 @@
+domain,webmaster_email,max_pages
+example1.com,webmaster@example1.com,5
+example2.com,admin@example2.com,5
+test-site.org,contact@test-site.org,5
+sample-website.net,info@sample-website.net,5
+demo-company.co,support@demo-company.co,5
+tech-blog.io,editor@tech-blog.io,5
+online-store.shop,orders@online-store.shop,5
+news-portal.media,news@news-portal.media,5
+service-provider.biz,hello@service-provider.biz,5
+startup-hub.xyz,team@startup-hub.xyz,5

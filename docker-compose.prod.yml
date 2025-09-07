@@ -1,0 +1,18 @@
+# Production docker-compose override
+# This file overrides the development docker-compose.yml for production builds
+
+services:
+  search-engine:
+    build:
+      args:
+        BUILD_MODE: production  # Production mode - installs fresh Redis tools
+    environment:
+      - LOG_LEVEL=info  # More conservative logging for production
+      - SPA_RENDERING_ENABLED=true
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M

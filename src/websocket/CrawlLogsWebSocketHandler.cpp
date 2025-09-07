@@ -49,7 +49,7 @@ void CrawlLogsWebSocketHandler::onOpen(uWS::WebSocket<false, true, PerSocketData
     ws->getUserData()->isAdmin = true;
     ws->subscribe(CRAWL_LOGS_ADMIN_TOPIC);
     
-    std::cout << "[WS-DEBUG] NEW CLIENT CONNECTED! Subscribed to " << CRAWL_LOGS_ADMIN_TOPIC << " (admin access)" << std::endl;
+    LOG_DEBUG("NEW CLIENT CONNECTED! Subscribed to " + std::string(CRAWL_LOGS_ADMIN_TOPIC) + " (admin access)");
     LOG_INFO("Client connected to crawl logs WebSocket with admin access");
     
     // Send welcome message directly (safe in lifecycle callback)
@@ -62,9 +62,9 @@ void CrawlLogsWebSocketHandler::onOpen(uWS::WebSocket<false, true, PerSocketData
     std::string welcomeJson = welcomeMsg.dump();
     if (!ws->send(welcomeJson, uWS::OpCode::TEXT)) {
         // Backpressure detected, will retry on drain
-        std::cout << "[WS-DEBUG] Welcome message backpressure, will retry on drain" << std::endl;
+        LOG_DEBUG("Welcome message backpressure, will retry on drain");
     } else {
-        std::cout << "[WS-DEBUG] Welcome message sent successfully" << std::endl;
+        LOG_DEBUG("Welcome message sent successfully");
     }
 }
 
@@ -72,17 +72,17 @@ void CrawlLogsWebSocketHandler::onMessage(uWS::WebSocket<false, true, PerSocketD
     // Check socket lifecycle state
     if (!ws->getUserData()->open) return;
     
-    std::cout << "[WS-DEBUG] RECEIVED MESSAGE: '" << message << "' (OpCode: " << (int)opCode << ")" << std::endl;
-    
+    LOG_DEBUG("RECEIVED MESSAGE: '" + std::string(message) + "' (OpCode: " + std::to_string((int)opCode) + ")");
+
     // Handle heartbeat or client messages
     if (message == "ping") {
-        std::cout << "[WS-DEBUG] Handling PING - sending PONG response" << std::endl;
+        LOG_DEBUG("Handling PING - sending PONG response");
         // Safe to send synchronously in lifecycle callback
         if (!ws->send("pong", uWS::OpCode::TEXT)) {
             // Backpressure detected, will retry on drain
-            std::cout << "[WS-DEBUG] PONG backpressure, will retry on drain" << std::endl;
+            LOG_DEBUG("PONG backpressure, will retry on drain");
         } else {
-            std::cout << "[WS-DEBUG] PONG sent successfully" << std::endl;
+            LOG_DEBUG("PONG sent successfully");
         }
     }
     // Explicitly (re)subscribe to admin topic MUST be handled before generic subscribe
@@ -96,7 +96,7 @@ void CrawlLogsWebSocketHandler::onMessage(uWS::WebSocket<false, true, PerSocketD
         ws->getUserData()->isAdmin = true;
         ws->getUserData()->sessionId.clear();
         
-        std::cout << "[WS-DEBUG] Client subscribed to admin topic: " << CRAWL_LOGS_ADMIN_TOPIC << std::endl;
+        LOG_DEBUG("Client subscribed to admin topic: " + std::string(CRAWL_LOGS_ADMIN_TOPIC));
         LOG_INFO("Client switched to admin logs topic");
         
         nlohmann::json confirmMsg = {
@@ -123,7 +123,7 @@ void CrawlLogsWebSocketHandler::onMessage(uWS::WebSocket<false, true, PerSocketD
             ws->getUserData()->sessionId = sessionId;
             ws->getUserData()->userTopic = sessionTopic;
             
-            std::cout << "[WS-DEBUG] Client subscribed to session topic: " << sessionTopic << std::endl;
+            LOG_DEBUG("Client subscribed to session topic: " + sessionTopic);
             LOG_INFO("Client switched to session-specific logs for session: " + sessionId);
             
             // Send confirmation
@@ -138,7 +138,7 @@ void CrawlLogsWebSocketHandler::onMessage(uWS::WebSocket<false, true, PerSocketD
     }
     // Log other messages for debugging
     else if (!message.empty()) {
-        std::cout << "[WS-DEBUG] Non-ping message received: " << message << std::endl;
+        LOG_DEBUG("Non-ping message received: " + std::string(message));
         LOG_INFO("Received WebSocket message: " + std::string(message));
     }
 }
@@ -153,7 +153,7 @@ void CrawlLogsWebSocketHandler::onClose(uWS::WebSocket<false, true, PerSocketDat
     ws->getUserData()->open = false;
     // uWS automatically unsubscribes on close
     
-    std::cout << "[WS-DEBUG] CLIENT DISCONNECTED! Code: " << code << ", Message: '" << message << "'" << std::endl;
+    LOG_DEBUG("CLIENT DISCONNECTED! Code: " + std::to_string(code) + ", Message: '" + std::string(message) + "'");
     LOG_INFO("Client disconnected from crawl logs WebSocket. Code: " + std::to_string(code) + 
              ", Message: " + std::string(message));
 }
@@ -161,18 +161,18 @@ void CrawlLogsWebSocketHandler::onClose(uWS::WebSocket<false, true, PerSocketDat
 void CrawlLogsWebSocketHandler::broadcastLog(const std::string& message, const std::string& level) {
     // Check rate limiting first
     if (shouldThrottleMessage()) {
-        std::cout << "[WS-DEBUG] Message throttled due to rate limiting" << std::endl;
+        LOG_DEBUG("Message throttled due to rate limiting");
         return; // Skip this message due to rate limiting
     }
-    
+
     // Ensure we have an app reference for pub/sub
     if (!globalApp) {
-        std::cout << "[WS-DEBUG] No globalApp reference, cannot broadcast" << std::endl;
+        LOG_DEBUG("No globalApp reference, cannot broadcast");
         return;
     }
-    
+
     // Console log for debugging
-    std::cout << "[WS-DEBUG] Broadcasting log message: [" << level << "] " << message << std::endl;
+    LOG_DEBUG("Broadcasting log message: [" + level + "] " + message);
     
     // Create JSON message with timestamp
     nlohmann::json logMsg = {
@@ -197,9 +197,9 @@ void CrawlLogsWebSocketHandler::broadcastLog(const std::string& message, const s
         if (globalApp) {
             // Broadcast to admin topic (admin clients see all logs)
             globalApp->publish(CRAWL_LOGS_ADMIN_TOPIC, jsonString, uWS::OpCode::TEXT);
-            std::cout << "[WS-DEBUG] Message published to admin topic: " << CRAWL_LOGS_ADMIN_TOPIC << std::endl;
+            LOG_DEBUG("Message published to admin topic: " + std::string(CRAWL_LOGS_ADMIN_TOPIC));
         } else {
-            std::cout << "[WS-DEBUG] No globalApp in deferred lambda" << std::endl;
+            LOG_DEBUG("No globalApp in deferred lambda");
         }
     });
 }
@@ -207,18 +207,18 @@ void CrawlLogsWebSocketHandler::broadcastLog(const std::string& message, const s
 void CrawlLogsWebSocketHandler::broadcastToSession(const std::string& sessionId, const std::string& message, const std::string& level) {
     // Check rate limiting first
     if (shouldThrottleMessage()) {
-        std::cout << "[WS-DEBUG] Session message throttled due to rate limiting" << std::endl;
+        LOG_DEBUG("Session message throttled due to rate limiting");
         return; // Skip this message due to rate limiting
     }
     
     // Ensure we have an app reference for pub/sub
     if (!globalApp) {
-        std::cout << "[WS-DEBUG] No globalApp reference, cannot broadcast to session" << std::endl;
+        LOG_DEBUG("No globalApp reference, cannot broadcast to session");
         return;
     }
     
     // Console log for debugging
-    std::cout << "[WS-DEBUG] Broadcasting session log message: [" << level << "] " << message << " (Session: " << sessionId << ")" << std::endl;
+    LOG_DEBUG("Broadcasting session log message: [" + level + "] " + message + " (Session: " + sessionId + ")");
     
     // Create JSON message with timestamp and session info
     nlohmann::json logMsg = {
@@ -250,9 +250,9 @@ void CrawlLogsWebSocketHandler::broadcastToSession(const std::string& sessionId,
             // Send to specific session (user sees only their session)
             globalApp->publish(sessionTopic, jsonString, uWS::OpCode::TEXT);
             
-            std::cout << "[WS-DEBUG] Message published to admin and session topic: " << sessionTopic << std::endl;
+            LOG_DEBUG("Message published to admin and session topic: " + sessionTopic);
         } else {
-            std::cout << "[WS-DEBUG] No globalApp in session deferred lambda" << std::endl;
+            LOG_DEBUG("No globalApp in session deferred lambda");
         }
     });
 }
@@ -283,7 +283,7 @@ bool CrawlLogsWebSocketHandler::shouldThrottleMessage() {
         messageTimes.pop_front();
     }
     if (oldSize != messageTimes.size()) {
-        std::cout << "[WS-DEBUG] Rate limit window cleanup: " << oldSize << " -> " << messageTimes.size() << " messages" << std::endl;
+        LOG_DEBUG("Rate limit window cleanup: " + std::to_string(oldSize) + " -> " + std::to_string(messageTimes.size()) + " messages");
     }
     
     // Check if we've exceeded the rate limit
@@ -291,7 +291,7 @@ bool CrawlLogsWebSocketHandler::shouldThrottleMessage() {
         static auto lastThrottleLog = std::chrono::steady_clock::now();
         // Log throttling message only once per second to avoid spam
         if (now - lastThrottleLog > std::chrono::seconds(1)) {
-            std::cout << "[WS-DEBUG] ⚠️ RATE LIMITING ACTIVE! Messages: " << messageTimes.size() << "/" << MAX_MESSAGES_PER_SECOND << std::endl;
+            LOG_DEBUG("⚠️ RATE LIMITING ACTIVE! Messages: " + std::to_string(messageTimes.size()) + "/" + std::to_string(MAX_MESSAGES_PER_SECOND));
             LOG_WARNING("WebSocket message rate limiting active - dropping messages");
             lastThrottleLog = now;
         }
@@ -300,7 +300,7 @@ bool CrawlLogsWebSocketHandler::shouldThrottleMessage() {
     
     // Add current time to the queue
     messageTimes.push_back(now);
-    std::cout << "[WS-DEBUG] Rate limit check passed: " << messageTimes.size() << "/" << MAX_MESSAGES_PER_SECOND << " messages" << std::endl;
+    LOG_DEBUG("Rate limit check passed: " + std::to_string(messageTimes.size()) + "/" + std::to_string(MAX_MESSAGES_PER_SECOND) + " messages");
     return false;
 }
 

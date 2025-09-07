@@ -36,6 +36,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        BUILD_MODE: development  # Use 'production' for slower but fresh Redis tools installation
     container_name: core
     restart: unless-stopped
     ports:
@@ -53,6 +55,14 @@ services:
       - JS_CACHE_TYPE=redis
       - JS_CACHE_TTL=3600
       - JS_CACHE_REDIS_DB=1
+      # Debug configuration
+      # Available log levels: trace, debug, info, warning, error, none
+      # - debug: Maximum verbosity (development)
+      # - info: Standard production logging (default)
+      # - warning: Only warnings and errors
+      # - error: Only errors
+      # - none: No logging
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
       # - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       # - KAFKA_FRONTIER_TOPIC=crawl.frontier
       - SPA_RENDERING_ENABLED=${SPA_RENDERING_ENABLED:-true}

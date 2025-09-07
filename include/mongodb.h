@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include<string>
 using namespace std;
 #include <bsoncxx/builder/basic/document.hpp>

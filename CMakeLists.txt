@@ -20,6 +20,7 @@ find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GUMBO REQUIRED gumbo)
 find_package(Threads REQUIRED)
+find_library(UUID_LIBRARY NAMES uuid PATHS /usr/lib /usr/local/lib)
 
 # Find WebSocket++ and nlohmann/json
 find_path(WEBSOCKETPP_INCLUDE_DIR NAMES websocketpp/endpoint.hpp PATHS /usr/include /usr/local/include)
@@ -114,6 +115,7 @@ add_subdirectory(src/crawler)
 add_subdirectory(src/storage)
 add_subdirectory(src/scoring)
 add_subdirectory(src/search_core)
+add_subdirectory(src/job_queue)
 
 # Add source files recursively to include subdirectories like src/common/
 # file(GLOB_RECURSE SOURCES "src/*.cpp")
@@ -133,6 +135,8 @@ list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*common/.*\\.cpp$")
 list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*scoring/.*\\.cpp$")
 list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*search_core/.*\\.cpp$")
 list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*kafka/.*\\.cpp$")
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*job_queue/.*\\.cpp$")
+list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*services/.*\\.cpp$")
 
 file(GLOB_RECURSE HEADERS "include/*.h" "include/*.hpp")
 
@@ -157,7 +161,7 @@ target_compile_definitions(mongodb_instance PRIVATE
 list(FILTER MAIN_SOURCES EXCLUDE REGEX ".*mongodb\\.cpp$")
 
 # Create executable
-add_executable(server ${MAIN_SOURCES} ${HEADERS})
+add_executable(server ${MAIN_SOURCES} ${HEADERS} )
 
 # Link libraries
 target_link_libraries(server
@@ -165,9 +169,11 @@ target_link_libraries(server
         common
         storage
         SponsorStorage
+        DomainStorage
         crawler
         search_core
         scoring
+        job_queue
         mongodb_instance
         /usr/local/lib/libmongocxx.so
         /usr/local/lib/libbsoncxx.so
@@ -175,6 +181,7 @@ target_link_libraries(server
         OpenSSL::Crypto
         pthread
         z
+        ${UUID_LIBRARY}
         ${CURL_LIBRARIES}
         CURL::libcurl
         ${GUMBO_LIBRARIES}
