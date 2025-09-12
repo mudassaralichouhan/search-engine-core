@@ -152,8 +152,11 @@
             
             if (currentPath.includes('/crawl-request')) {
                 newPath = `/crawl-request/${langCode}`;
+            } else if (currentPath.includes('/sponsor')) {
+                newPath = `/sponsor/${langCode}`;
             } else {
-                newPath = `/crawl-request/${langCode}`;
+                // Default to sponsor page for root/other paths
+                newPath = `/sponsor/${langCode}`;
             }
             
             window.location.href = newPath;

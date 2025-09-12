@@ -172,5 +172,178 @@ document.addEventListener('keydown', (e) => {
 /* Footer year */
 document.getElementById('year').textContent = new Date().getFullYear();
 
+/* Call time preference toggle */
+(function() {
+    const specificTimeRadio = document.getElementById('specificTimeRadio');
+    const specificTimeField = document.getElementById('specificTimeField');
+    const callTimeRadios = document.querySelectorAll('input[name="call_time"]');
+    
+    if (!specificTimeRadio || !specificTimeField || !callTimeRadios.length) return;
+    
+    callTimeRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.value === 'specific' && radio.checked) {
+                specificTimeField.classList.add('show');
+                specificTimeField.querySelector('input').focus();
+            } else if (radio.value === 'anytime' && radio.checked) {
+                specificTimeField.classList.remove('show');
+                // Clear the field after animation starts
+                setTimeout(() => {
+                    specificTimeField.querySelector('input').value = '';
+                }, 150);
+            }
+        });
+    });
+})();
 
 // TIER_DATA removed; tiers are rendered server-side
+
+/* IRR Form submission */
+(function() {
+    const form = document.getElementById('irrForm');
+    if (!form) return;
+    
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        // Validate required fields
+        if (!data.name || !data.email || !data.mobile || !data.tier || !data.amount) {
+            showNotification('لطفاً تمامی فیلدهای ضروری را پر کنید.', 'error');
+            return;
+        }
+        
+        // Disable submit button
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'در حال ارسال...';
+        
+        try {
+            const response = await fetch('/api/v2/sponsor-submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                // Show success message with bank info
+                showBankInfo(result.bankInfo, result.note);
+                form.reset();
+                closeModal(document.getElementById('irr-modal'));
+            } else {
+                showNotification(result.message || 'خطا در ارسال فرم', 'error');
+            }
+            
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showNotification('خطا در ارتباط با سرور', 'error');
+        } finally {
+            // Re-enable submit button
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
+    });
+})();
+
+/* Notification system */
+function showNotification(message, type = 'info') {
+    // Remove existing notifications
+    const existing = document.querySelector('.notification');
+    if (existing) existing.remove();
+    
+    const notification = document.createElement('div');
+    notification.className = `notification notification--${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <span>${message}</span>
+            <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+/* Bank info display */
+function showBankInfo(bankInfo, note) {
+    const modal = document.getElementById('bank-info-modal') || createBankInfoModal();
+    
+    // Update bank info content
+    const content = modal.querySelector('.bank-info-content');
+    content.innerHTML = `
+        <h3>اطلاعات حساب بانکی</h3>
+        <div class="bank-details">
+            <div class="bank-field">
+                <label>نام بانک:</label>
+                <span>${bankInfo.bankName}</span>
+            </div>
+            <div class="bank-field">
+                <label>شماره حساب:</label>
+                <span class="copyable" onclick="copyToClipboard('${bankInfo.accountNumber}')">${bankInfo.accountNumber}</span>
+            </div>
+            <div class="bank-field">
+                <label>شماره شبا:</label>
+                <span class="copyable" onclick="copyToClipboard('${bankInfo.iban}')">${bankInfo.iban}</span>
+            </div>
+            <div class="bank-field">
+                <label>نام صاحب حساب:</label>
+                <span>${bankInfo.accountHolder}</span>
+            </div>
+            <div class="bank-field">
+                <label>کد SWIFT:</label>
+                <span class="copyable" onclick="copyToClipboard('${bankInfo.swift}')">${bankInfo.swift}</span>
+            </div>
+        </div>
+        <div class="bank-note">
+            <p>${note}</p>
+        </div>
+    `;
+    
+    openModal('bank-info-modal');
+}
+
+function createBankInfoModal() {
+    const modal = document.createElement('dialog');
+    modal.id = 'bank-info-modal';
+    modal.className = 'modal';
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'bank-info-title');
+    
+    modal.innerHTML = `
+        <div class="modal-backdrop" data-close></div>
+        <div class="modal-card" role="dialog">
+            <div class="modal-header">
+                <h3 id="bank-info-title" class="modal-title">اطلاعات پرداخت</h3>
+                <button class="modal-close" type="button" data-close aria-label="Close">✕</button>
+            </div>
+            <div class="bank-info-content"></div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" data-close>متوجه شدم</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    return modal;
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showNotification('کپی شد!', 'success');
+    }).catch(() => {
+        showNotification('خطا در کپی کردن', 'error');
+    });
+}

@@ -77,12 +77,12 @@ Based on testing with popular libraries:
 
 ### Caching Performance
 
-| Metric | Without Cache | With Redis Cache | Improvement |
-|--------|---------------|------------------|-------------|
-| **First Request** | 43.31ms | 43.31ms | Same |
-| **Subsequent Requests** | 43.31ms | 0.17ms | **99.6% faster** |
-| **Cache Hit Rate** | 0% | 90%+ | **Infinite** |
-| **Server Load** | High | Low | **90% reduction** |
+| Metric                  | Without Cache | With Redis Cache | Improvement       |
+| ----------------------- | ------------- | ---------------- | ----------------- |
+| **First Request**       | 43.31ms       | 43.31ms          | Same              |
+| **Subsequent Requests** | 43.31ms       | 0.17ms           | **99.6% faster**  |
+| **Cache Hit Rate**      | 0%            | 90%+             | **Infinite**      |
+| **Server Load**         | High          | Low              | **90% reduction** |
 
 ## 🐳 Docker Setup
 

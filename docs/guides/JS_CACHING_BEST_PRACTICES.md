@@ -18,14 +18,14 @@
 
 ### Why Redis is the Best Choice for Your Setup
 
-| Factor | Redis Cache | File Cache | Memory Cache | Winner |
-|--------|-------------|------------|--------------|--------|
-| **Performance** | 2ms | 15ms | 0.1ms | Memory |
-| **Persistence** | ✅ | ✅ | ❌ | Redis/File |
-| **Shared Access** | ✅ | ❌ | ❌ | Redis |
-| **Memory Usage** | 50-100MB | 0MB | 10-50MB | File |
-| **Setup Complexity** | Low | Low | Very Low | Memory |
-| **Production Ready** | ✅ | ✅ | ❌ | Redis/File |
+| Factor               | Redis Cache | File Cache | Memory Cache | Winner     |
+| -------------------- | ----------- | ---------- | ------------ | ---------- |
+| **Performance**      | 2ms         | 15ms       | 0.1ms        | Memory     |
+| **Persistence**      | ✅          | ✅         | ❌           | Redis/File |
+| **Shared Access**    | ✅          | ❌         | ❌           | Redis      |
+| **Memory Usage**     | 50-100MB    | 0MB        | 10-50MB      | File       |
+| **Setup Complexity** | Low         | Low        | Very Low     | Memory     |
+| **Production Ready** | ✅          | ✅         | ❌           | Redis/File |
 
 **🏆 Redis wins** because you already have it in your stack and it provides the best balance of performance, persistence, and scalability.
 
@@ -59,7 +59,16 @@
 ```yaml
 # docker-compose.yml
 redis:
-  command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+  command:
+    [
+      "redis-server",
+      "--appendonly",
+      "yes",
+      "--maxmemory",
+      "256mb",
+      "--maxmemory-policy",
+      "allkeys-lru",
+    ]
 
 search-engine:
   environment:
@@ -72,6 +81,7 @@ search-engine:
 ## 📊 **Performance Results**
 
 ### Before Caching
+
 ```
 Request 1: 150ms (minify)
 Request 2: 150ms (minify)
@@ -80,6 +90,7 @@ Request 3: 150ms (minify)
 ```
 
 ### After Redis Caching
+
 ```
 Request 1: 150ms (minify + cache)
 Request 2: 2ms (cache hit)
@@ -88,6 +99,7 @@ Request 3: 2ms (cache hit)
 ```
 
 ### Cache Hit Rate Expectations
+
 - **First hour**: 0-20% (warming up)
 - **Steady state**: 80-95% (excellent)
 - **Peak traffic**: 90-98% (optimal)
@@ -95,23 +107,27 @@ Request 3: 2ms (cache hit)
 ## 🔧 **Cache Key Strategy**
 
 ### Current Implementation
+
 ```cpp
 // File path + content hash + minification level
 "js_minify:path_hash:content_hash:level_hash"
 ```
 
 **Benefits:**
+
 - ✅ **Content-aware** - Changes when file content changes
 - ✅ **Level-aware** - Different cache for different minification levels
 - ✅ **Collision-resistant** - Hash-based keys
 
 ### Alternative Strategy
+
 ```cpp
 // File path + modification time + minification level
 "js_minify:path:mod_time:level"
 ```
 
 **Benefits:**
+
 - ✅ **Faster key generation** (no content hashing)
 - ✅ **File system aware** (respects file changes)
 - ❌ **Less precise** (time-based vs content-based)
@@ -119,6 +135,7 @@ Request 3: 2ms (cache hit)
 ## 🛡️ **Error Handling & Fallbacks**
 
 ### Graceful Degradation
+
 ```cpp
 // 1. Try Redis cache
 if (redisAvailable_) {
@@ -142,6 +159,7 @@ return minifyAndCache(content);
 ```
 
 ### Cache Miss Handling
+
 - **Return original content** if minification fails
 - **Log warnings** for debugging
 - **Continue serving** without interruption
@@ -149,6 +167,7 @@ return minifyAndCache(content);
 ## 📈 **Monitoring & Optimization**
 
 ### Key Metrics to Track
+
 ```json
 {
   "cache_hit_rate": 0.85,
@@ -217,6 +236,7 @@ JS_CACHE_ENABLED=false
 ## 🚀 **Testing Your Cache**
 
 ### Manual Testing
+
 ```bash
 # Test cache functionality
 ./scripts/test_js_cache.sh
@@ -229,6 +249,7 @@ curl -X POST http://localhost:3000/api/cache/clear
 ```
 
 ### Automated Testing
+
 ```bash
 # Run multiple requests to test cache hit rates
 for i in {1..10}; do

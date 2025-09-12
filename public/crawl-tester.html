@@ -126,7 +126,7 @@
         
         <div class="form-group">
             <label for="api-url">API URL:</label>
-            <input type="text" id="api-url" value="http://localhost:3000/api/crawl/add-site" readonly>
+            <input type="text" id="api-url" readonly>
         </div>
         
         <div class="form-group">
@@ -171,6 +171,20 @@
         let heartbeatInterval = null;
         let isManualDisconnect = false;
 
+        // Get the current domain and protocol dynamically
+        function getBaseUrl() {
+            const protocol = window.location.protocol;
+            const host = window.location.host;
+            return `${protocol}//${host}`;
+        }
+
+        // Initialize API URL on page load
+        function initializeApiUrl() {
+            const baseUrl = getBaseUrl();
+            const apiUrl = `${baseUrl}/api/crawl/add-site`;
+            document.getElementById('api-url').value = apiUrl;
+        }
+
         function updateConnectionStatus(status) {
             const statusElement = document.getElementById('ws-status');
             const connectBtn = document.getElementById('connect-btn');
@@ -208,7 +222,11 @@
             updateConnectionStatus('connecting');
             addLogEntry(`Connecting to WebSocket... (Attempt ${reconnectAttempts + 1})`, 'info');
 
-            const wsUrl = 'ws://localhost:3000/crawl-logs';
+            const baseUrl = getBaseUrl();
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsHost = window.location.host;
+            const wsUrl = `${wsProtocol}//${wsHost}/crawl-logs`;
+            
             websocket = new WebSocket(wsUrl);
 
             websocket.onopen = function(event) {
@@ -441,8 +459,9 @@
             }
         }
 
-        // Auto-connect to WebSocket when page loads
+        // Initialize page on load
         window.addEventListener('load', function() {
+            initializeApiUrl();
             setTimeout(connectWebSocket, 1000);
         });
 

@@ -1,7 +1,9 @@
 #include "HomeController.h"
 #include "../../include/Logger.h"
 #include "../../include/api.h"
+#include "../../include/search_engine/storage/SponsorStorage.h"
 #include <filesystem>
+#include <fstream>
 #include <nlohmann/json.hpp>
 
 // Deep merge helper: fill missing keys in dst with values from src (recursively for objects)
@@ -461,5 +463,193 @@ std::string HomeController::getAvailableLocales() {
 }
 
 std::string HomeController::getDefaultLocale() {
-    return "en"; // English as default
+    return "fa"; // Persian as default
+}
+
+void HomeController::sponsorSubmit(uWS::HttpResponse<false>* res, uWS::HttpRequest* req) {
+    LOG_INFO("HomeController::sponsorSubmit called");
+    
+    // Read the request body
+    std::string buffer;
+    res->onData([this, res, req, buffer = std::move(buffer)](std::string_view data, bool last) mutable {
+        buffer.append(data.data(), data.length());
+        
+        if (last) {
+            try {
+                // Parse JSON body
+                auto jsonBody = nlohmann::json::parse(buffer);
+                
+                // Validate required fields
+                std::string fullname = jsonBody.value("name", "");
+                std::string email = jsonBody.value("email", "");
+                std::string mobile = jsonBody.value("mobile", "");
+                std::string plan = jsonBody.value("tier", "");
+                
+                if (fullname.empty() || email.empty() || mobile.empty() || plan.empty()) {
+                    badRequest(res, "Missing required fields: name, email, mobile, tier");
+                    return;
+                }
+                
+                // Get amount
+                double amount = 0.0;
+                if (jsonBody.contains("amount")) {
+                    if (jsonBody["amount"].is_number()) {
+                        amount = jsonBody["amount"];
+                    } else if (jsonBody["amount"].is_string()) {
+                        try {
+                            amount = std::stod(jsonBody["amount"].get<std::string>());
+                        } catch (const std::exception&) {
+                            badRequest(res, "Invalid amount format");
+                            return;
+                        }
+                    }
+                }
+                
+                // Get optional company
+                std::string company = jsonBody.value("company", "");
+                
+                // Get IP address and user agent
+                std::string ipAddress = std::string(req->getHeader("x-forwarded-for"));
+                if (ipAddress.empty()) {
+                    ipAddress = std::string(req->getHeader("x-real-ip"));
+                }
+                if (ipAddress.empty()) {
+                    // Fallback to connection IP if no forwarded headers
+                    ipAddress = "unknown";
+                }
+                
+                std::string userAgent = std::string(req->getHeader("user-agent"));
+                
+                // Create sponsor profile
+                search_engine::storage::SponsorProfile profile;
+                profile.fullName = fullname;
+                profile.email = email;
+                profile.mobile = mobile;
+                profile.plan = plan;
+                profile.amount = amount;
+                
+                if (!company.empty()) {
+                    profile.company = company;
+                }
+                
+                profile.ipAddress = ipAddress;
+                profile.userAgent = userAgent;
+                profile.submissionTime = std::chrono::system_clock::now();
+                profile.lastModified = std::chrono::system_clock::now();
+                profile.status = search_engine::storage::SponsorStatus::PENDING;
+                profile.currency = "IRR"; // Default to Iranian Rial
+                
+                // Save to database with better error handling
+                LOG_INFO("Starting database save process for sponsor: " + fullname);
+                
+                try {
+                    // Get MongoDB connection string from environment
+                    const char* mongoUri = std::getenv("MONGODB_URI");
+                    std::string mongoConnectionString = mongoUri ? mongoUri : "mongodb://localhost:27017";
+                    
+                    LOG_INFO("MongoDB URI from environment: " + mongoConnectionString);
+                    
+                    // Now try to actually save to MongoDB
+                    LOG_INFO("Attempting to save sponsor data to MongoDB:");
+                    LOG_INFO("  Name: " + fullname);
+                    LOG_INFO("  Email: " + email);
+                    LOG_INFO("  Mobile: " + mobile);
+                    LOG_INFO("  Plan: " + plan);
+                    LOG_INFO("  Amount: " + std::to_string(amount));
+                    LOG_INFO("  Company: " + company);
+                    LOG_INFO("  IP: " + ipAddress);
+                    LOG_INFO("  User Agent: " + userAgent);
+                    
+                    // Save directly to MongoDB database
+                    std::string actualSubmissionId;
+                    bool savedToDatabase = false;
+                    
+                    try {
+                        // Get MongoDB connection string from environment
+                        const char* mongoUri = std::getenv("MONGODB_URI");
+                        std::string mongoConnectionString = mongoUri ? mongoUri : "mongodb://admin:password123@mongodb_test:27017/search-engine";
+                        
+                        LOG_INFO("Attempting to save sponsor data to MongoDB: " + mongoConnectionString);
+                        
+                        // Create SponsorStorage and save the profile
+                        search_engine::storage::SponsorStorage storage(mongoConnectionString, "search-engine");
+                        auto result = storage.store(profile);
+                        
+                        if (result.success) {
+                            actualSubmissionId = result.value;
+                            savedToDatabase = true;
+                            LOG_INFO("Successfully saved sponsor data to MongoDB with ID: " + actualSubmissionId);
+                        } else {
+                            LOG_ERROR("Failed to save to MongoDB: " + result.message);
+                            // Generate fallback ID
+                            auto now = std::chrono::system_clock::now();
+                            auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+                            actualSubmissionId = "temp_" + std::to_string(timestamp);
+                        }
+                        
+                    } catch (const std::exception& e) {
+                        LOG_ERROR("Exception while saving to MongoDB: " + std::string(e.what()));
+                        // Generate fallback ID
+                        auto now = std::chrono::system_clock::now();
+                        auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+                        actualSubmissionId = "temp_" + std::to_string(timestamp);
+                    }
+                    
+                    // Return success response with bank info
+                    nlohmann::json bankInfo = {
+                        {"bankName", "بانک پاسارگاد"},
+                        {"accountNumber", "3047-9711-6543-2"},
+                        {"iban", "IR64 0570 3047 9711 6543 2"},
+                        {"accountHolder", "هاتف پروژه"},
+                        {"swift", "PASAIRTHXXX"},
+                        {"currency", "IRR"}
+                    };
+                    
+                    nlohmann::json response = {
+                        {"success", true},
+                        {"message", savedToDatabase ? "فرم حمایت با موفقیت ارسال و ذخیره شد" : "فرم حمایت دریافت شد"},
+                        {"submissionId", actualSubmissionId},
+                        {"bankInfo", bankInfo},
+                        {"note", "لطفاً پس از واریز مبلغ، رسید پرداخت را به آدرس ایمیل sponsors@hatef.ir ارسال کنید."},
+                        {"savedToDatabase", savedToDatabase}
+                    };
+                    
+                    json(res, response);
+                    return;
+                    
+                } catch (const std::exception& e) {
+                    LOG_ERROR("Exception in sponsor data logging: " + std::string(e.what()));
+                    // Continue to fallback response below
+                }
+                
+                // Fallback response if anything goes wrong
+                nlohmann::json bankInfo = {
+                    {"bankName", "بانک پاسارگاد"},
+                    {"accountNumber", "3047-9711-6543-2"},
+                    {"iban", "IR64 0570 3047 9711 6543 2"},
+                    {"accountHolder", "هاتف پروژه"},
+                    {"swift", "PASAIRTHXXX"},
+                    {"currency", "IRR"}
+                };
+                
+                nlohmann::json response = {
+                    {"success", true},
+                    {"message", "فرم حمایت دریافت شد"},
+                    {"submissionId", "fallback-" + std::to_string(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count())},
+                    {"bankInfo", bankInfo},
+                    {"note", "لطفاً پس از واریز مبلغ، رسید پرداخت را به آدرس ایمیل sponsors@hatef.ir ارسال کنید."}
+                };
+                
+                json(res, response);
+                
+            } catch (const std::exception& e) {
+                LOG_ERROR("Failed to parse sponsor form data: " + std::string(e.what()));
+                badRequest(res, "Invalid JSON format");
+            }
+        }
+    });
+    
+    res->onAborted([]() {
+        LOG_WARNING("Sponsor form submission request aborted");
+    });
 } 

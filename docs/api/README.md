@@ -33,6 +33,7 @@ enhanced crawler capabilities.
 - `POST /api/spa/detect` - Analyze URLs for SPA characteristics
 - See: [crawler_endpoint.md](./crawler_endpoint.md)
 
+
 ### Template System API
 
 - `GET /api/templates` - List all available crawling templates
@@ -41,6 +42,12 @@ enhanced crawler capabilities.
 - `DELETE /api/templates/:name` - Delete templates
 - `POST /api/crawl/add-site-with-template` - Crawl sites using template configurations
 - See: [templates_endpoint.md](./templates_endpoint.md)
+=======
+### Sponsor API
+
+- `POST /api/v2/sponsor-submit` - Submit sponsor applications with MongoDB storage
+- See: [sponsor_endpoint.md](./sponsor_endpoint.md)
+
 
 ## Key Features
 

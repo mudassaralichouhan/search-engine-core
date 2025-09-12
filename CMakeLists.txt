@@ -144,6 +144,7 @@ target_link_libraries(server
     PRIVATE
         common
         storage
+        SponsorStorage
         crawler
         search_core
         scoring

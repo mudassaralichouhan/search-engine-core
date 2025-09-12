@@ -3,12 +3,25 @@ let templateData = {};
 let errorMessages = {};
 let progressMessages = [];
 
+// Get the current domain and protocol dynamically
+function getCurrentBaseUrl() {
+    const protocol = window.location.protocol;
+    const host = window.location.host;
+    return `${protocol}//${host}`;
+}
+
 function switchLanguage(langCode) {
     const currentPath = window.location.pathname;
     let newPath;
     
-
+    if (currentPath.includes('/crawl-request')) {
         newPath = `/crawl-request/${langCode}`;
+    } else if (currentPath.includes('/sponsor')) {
+        newPath = `/sponsor/${langCode}`;
+    } else {
+        // Default to current page with language
+        newPath = `${currentPath}/${langCode}`;
+    }
     
     window.location.href = newPath;
 }
@@ -200,7 +213,8 @@ async function startCrawl() {
         startProgressSimulation();
         
         // Send crawl request (base_url will be injected by template)
-        const apiUrl = `${templateData.baseUrl || templateData.base_url || 'http://localhost:3000'}/api/crawl/add-site`;
+        const baseUrl = templateData.baseUrl || templateData.base_url || getCurrentBaseUrl();
+        const apiUrl = `${baseUrl}/api/crawl/add-site`;
         console.log('Making API request to:', apiUrl);
         const response = await fetch(apiUrl, {
             method: 'POST',

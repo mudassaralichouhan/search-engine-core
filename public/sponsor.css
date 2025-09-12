@@ -226,6 +226,26 @@ footer a { color: inherit; }
 .form-grid .full { grid-column: 1 / -1; }
 label { display: grid; gap: .4rem; font-weight: 600; font-size: .95rem; }
 input, select { width: 100%; padding: .6rem .7rem; border-radius: 8px; border: 1px solid var(--border); background: var(--elev); color: var(--text); }
+
+/* LTR fields for email, phone, amount, extension */
+input[type="email"],
+input[type="tel"],
+input[type="number"],
+input[name="extension"] {
+    direction: ltr;
+    text-align: left;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+/* Radios/checkboxes should not stretch */
+input[type="radio"], input[type="checkbox"] { width: auto; }
+
+/* Hide optional fields by default - can be shown in future */
+label:has(input[name="landline"]),
+label:has(input[name="extension"]),
+#specificTimeField,
+.form-grid fieldset {
+    display: none !important;
+}
 .btc-box { display: grid; gap: var(--space-4); grid-template-columns: 150px 1fr; align-items: center; }
 @media (max-width: 640px) { .btc-box { grid-template-columns: 1fr; } .form-grid { grid-template-columns: 1fr; } }
 .qr {
@@ -234,8 +254,234 @@ input, select { width: 100%; padding: .6rem .7rem; border-radius: 8px; border: 1
 .addr { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 
+/* Inline choice labels inside fieldsets */
+.form-grid fieldset .choice { display: flex; align-items: center; gap: .5rem; }
+.form-grid fieldset .choice > div { display: flex; align-items: center; }
+.form-grid fieldset .choice span { white-space: nowrap; }
+
+/* Radio row container */
+.form-grid fieldset .choices-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: .75rem;
+    flex-wrap: nowrap;
+}
+
+/* Fieldset styling */
+.form-grid fieldset {
+    width: 100%;
+    border-radius: 11px;
+    border: 1px solid var(--border);
+    background: var(--elev);
+    margin: 0;
+}
+
+.form-grid fieldset legend {
+    color: var(--text);
+    font-weight: 600;
+    font-size: .95rem;
+}
+
+/* Radio button animations */
+.form-grid fieldset .choice {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 8px;
+}
+
+.form-grid fieldset .choice:hover {
+    background: var(--elev);
+    transform: translateY(-1px);
+}
+
+.form-grid fieldset .choice input[type="radio"]:checked + span {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* Specific time field animation */
+#specificTimeField {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    transform: translateY(-8px);
+    visibility: hidden;
+    max-height: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+#specificTimeField.show {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+    max-height: 200px;
+    overflow: visible;
+    padding: 0;
+}
+
 /* Utility */
 .hide { display: none !important; }
 .icon { width: 18px; height: 18px; }
 
+/* Template-specific styles */
+.benefits .icon {
+    vertical-align: -3px;
+    margin-right: .35rem;
+}
 
+.payment-options {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+}
+
+.footer-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.form-actions {
+    display: flex;
+    gap: .75rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Notification styles */
+.notification {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10000;
+    max-width: 24rem;
+    padding: var(--space-4);
+    background: var(--elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    animation: slideIn 0.3s ease-out;
+}
+
+.notification--success {
+    background: #1b5e20;
+    border-color: #4caf50;
+    color: #e8f5e8;
+}
+
+.notification--error {
+    background: #d32f2f;
+    border-color: #f44336;
+    color: #ffebee;
+}
+
+.notification-content {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+}
+
+.notification-content span {
+    flex: 1;
+    font-weight: 500;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 1.25rem;
+    font-weight: bold;
+    padding: 0;
+    margin: 0;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.notification-close:hover {
+    opacity: 1;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Bank info modal styles */
+.bank-info-content {
+    padding: var(--space-4) 0;
+}
+
+.bank-details {
+    display: grid;
+    gap: var(--space-4);
+    margin-bottom: var(--space-5);
+}
+
+.bank-field {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3);
+    background: var(--elev);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+
+.bank-field label {
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.bank-field span {
+    font-family: 'Courier New', monospace;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.bank-field .copyable {
+    cursor: pointer;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    transition: background-color 0.2s;
+}
+
+.bank-field .copyable:hover {
+    background: rgba(106, 160, 255, 0.1);
+    color: var(--primary);
+}
+
+.bank-note {
+    padding: var(--space-4);
+    background: rgba(53, 211, 158, 0.1);
+    border: 1px solid rgba(53, 211, 158, 0.3);
+    border-radius: var(--radius);
+    color: var(--accent);
+}
+
+.bank-note p {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-3);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border);
+    margin-top: var(--space-4);
+}

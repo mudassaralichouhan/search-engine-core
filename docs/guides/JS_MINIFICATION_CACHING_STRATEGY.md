@@ -22,11 +22,11 @@ class JsMinificationCache {
 private:
     std::unique_ptr<sw::redis::Redis> redis_;
     bool redisAvailable_;
-    
+
 public:
     std::string getCachedMinified(const std::string& filePath, const std::string& content) {
         std::string cacheKey = generateCacheKey(filePath, content);
-        
+
         if (redisAvailable_) {
             try {
                 auto result = redis_->get(cacheKey);
@@ -39,11 +39,11 @@ public:
         }
         return ""; // Cache MISS
     }
-    
-    void cacheMinified(const std::string& filePath, const std::string& originalContent, 
+
+    void cacheMinified(const std::string& filePath, const std::string& originalContent,
                       const std::string& minifiedContent) {
         std::string cacheKey = generateCacheKey(filePath, originalContent);
-        
+
         if (redisAvailable_) {
             try {
                 // Cache with 1-hour expiration
@@ -69,12 +69,12 @@ redis:
 
 ### Performance Benefits
 
-| Metric | Without Cache | With Redis Cache | Improvement |
-|--------|---------------|------------------|-------------|
-| **First Request** | 150ms | 150ms | Same |
-| **Subsequent Requests** | 150ms | 2ms | **98.7% faster** |
-| **Memory Usage** | 0MB | 50-100MB | Minimal |
-| **CPU Usage** | High | Low | **90% reduction** |
+| Metric                  | Without Cache | With Redis Cache | Improvement       |
+| ----------------------- | ------------- | ---------------- | ----------------- |
+| **First Request**       | 150ms         | 150ms            | Same              |
+| **Subsequent Requests** | 150ms         | 2ms              | **98.7% faster**  |
+| **Memory Usage**        | 0MB           | 50-100MB         | Minimal           |
+| **CPU Usage**           | High          | Low              | **90% reduction** |
 
 ---
 
@@ -94,37 +94,37 @@ class FileBasedJsCache {
 private:
     std::string cacheDir_;
     std::mutex fileMutex_;
-    
+
 public:
-    FileBasedJsCache(const std::string& cacheDir = "/tmp/js-cache") 
+    FileBasedJsCache(const std::string& cacheDir = "/tmp/js-cache")
         : cacheDir_(cacheDir) {
         std::filesystem::create_directories(cacheDir_);
     }
-    
+
     std::string getCachedMinified(const std::string& filePath, const std::string& content) {
         std::string cacheFile = getCacheFilePath(filePath, content);
-        
+
         if (std::filesystem::exists(cacheFile)) {
             // Check if cache is still valid (file modification time)
             auto cacheTime = std::filesystem::last_write_time(cacheFile);
             auto now = std::filesystem::file_time_type::clock::now();
             auto age = std::chrono::duration_cast<std::chrono::hours>(now - cacheTime);
-            
+
             if (age.count() < 24) { // 24-hour cache validity
                 return readFile(cacheFile);
             }
         }
         return "";
     }
-    
-    void cacheMinified(const std::string& filePath, const std::string& originalContent, 
+
+    void cacheMinified(const std::string& filePath, const std::string& originalContent,
                       const std::string& minifiedContent) {
         std::string cacheFile = getCacheFilePath(filePath, originalContent);
-        
+
         std::lock_guard<std::mutex> lock(fileMutex_);
         writeFile(cacheFile, minifiedContent);
     }
-    
+
 private:
     std::string getCacheFilePath(const std::string& filePath, const std::string& content) {
         std::hash<std::string> hasher;
@@ -144,12 +144,12 @@ JS_CACHE_TTL=86400  // 24 hours in seconds
 
 ### Performance Comparison
 
-| Metric | File Cache | Redis Cache | Winner |
-|--------|------------|-------------|--------|
-| **Speed** | 15ms | 2ms | Redis |
-| **Persistence** | ✅ | ✅ | Tie |
-| **Memory Usage** | 0MB | 50-100MB | File |
-| **Setup Complexity** | Low | Medium | File |
+| Metric               | File Cache | Redis Cache | Winner |
+| -------------------- | ---------- | ----------- | ------ |
+| **Speed**            | 15ms       | 2ms         | Redis  |
+| **Persistence**      | ✅         | ✅          | Tie    |
+| **Memory Usage**     | 0MB        | 50-100MB    | File   |
+| **Setup Complexity** | Low        | Medium      | File   |
 
 ---
 
@@ -171,11 +171,11 @@ private:
     std::unordered_map<std::string, std::string> cache_;
     std::mutex cacheMutex_;
     static constexpr size_t MAX_CACHE_SIZE = 1000;
-    
+
 public:
     std::string getCachedMinified(const std::string& filePath, const std::string& content) {
         std::string cacheKey = generateCacheKey(filePath, content);
-        
+
         std::lock_guard<std::mutex> lock(cacheMutex_);
         auto it = cache_.find(cacheKey);
         if (it != cache_.end()) {
@@ -183,18 +183,18 @@ public:
         }
         return "";
     }
-    
-    void cacheMinified(const std::string& filePath, const std::string& originalContent, 
+
+    void cacheMinified(const std::string& filePath, const std::string& originalContent,
                       const std::string& minifiedContent) {
         std::string cacheKey = generateCacheKey(filePath, originalContent);
-        
+
         std::lock_guard<std::mutex> lock(cacheMutex_);
-        
+
         // Simple LRU eviction
         if (cache_.size() >= MAX_CACHE_SIZE) {
             cache_.clear(); // Simple strategy - clear all
         }
-        
+
         cache_[cacheKey] = minifiedContent;
     }
 };
@@ -213,11 +213,11 @@ private:
     std::unordered_map<std::string, std::string> memoryCache_;
     std::mutex memoryMutex_;
     bool redisAvailable_;
-    
+
 public:
     std::string getCachedMinified(const std::string& filePath, const std::string& content) {
         std::string cacheKey = generateCacheKey(filePath, content);
-        
+
         // 1. Try memory cache first (fastest)
         {
             std::lock_guard<std::mutex> lock(memoryMutex_);
@@ -226,7 +226,7 @@ public:
                 return it->second;
             }
         }
-        
+
         // 2. Try Redis cache
         if (redisAvailable_) {
             try {
@@ -241,14 +241,14 @@ public:
                 LOG_WARNING("Redis cache error: " + std::string(e.what()));
             }
         }
-        
+
         return "";
     }
-    
-    void cacheMinified(const std::string& filePath, const std::string& originalContent, 
+
+    void cacheMinified(const std::string& filePath, const std::string& originalContent,
                       const std::string& minifiedContent) {
         std::string cacheKey = generateCacheKey(filePath, originalContent);
-        
+
         // Cache in memory (fastest access)
         {
             std::lock_guard<std::mutex> lock(memoryMutex_);
@@ -257,7 +257,7 @@ public:
             }
             memoryCache_[cacheKey] = minifiedContent;
         }
-        
+
         // Cache in Redis (persistent, shared)
         if (redisAvailable_) {
             try {
@@ -272,11 +272,11 @@ public:
 
 ### Performance Benefits
 
-| Cache Level | Hit Rate | Access Time | Use Case |
-|-------------|----------|-------------|----------|
-| **Memory** | 80% | 0.1ms | Hot files |
-| **Redis** | 15% | 2ms | Warm files |
-| **Minification** | 5% | 150ms | Cold files |
+| Cache Level      | Hit Rate | Access Time | Use Case   |
+| ---------------- | -------- | ----------- | ---------- |
+| **Memory**       | 80%      | 0.1ms       | Hot files  |
+| **Redis**        | 15%      | 2ms         | Warm files |
+| **Minification** | 5%       | 150ms       | Cold files |
 
 ---
 
@@ -313,7 +313,7 @@ services:
       - JS_CACHE_TYPE=hybrid
       - JS_CACHE_TTL=3600
     volumes:
-      - js_cache:/var/cache/js-minification  # For file cache
+      - js_cache:/var/cache/js-minification # For file cache
 
 volumes:
   js_cache:
